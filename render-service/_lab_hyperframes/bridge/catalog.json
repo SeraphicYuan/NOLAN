@@ -10,6 +10,7 @@
         "kicker": "string — small eyebrow label (design intent, not narration)",
         "register": "enum(paper|footage) — ink-on-mist, or white text for a media ground",
         "ground": "object — a media_ground spec: {kind: paper|image|transparent, parchment?, src?, kb?}",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "items": "array of {from,to | value, prefix?, suffix?, label, cue?, at? (spoken phrase to sync this reveal to), underline?, delta?} where delta={dir:up|down|flat, value:string} renders a colored metric-change chip (▲/▼/→) below the label",
         "props": "array of prop_cutout specs (optional evidence overlays)",
         "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch)? — text-entrance style applied to the LABELS (numerals keep their count-up); see the 'reveals' catalog. Seek-safe.",
@@ -35,6 +36,7 @@
         "kicker": "string — eyebrow label",
         "register": "enum(paper|footage)",
         "ground": "object — media_ground spec (default {kind: transparent} to reveal a root video)",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "lines": "array of strings — the statement, one entry per visual line",
         "operative": "string — the substring in lines to highlight-sweep (must appear verbatim in a line)",
         "cue": "number — seconds into scene for the sweep",
@@ -128,6 +130,7 @@
         "numbered": "bool? — render an ordinal (1,2,3…) before each item (auto-on for the numbered-rail variant).",
         "register": "enum(paper|footage)? - ink-on-paper (default) or light text over a media ground",
         "ground": "object? - a media_ground spec {kind: paper|image|transparent, ...}",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): stack|centered|two-col|numbered-rail|card-row. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json.",
         "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills items from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
         "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
@@ -148,6 +151,7 @@
         "kicker": "string? - small eyebrow label",
         "register": "enum(paper|footage)?",
         "ground": "object? - a media_ground spec",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): centered|editorial|side-mark|framed. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "theme_notes": "quote-mark + highlight = --accent; quote uses the display type role + type-scale + display-style; cite = mono."
@@ -455,6 +459,7 @@
       "not_for": "A single ranking or list (use `ledger`/`bullet_list`). A time sequence (use `timeline`). A tabular matrix of discrete options x criteria (use `comparison_table`). A one-axis magnitude (use `stat`).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "x": "object — the horizontal axis: {label, lo?, hi?} (axis title + the two end labels)",
         "y": "object — the vertical axis: {label, lo?, hi?}",
         "items": "array of {x, y (0..1; 0 = left/bottom), label, hl?} — plotted points, revealed in order",
@@ -477,6 +482,7 @@
       "not_for": "A two-item contrast with no overlap (use `comparison`/`juxtaposition`). More than 3 sets, or a hierarchy (use `diagram`). A ranking or list (use `bullet_list`/`ledger`).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "sets": "array of 2 or 3 {label, sub?} — the circles (sub = a small overline). 2 → side-by-side, 3 → triangle.",
         "overlap": "string? — the centre intersection label (a pill in the shared region)",
         "kicker": "string? — eyebrow over the top title",
@@ -497,6 +503,7 @@
       "not_for": "A simple ranked list of values (use `chart` bars or `ledger`). A 2-way contrast (use `comparison`/`juxtaposition`). A hierarchy/network (use `diagram`). Multi-stage flows (this is a single split).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "source": "object — the total: {label, value?} (the left bar; value is shown if given)",
         "targets": "array of {label, value (the weight — ribbon width ∝ value), hl?} — the parts, top→bottom",
         "unit": "string? — appended to each value (e.g. '%', 'B')",
@@ -521,6 +528,7 @@
       "not_for": "Precise values to read off (use `chart`/`stat`). Parts of a whole as a flow (use `sankey`). A two-way qualitative contrast (use `comparison`/`juxtaposition`).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "items": "array of {label, value (drives the circle AREA), hl?} — 2+ things, left→right",
         "unit": "string? — appended to each value (e.g. 'kg', 'x')",
         "ratio": "string? — a called-out ratio placed above the tallest circle (e.g. '400x')",
@@ -545,6 +553,7 @@
       "not_for": "Values to compare in magnitude (use `chart` bars). A total broken into a FLOW (use `sankey`). More than ~6 slices (illegible). Precise trends over time (use `chart` line).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "segments": "array of {label, value, hl?} — the slices (value = share; % auto-computed). hl = full accent.",
         "hole": "number(0..1)? — 0 = pie (default), ~0.58 = donut (frees the centre for a label)",
         "center": "string? — donut centre label (e.g. a total)",
@@ -570,6 +579,7 @@
       "not_for": "Parts of a whole with no ordering (use `pie`). A flow that splits/branches (use `sankey`). A ranked list of independent values (use `chart` bars). A 2-way contrast (use `comparison`/`juxtaposition`).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "stages": "array of {label, value, hl?} — ordered top→bottom (widest→narrowest); width ∝ value",
         "unit": "string? — appended to each value",
         "kicker": "string? — eyebrow over the top title",
@@ -593,6 +603,7 @@
       "not_for": "TWO dimensions at once (use `quadrant`). Precise magnitudes (use `chart`/`scale`). A ranked list (use `bullet_list`/`ledger`). A time sequence (use `timeline`).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "axis": "object — {label?, lo, hi} (the axis title + the two end labels)",
         "items": "array of {x (0..1; 0=lo end), label, sub?, hl?} — points on the axis (labels auto-alternate above/below)",
         "zones": "array of {x0, x1 (0..1), label?}? — tinted bands segmenting the axis (e.g. left/centre/right)",
@@ -617,6 +628,7 @@
       "not_for": "A one-way process with an end (use `diagram` flow or `timeline`). A hierarchy (use `diagram` tree). Parts of a whole (use `pie`). A narrowing funnel (use `funnel`).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "steps": "array of {label, sub?, hl?} — the loop stages, in order (arrows wrap last→first)",
         "center": "string? — a centre label naming the loop",
         "kicker": "string? — eyebrow over the top title",
@@ -676,6 +688,7 @@
       "not_for": "1-3 hero numbers (use stat). A choropleth/geographic distribution (geo). A pie/scatter/complex viz (go raw).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "type": "enum(bar|line|waterfall)? — bar (default), line, or waterfall (cumulative +/- bars floating at the running total — a revenue/budget BRIDGE) — a LINE chart accepts `playhead:true` for a TIME-SERIES sweep: a vertical time-cursor sweeps left→right in sync with the draw (the beat reads as time advancing), points reveal as it reaches them.",
         "series": "array of {label, value, total?} — bars/points; for waterfall, value is the signed DELTA and total:true makes a full bar from 0 (start/end)",
         "prefix": "string? — unit before the value (e.g. '$')",
@@ -823,6 +836,7 @@
       "not_for": "A TREE / hierarchy (each node has ONE parent — org chart, ownership, taxonomy) → use `diagram` (tree). A one-way FLOW A→B→C → `diagram` (flow) or `timeline`. A CHAIN with no cross-links → `timeline`/`cycle`. connection_board earns its keep ONLY when links CROSS — a node connects to several and the web can't be drawn as a single parent-per-node tree. Ranked items → bullet_list/ledger.",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "nodes": "array of {id, label, sub?, x?, y? (0..1; else auto on a ring), hl?} — the entities",
         "links": "array of {from, to (node ids), label?} — the connections (drawn lines, optional mid-label)",
         "kicker": "string? — eyebrow over the top title",
@@ -843,6 +857,7 @@
       "not_for": "A sequence of point EVENTS or non-overlapping periods (use `timeline` — spans with no overlap is just a timeline drawn wrong). A single duration/countdown. Values to compare (chart). One-axis positioning (spectrum).",
       "data_schema": {
         "ground": "object? — ambient media/paper ground BEHIND the data (a media_ground spec: {kind: image|paper|parchment|transparent, src?, kb?, dim?}). A legibility veil in the theme surface is laid over media automatically, so thin lines and numbers still read.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "spans": "array of {label, start, end (numbers on the axis), hl?} — the duration bars, one row each",
         "range": "[min, max]? — the axis extent (else min start → max end)",
         "ticks": "array of numbers? — axis tick positions (else 5 even)",
@@ -948,6 +963,7 @@
         "title": "string?",
         "titleHi": "string? — substring of title to accent",
         "ground": "object? — ambient media ground (media_ground spec)",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills series from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
         "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
         "encode": "object? — {label:'col', start:'col', end:'col'} — column → each series' name + its start/end value"

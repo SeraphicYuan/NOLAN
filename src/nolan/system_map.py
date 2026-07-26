@@ -195,6 +195,15 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
         "executed_by": [("src/nolan/premium_render.py", "transitionIn"),
                         ("src/nolan/premium_render.py", "_expand_shots")],
     },
+    "camera": {
+        # The ken-burns umbrella for the compose-first path. Authored as `ground.camera` (gated in
+        # author.py against the registry) or CHOSEN by the selector from narration + source shape +
+        # beat length; executed by the ONE emitter every ground move now comes through.
+        "authored_by": [("render-service/_lab_hyperframes/bridge/author.py", "unknown camera move"),
+                        ("src/nolan/camera/select.py", "def select")],
+        "executed_by": [("src/nolan/camera/emit.py", "def emit"),
+                        ("render-service/_lab_hyperframes/bridge/compose.py", "_camera_for")],
+    },
     "motion": {
         "authored_by": [("src/nolan/orchestrator/director.py", "_run_motion_design_step")],
         "executed_by": [("src/nolan/motion/executor.py", "chapter_step_for_spec"),
@@ -259,6 +268,14 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
          "motion_design prompt injects the hostable-effects catalog JSON"),
         ("skills/orchestrator/motion-designer.md", "catalog",
          "agent skill (registry-synced by tests/test_umbrella_skills.py)"),
+    ],
+    "camera": [
+        ("render-service/_lab_hyperframes/bridge/compose.py", "_camera_for",
+         "every ground move in the composer resolves through the registry — no block hand-writes one"),
+        ("render-service/_lab_hyperframes/bridge/author.py", "unknown camera move",
+         "the gate refuses a move that is not in the registry, by name"),
+        ("render-service/_lab_hyperframes/bridge/catalog.json", "push-to-detail",
+         "the authoring catalog lists every move id, so an agent can discover them"),
     ],
     "editing": [
         ("src/nolan/tempo_plan.py", "from nolan.editing import TRANSITIONS",
@@ -370,6 +387,15 @@ def _umbrellas() -> Dict[str, Any]:
             for e in MOTION]
     except Exception as exc:
         out["motion"] = {"error": str(exc)}
+    try:
+        from nolan.camera.registry import MOVES as CAMERA
+        out["camera"] = [
+            {"id": m.id, "purpose": m.purpose, "when_to_use": m.when_to_use,
+             "family": m.family, "needs": list(m.needs),
+             **({"degrades_to": m.degrades_to} if m.degrades_to else {})}
+            for m in CAMERA.values()]
+    except Exception as exc:
+        out["camera"] = {"error": str(exc)}
     try:
         from nolan.evoke_broll import OPERATORS
         out["pairing"] = [{"id": k, **v} for k, v in OPERATORS.items()]

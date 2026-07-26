@@ -171,6 +171,45 @@ _transcript_lib_hits`, both `VectorSearch(search_level="segments")` — spoken w
 has no frame level, so the gemma captions this whole loop exists to produce are consumed by the UI and
 never by a render.
 
+## The camera umbrella — ken-burns as a registry, not four hardcoded tweens (2026-07-26)
+
+`src/nolan/camera/` (registry · solve · emit · select · target), wired into the composer at
+`compose.py::_camera_for`, gated in `author.py`, surfaced on `/map`. Full program in
+`docs/CAMERA_PROGRAM.md`. 21 moves in six families; 75 tests.
+
+**What it replaced.** Four blocks had each hand-written the same idea and drifted: `media_ground`
+1.03->1.08, `_data_ground` 1.03->1.10, `carousel` 1.05->1.16, `_layout_cell` a literal `duration:6`
+that froze on a long beat and was cut mid-stride on a short one. All linear, all centred, none scaled
+to the beat. A honesty test now fails on any fifth.
+
+**The amplitude law** holds apparent SPEED constant and derives travel from the beat (4s -> ~5%,
+16s -> ~11%, capped) — the answer to dead long holds. It only reaches real beats because legacy `kb`
+stopped governing the amount: every `kb` in the tree is an authoring default (`[1.02, 1.1]` on nine
+diamond-v2 frames), so honouring it kept a 16s hold travelling the same 8% as a 4s one. `kb` now says
+WHETHER; the law says HOW FAR; `camera.amount` is the deliberate override.
+
+**The solver makes a black edge unrepresentable**: a translate may only consume overscan that exists,
+a requested move raises the scale to afford it (to a cap), and anything it cannot fit is CLAMPED AND
+REPORTED. Property-swept across targets, durations and directions including the corners. A tall source
+pans its real long axis (element sized to the full image) instead of sliding a cover-crop that can
+never reveal the top of a poster.
+
+**Three findings the tests forced.** (1) The upscale tolerance is a design decision: at the 2% first
+written, a 1920x1080 stock still — the commonest asset we have — could take no push at all and the
+feature would have switched itself off across a real pool; 18% is the band a still holds, and still
+catches the 360p library sources (they need ~3x). (2) `drift` as a long-beat default gave a 14.4s beat
+LESS travel than a 4.8s one — the same bug in new clothes; it is the alternation partner, not a
+duration default. (3) Alternation state was a module global carried ACROSS frames, which would have
+made a frame's camera depend on which frames were composed before it — fatal with the incremental
+renderer, which composes only what changed. `compose_frame` resets it.
+
+**Targeting** has two lanes and the difference is the design: rembg saliency (free, deterministic,
+right for one clear subject — but it aims at the GAP between two people and cannot know which subject
+the sentence is about), and an opt-in VLM box lane that buys RELEVANCE, cached per (image, narration)
+in a `.camera.json` sidecar. Parallax rides the rembg matte on its own layer travelling ~1.9x the
+ground; rack-focus keeps that layer sharp while the ground racks. A missing matte costs the depth,
+never the render.
+
 ## diamond-v2 post-mortem — 10 items landed, 1 WITHDRAWN with its disproof (2026-07-25)
 
 Every item in `docs/HF_V2_POSTMORTEM_IMPROVEMENTS.md` (written from the cold end-to-end run of

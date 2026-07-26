@@ -952,7 +952,112 @@ def _line_times(lines, d, start, dur):
     return _reveal_times(n, start, dur, cues, lead=0.3, frac=0.9, minstep=0.35, tail=0.4)
 
 
-def media_ground(sid, ground, start, dur):
+# --- the CAMERA (src/nolan/camera) ------------------------------------------------------------------
+# Every ken-burns tween in this file comes from `_camera_tl`. Before it there were four hand-written
+# ones that had already drifted apart: `media_ground` 1.03->1.08, `_data_ground` 1.03->1.10, carousel
+# 1.05->1.16 and `_layout_cell` a literal `duration:6` — all linear, all about the centre, none of them
+# scaled to the beat. The registry, the geometry solver (which cannot expose an edge), the amplitude
+# law and the selector live in `nolan/camera/`; this is the seam into the composer.
+#
+# Fail-soft by design: if the camera package cannot be imported at all, the ground still renders, it
+# simply does not move. A composer that dies because a camera is unavailable is a worse failure than a
+# static shot.
+def _camera_for(g, dur, sel, start, *, default_amount=None, cue=None, narration=""):
+    """(gsap_lines, extra_style) for a ground spec `g` on selector `sel`."""
+    try:
+        from nolan import camera
+        from nolan.camera import target as _ct
+    except Exception:                                   # camera unavailable — a still ground, honestly
+        return [], "", None
+    spec = g.get("camera") if isinstance(g, dict) else None
+    if isinstance(spec, str):
+        spec = {"move": spec}
+    spec = spec or {}
+    if str(spec.get("move", "")).lower() == "none" or g.get("camera") is False:
+        return [], "", None
+
+    src = g.get("src") or ""
+    path = None
+    if src and not str(src).startswith(("http:", "https:", "data:")):
+        base = globals().get("_ASSET_BASE")
+        p = Path(src)
+        path = (Path(base) / src) if (base and not p.is_absolute()) else p
+        if not path.exists():
+            path = None
+    img = _ct.image_size(path) if path else None
+
+    move = spec.get("move")
+    if not move:
+        # Legacy `kb: [f0, f1]` decides WHETHER the ground moves; it no longer sets HOW FAR. Every kb in
+        # the tree is an authoring default (`[1.02, 1.1]` on 9 frames of diamond-v2 alone), never a
+        # tuned value, and honouring it would keep a 16s hold travelling the same 8% as a 4s one —
+        # which is the dead-long-hold complaint this module exists to answer. The amplitude law
+        # governs; `camera.amount` is how an author overrides it deliberately.
+        kb = g.get("kenburns") if g.get("kenburns") not in (None, True, False) else g.get("kb")
+        if kb is False:
+            return [], "", None
+        move, why = camera.select.select(
+            narration=narration or "", dur=float(dur), img=img,
+            prev_family=globals().get("_CAMERA_PREV_FAMILY"),
+            available=_ct.capabilities(path, narration=narration or "", want=()) if path else {"target"})
+        spec.setdefault("_why", why)
+
+    tgt = spec.get("target")
+    _m = camera.registry.get(move)
+    if tgt is None and path and _m and "target" in _m.needs:
+        tgt = _ct.subject_point(path)
+    box = spec.get("box")
+    if box is None and path and _m and "box" in _m.needs:
+        # the document family asks WHERE the quoted line is. That is a relevance question, so it is the
+        # one place a model call earns its keep — and it is opt-in (NOLAN_CAMERA_VLM), cached per
+        # (image, narration), and degrades to a plain push when it is off or unsure.
+        got = _ct.subject_box(path, narration or "")
+        box = got["box"] if got else None
+        if box is None:
+            move, _why = camera.registry.degrade(move, {"target"})
+    plan = camera.plan(move, dur=float(dur), target=tgt, box=box, img=img,
+                       amount=spec.get("amount", default_amount))
+    globals()["_CAMERA_PREV_FAMILY"] = camera.registry.family_of(plan["move"])
+    if plan["move"] == "punch-in":
+        lines = camera.emit_punch(sel, plan, (cue if cue is not None else start + 0.4))
+    elif plan["move"] in ("blur-in", "blur-out", "rack-focus"):
+        lines = camera.emit_blur(sel, start, float(dur), cue=cue,
+                                 **({"from_px": 0.0, "to_px": 18.0} if plan["move"] == "blur-out" else {}))
+    else:
+        lines = camera.emit(sel, plan, start, float(dur), cue=cue)
+
+    depth = None
+    if plan["move"] == "rack-focus" and path:
+        fg = _ct.cutout_path(path)
+        if fg:
+            # the registry promises "with a cutout it is a TRUE rack" — so keep that promise: the
+            # SUBJECT layer stays sharp while the ground racks from soft to sharp behind it. Without a
+            # matte the move degrades to blur-in, which is the whole frame.
+            rel = fg.name
+            src_dir = str(src).rsplit("/", 1)[0] if "/" in str(src) else ""
+            depth = {"src": (src_dir + "/" + rel) if src_dir else rel,
+                     "tl": camera.emit(sel.replace("-gnd", "-fg"),
+                                       camera.plan("push-in", dur=float(dur), target=tgt, img=img,
+                                                   amount=camera.solve.scale_amplitude(dur) * 0.4),
+                                       start, float(dur), cue=cue)}
+    if plan["move"] in ("parallax", "parallax-pan", "depth-dolly") and path:
+        fg = _ct.cutout_path(path)
+        if fg:
+            # the FOREGROUND travels further than the ground; `separation` is that ratio
+            sep = float(spec.get("separation", 1.9))
+            fg_plan = camera.plan(plan["move"].replace("parallax-pan", "pan-right")
+                                  .replace("parallax", "push-in").replace("depth-dolly", "push-in"),
+                                  dur=float(dur), target=tgt, img=img,
+                                  amount=(spec.get("amount") or camera.solve.scale_amplitude(dur)) * sep)
+            rel = fg.name if (path.parent == fg.parent) else str(fg)
+            src_dir = str(src).rsplit("/", 1)[0] if "/" in str(src) else ""
+            depth = {"src": (src_dir + "/" + rel) if src_dir else rel,
+                     "tl": camera.emit(sel.replace("-gnd", "-fg"), fg_plan, start, float(dur), cue=cue)}
+            lines += [f'tl.set("{sel}",{{filter:"blur(3px)"}},{start:.2f});']   # background softens
+    return lines, camera.emit_style(plan), depth
+
+
+def media_ground(sid, ground, start, dur, narration=""):
     """Reusable BLOCK: full-bleed ground. image -> dimmed image + scrim + Ken-Burns;
     paper -> flat mist/parchment; transparent -> scrim only (root video shows through).
     An optional `ground.grade` (see GRADES) applies a CSS filter — the gated visual-treatment lever."""
@@ -971,8 +1076,22 @@ def media_ground(sid, ground, start, dur):
         frag.append(f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                     f'style="background:{scr};"></div>')
         frag += _fx_overlays(_treat, sid, start, dur)   # blend_overlay treatments (grain/scanlines) over the image
-        f0, f1 = ground.get("kb", [1.03, 1.08])
-        tl.append(f'tl.fromTo("#{sid}-gnd",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
+        cam, camsty, depth = _camera_for(ground, dur, f"#{sid}-gnd", start,
+                                          cue=ground.get("at"),
+                                          narration=narration or ground.get("_narration", ""))
+        tl += cam
+        if camsty:                                       # a long-axis pan re-sizes the ground element
+            gi = next(i for i, f in enumerate(frag) if f'id="{sid}-gnd"' in f)
+            frag[gi] = frag[gi].replace('style="background-image', f'style="{camsty}background-image')
+        if depth:
+            # PARALLAX: the subject cutout rides ABOVE the scrim on its own layer and moves further
+            # than the ground behind it. That difference in rate IS the depth — one plate at two
+            # speeds is just a push. The matte is rembg's, cached beside the source.
+            frag.append(f'<div id="{sid}-fg" class="clip gnd" data-start="{start}" data-duration="{dur}" '
+                        f'data-track-index="2" data-layout-allow-overflow '
+                        f'style="background-image:url(\'{esc(depth["src"])}\');background-size:cover;'
+                        f'pointer-events:none;"></div>')
+            tl += depth["tl"]
     elif kind in ("transparent", "video"):  # root video behind; scrim only.
         # kind=="video" ALSO carries a `src`: the composer leaves a transparent hole here and the
         # assemble step (collect_video_grounds -> inject_root_video.py) mounts the pool clip at the
@@ -1039,7 +1158,8 @@ def _data_ground(sid, d, start, dur, blk):
                 f'style="position:absolute;inset:0;background-image:url(\'{esc(g["src"])}\');"></div>',
                 f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                 f'style="position:absolute;inset:0;background:{veil};pointer-events:none;"></div>']
-        tl = [f'tl.fromTo("#{sid}-dgnd",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});']
+        tl = _camera_for(dict(g, kb=[f0, f1]), dur, f"#{sid}-dgnd", start,
+                         cue=g.get("at"), narration=g.get("_narration", ""))[0]
         return frag, tl
     if kind in ("video", "transparent"):
         # FOOTAGE behind data. media_ground's scrim is a directional gradient tuned for lower-left TEXT;
@@ -1437,7 +1557,8 @@ def highlight_statement(sid, sc):
     # transparent+dark-scrim (which smears a hardcoded rgba(20,21,20) gradient over a LIGHT theme). An
     # explicit ground:{kind:transparent} still scrims a root video (grounded/footage keeps that default).
     default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
-    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur,
+                         narration=str(sc.get("anchor") or ""))
     variant = sc.get("_variant") or "editorial-left"   # P3 layout variant
     frag = [f'<section class="scene clip {reg} blk-statement sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     kicker_html = f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>'
@@ -1504,7 +1625,8 @@ def bullet_list(sid, sc):
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")
     default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
-    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur,
+                         narration=str(sc.get("anchor") or ""))
     variant = sc.get("_variant") or "stack"            # P3 layout variant
     frag = [f'<section class="scene clip {reg} blk-bullet_list sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     if d.get("kicker"):
@@ -1541,7 +1663,8 @@ def pull_quote(sid, sc):
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")
     default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
-    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur,
+                         narration=str(sc.get("anchor") or ""))
     variant = sc.get("_variant") or "centered"       # P3 layout variant
     frag = [f'<section class="scene clip {reg} blk-pull_quote sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     if d.get("kicker"):
@@ -1579,7 +1702,8 @@ def comparison_table(sid, sc):
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")
     default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
-    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur,
+                         narration=str(sc.get("anchor") or ""))
     cols, rows = d.get("columns", []), d.get("rows", [])
     n = max(1, len(cols))
     variant = sc.get("_variant") or "matrix"         # P3 layout variant
@@ -1611,7 +1735,8 @@ def ledger_list(sid, sc):
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")
     default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
-    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur,
+                         narration=str(sc.get("anchor") or ""))
     variant = sc.get("_variant") or "rows"           # P3 layout variant
     frag = [f'<section class="scene clip {reg} blk-ledger sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     if d.get("kicker"):
@@ -2334,7 +2459,7 @@ def _cmp_media(pid, spec, mtrack, start, dur):
     kb = spec.get("kenburns", True)
     if kb:
         f0, f1 = kb if isinstance(kb, list) else [1.05, 1.16]
-        tl.append(f'tl.fromTo("#{mid}",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
+        tl += _camera_for({"kb": [f0, f1], "src": spec.get("src")}, dur, f"#{mid}", start)[0]
     if spec.get("scrim", True):
         frag.append('<div class="cmp-scrim"></div>')
     vig = float(spec.get("vignette", 0) or 0)
@@ -2642,7 +2767,8 @@ def annotate(sid, sc):
     kb = d.get("kb", True)
     if kb:
         f0, f1 = kb if isinstance(kb, list) else [1.04, 1.12]
-        tl.append(f'tl.fromTo("#{sid}-img",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
+        tl += _camera_for({"kb": [f0, f1], "src": src}, dur,
+                          f"#{sid}-img", start, narration=str(sc.get("anchor") or ""))[0]
     svg = [f'<svg class="an-svg" viewBox="0 0 {W} {H}" preserveAspectRatio="none">']
     labels = []
     times = _reveal_times(len(callouts), start, dur, _reveal_cues(callouts, start))
@@ -3202,7 +3328,8 @@ def hero(sid, sc):
     kb = d.get("kb", True)
     if kb:
         f0, f1 = kb if isinstance(kb, list) else [1.06, 1.15]
-        tl.append(f'tl.fromTo("#{sid}-img",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
+        tl += _camera_for({"kb": [f0, f1], "src": src}, dur,
+                          f"#{sid}-img", start, narration=str(sc.get("anchor") or ""))[0]
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     over.append(f'<div class="hr-txt {side}">')
     if d.get("kicker"):
@@ -5622,8 +5749,8 @@ def _layout_cell(sid, i, cell, box, t0, end=None):
             # Ken-Burns across the REST OF THE CELL, never a literal 6s: on a 14s beat the old
             # tween finished at t0+6 and the cell then sat frozen; on a 4s beat it was cut mid-move.
             # (Narration owns duration — see docs/CAMERA_PROGRAM.md.)
-            kb = round(max(1.5, (end - t0) if end is not None else 6.0), 2)
-            tl.append(f'tl.fromTo("#{cid}-img",{{scale:1}},{{scale:1.08,duration:{kb},ease:"none"}},{t0:.2f});')
+            tl += _camera_for({"src": src}, max(1.5, (end - t0) if end is not None else 6.0),
+                              f"#{cid}-img", t0)[0]
         if cell.get("label") or cell.get("caption"):
             frag.append(f'<div style="position:absolute;left:0;bottom:0;width:100%;box-sizing:border-box;'
                         f'padding:{max(12,h*0.05):.0f}px {max(14,w*0.04):.0f}px;color:#fff;'
@@ -6656,7 +6783,8 @@ def _resolve_variant(block, data, prev=None, allowed=None, rot=0):
 
 
 def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
-    global _POLARITY, _SHELL_TEXTSAFE, _TYPE_PERSONALITY, _THEME_NAME
+    global _POLARITY, _SHELL_TEXTSAFE, _TYPE_PERSONALITY, _THEME_NAME, _CAMERA_PREV_FAMILY
+    _CAMERA_PREV_FAMILY = None                # per-FRAME alternation state (see _camera_for)
     _THEME_NAME = theme                       # the glass tint reads --surface/--text from THIS theme
     _POLARITY = _theme_polarity(theme)        # so blocks can pick theme-aware (not hardcoded-dark) defaults
     _SHELL_TEXTSAFE = _theme_shell_textsafe(theme)   # full-bleed grounds prefer --shell unless it's dark-on-dark

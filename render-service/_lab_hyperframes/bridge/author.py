@@ -238,6 +238,32 @@ def validate_spec(spec):
                                     f"INERT. Remove it, or use a block that consumes cues.")
             except ImportError:
                 pass
+            # CAMERA GATE: a move that is not in the registry cannot be executed, and a camera on a
+            # ground that has no media has nothing to move. Both fail LOUDLY here rather than silently
+            # doing nothing later — the same class the phantom-cue gate above exists for.
+            if isinstance(g, dict) and g.get("camera") not in (None, False):
+                cam = g["camera"]
+                cam = {"move": cam} if isinstance(cam, str) else cam
+                if not isinstance(cam, dict):
+                    errs.append(f"{fid}/{sid} ({t}): `ground.camera` must be a move id or an object")
+                else:
+                    mv = str(cam.get("move", "")).strip()
+                    try:
+                        from nolan.camera.registry import MOVES
+                        if mv and mv not in MOVES and mv != "none":
+                            errs.append(f"{fid}/{sid} ({t}): unknown camera move `{mv}` — "
+                                        f"pick one of {sorted(MOVES)}")
+                        if g.get("kind") not in ("image",) and mv not in ("", "none"):
+                            errs.append(f"{fid}/{sid} ({t}): `ground.camera` needs an IMAGE ground — a "
+                                        f"`{g.get('kind')}` ground carries its own motion (a root video) "
+                                        f"or none at all, so the move would do nothing.")
+                        need_box = mv in ("push-to-detail", "read-along", "scan-column")
+                        if need_box and not cam.get("box"):
+                            errs.append(f"{fid}/{sid} ({t}): `{mv}` needs `camera.box` [x,y,w,h] — "
+                                        f"without a region it cannot know how tight to go "
+                                        f"(it would silently behave as push-in)")
+                    except ImportError:
+                        pass
             if t == "geo" and d.get("kind") not in ("us", "world"):
                 errs.append(f"{fid}/{sid} (geo): kind must be 'us' or 'world'")
             if t == "geo" and not d.get("highlight") and not d.get("routes"):
