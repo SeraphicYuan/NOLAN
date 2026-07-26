@@ -1,0 +1,537 @@
+[
+  {
+    "gid": "the-diamond-illusion-v2:a1",
+    "project": "the-diamond-illusion-v2",
+    "query": "diamond resale jewelry store",
+    "queries": [
+      "diamond resale jewelry store",
+      "used diamond ring resale",
+      "jeweler buying back diamond ring",
+      "second hand diamond jewelry appraisal",
+      "pawn shop diamond ring offer"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "the-diamond-illusion-v2:a2",
+    "project": "the-diamond-illusion-v2",
+    "query": "stock market ticker gold price",
+    "queries": [
+      "stock market ticker gold price",
+      "gold price ticker screen",
+      "commodity market prices display",
+      "gold spot price chart",
+      "financial market price board"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "the-diamond-illusion-v2:a3",
+    "project": "the-diamond-illusion-v2",
+    "query": "piles of rough diamonds",
+    "queries": [
+      "piles of rough diamonds",
+      "uncut rough diamond heap",
+      "raw diamond gravel pile",
+      "industrial diamond sorting",
+      "large quantity rough diamonds"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "the-diamond-illusion-v2:a4",
+    "project": "the-diamond-illusion-v2",
+    "query": "Hopetown South Africa 1869 diamond rush",
+    "queries": [
+      "Hopetown South Africa 1869 diamond rush",
+      "Hopetown diamond rush 1869",
+      "Star of South Africa diamond discovery",
+      "South African diamond fields 1870s",
+      "diamond prospectors Hopetown"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "archival",
+    "media_type": "image",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:a5",
+    "project": "the-diamond-illusion-v2",
+    "query": "De Beers diamond mine valve control",
+    "queries": [
+      "De Beers diamond mine valve control",
+      "De Beers diamond mine control room",
+      "mine output regulation valve",
+      "diamond sorting and grading facility",
+      "De Beers headquarters Kimberley"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "archival",
+    "media_type": "image",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:a6",
+    "project": "the-diamond-illusion-v2",
+    "query": "Cecil Rhodes De Beers founder portrait",
+    "queries": [
+      "Cecil Rhodes De Beers founder portrait",
+      "Cecil John Rhodes 1890s portrait",
+      "Cecil Rhodes De Beers founder",
+      "Cecil Rhodes diamond mining magnate",
+      "Cecil Rhodes Kimberley 1888"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "archival",
+    "media_type": "image",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:a7",
+    "project": "the-diamond-illusion-v2",
+    "query": "diamond flood analogy water dam",
+    "queries": [
+      "diamond flood analogy water dam",
+      "water behind a dam releasing trickle",
+      "single valve controlling reservoir",
+      "dam gate only slightly open",
+      "vast reservoir small outlet"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": true,
+    "category": "general",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "the-diamond-illusion-v2:a8",
+    "project": "the-diamond-illusion-v2",
+    "query": "historical diamond stockpile vault",
+    "queries": [
+      "historical diamond stockpile vault",
+      "De Beers diamond stockpile warehouse",
+      "diamond vault underground London",
+      "diamonds stored in steel vaults",
+      "rough diamond hoard locked away"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "archival",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "the-diamond-illusion-v2:ka:ka_de_beers",
+    "project": "the-diamond-illusion-v2",
+    "query": "De Beers",
+    "queries": [
+      "De Beers"
+    ],
+    "origin": "key_asset",
+    "entity_kind": "organization",
+    "evocative": false,
+    "category": "archival",
+    "media_type": "video",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:ka:ka_a_diamond_is_forever",
+    "project": "the-diamond-illusion-v2",
+    "query": "A Diamond Is Forever",
+    "queries": [
+      "A Diamond Is Forever"
+    ],
+    "origin": "key_asset",
+    "entity_kind": "work",
+    "evocative": false,
+    "category": "archival",
+    "media_type": "video",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:ka:ka_cecil_rhodes",
+    "project": "the-diamond-illusion-v2",
+    "query": "Cecil Rhodes",
+    "queries": [
+      "Cecil Rhodes"
+    ],
+    "origin": "key_asset",
+    "entity_kind": "person",
+    "evocative": false,
+    "category": "archival",
+    "media_type": "video",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:ka:ka_ernest_oppenheimer",
+    "project": "the-diamond-illusion-v2",
+    "query": "Ernest Oppenheimer",
+    "queries": [
+      "Ernest Oppenheimer"
+    ],
+    "origin": "key_asset",
+    "entity_kind": "person",
+    "evocative": false,
+    "category": "archival",
+    "media_type": "video",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:ka:ka_star_of_south_africa",
+    "project": "the-diamond-illusion-v2",
+    "query": "Star of South Africa",
+    "queries": [
+      "Star of South Africa"
+    ],
+    "origin": "key_asset",
+    "entity_kind": "work",
+    "evocative": false,
+    "category": "archival",
+    "media_type": "video",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:ka:ka_n_w_ayer",
+    "project": "the-diamond-illusion-v2",
+    "query": "N. W. Ayer",
+    "queries": [
+      "N. W. Ayer"
+    ],
+    "origin": "key_asset",
+    "entity_kind": "organization",
+    "evocative": false,
+    "category": "archival",
+    "media_type": "video",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:ka:ka_frances_gerety",
+    "project": "the-diamond-illusion-v2",
+    "query": "Frances Gerety",
+    "queries": [
+      "Frances Gerety"
+    ],
+    "origin": "key_asset",
+    "entity_kind": "person",
+    "evocative": false,
+    "category": "archival",
+    "media_type": "video",
+    "named_hint": true
+  },
+  {
+    "gid": "the-diamond-illusion-v2:ka:ka_the_four_cs",
+    "project": "the-diamond-illusion-v2",
+    "query": "The Four Cs",
+    "queries": [
+      "The Four Cs"
+    ],
+    "origin": "key_asset",
+    "entity_kind": "concept",
+    "evocative": false,
+    "category": "archival",
+    "media_type": "video",
+    "named_hint": true
+  },
+  {
+    "gid": "homer-hf:a1",
+    "project": "homer-hf",
+    "query": "blind old poet statue",
+    "queries": [
+      "blind old poet statue",
+      "classical marble bust blind man",
+      "homer statue dark background",
+      "ancient greek sculpture poet"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "art",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "homer-hf:a2",
+    "project": "homer-hf",
+    "query": "ancient greek scroll text",
+    "queries": [
+      "ancient greek scroll text",
+      "iliad manuscript fragments",
+      "papyrus greek writing close up",
+      "old parchment epic poem"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "archival",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "homer-hf:a3",
+    "project": "homer-hf",
+    "query": "epic greek war battle",
+    "queries": [
+      "epic greek war battle",
+      "trojan war painting chaotic",
+      "ancient bronze age combat",
+      "greek warriors fighting sand"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "art",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "homer-hf:a4",
+    "project": "homer-hf",
+    "query": "stormy ancient sea voyage",
+    "queries": [
+      "stormy ancient sea voyage",
+      "greek trireme storm waves",
+      "odyssey shipwreck dramatic",
+      "dark ocean waves night"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "homer-hf:a5",
+    "project": "homer-hf",
+    "query": "ancient greek oral tradition",
+    "queries": [
+      "ancient greek oral tradition",
+      "bard singing by fire",
+      "storyteller ancient greece night",
+      "group listening to poet firelight"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "homer-hf:a6",
+    "project": "homer-hf",
+    "query": "greek alphabet stone carving",
+    "queries": [
+      "greek alphabet stone carving",
+      "ancient greek letters chiseled",
+      "evolution of greek writing",
+      "stone tablet greek script"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "archival",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "homer-hf:a7",
+    "project": "homer-hf",
+    "query": "milman parry scholarly photo",
+    "queries": [
+      "milman parry scholarly photo",
+      "1930s academic scholar portrait",
+      "vintage black and white professor",
+      "milman parry archive image"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "archival",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "homer-hf:a8",
+    "project": "homer-hf",
+    "query": "rosy fingered dawn sky",
+    "queries": [
+      "rosy fingered dawn sky",
+      "pink sunrise over greek hills",
+      "anthropomorphic dawn rays",
+      "beautiful greek morning landscape"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": true,
+    "category": "general",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "the-openai-debate:s01n01",
+    "project": "the-openai-debate",
+    "query": "man holding legal documents",
+    "queries": [
+      "man holding legal documents",
+      "hand holding subpoena paper close up",
+      "legal document delivery shot",
+      "process server holding envelope"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "the-openai-debate:s01n02",
+    "project": "the-openai-debate",
+    "query": "OpenAI corporate logo building",
+    "queries": [
+      "OpenAI corporate logo building",
+      "OpenAI headquarters exterior",
+      "modern tech company glass building",
+      "Silicon Valley office facade",
+      "corporate skyscraper low angle"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "the-openai-debate:s01n03",
+    "project": "the-openai-debate",
+    "query": "suburban front door opening",
+    "queries": [
+      "suburban front door opening",
+      "suburban front door opening POV",
+      "homeowner opening door to stranger",
+      "residential porch view from inside",
+      "doorway silhouette suspense"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "the-openai-debate:s01n04",
+    "project": "the-openai-debate",
+    "query": "lone blogger typing laptop",
+    "queries": [
+      "lone blogger typing laptop",
+      "person typing on laptop in dark room",
+      "solo writer working late night",
+      "substack writer desk setup",
+      "dimly lit home office computer"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "the-openai-debate:s01n05",
+    "project": "the-openai-debate",
+    "query": "cracked glass illusion concept",
+    "queries": [
+      "cracked glass illusion concept",
+      "cracked glass surface abstract",
+      "fragile belief concept art",
+      "shattered mirror reflection",
+      "broken illusion visual metaphor"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": true,
+    "category": "art",
+    "media_type": "image",
+    "named_hint": false
+  },
+  {
+    "gid": "the-openai-debate:s02n06",
+    "project": "the-openai-debate",
+    "query": "Sam Altman keynote presentation",
+    "queries": [
+      "Sam Altman keynote presentation",
+      "Sam Altman TED talk stage",
+      "tech CEO public speaking spotlight",
+      "Silicon Valley executive presenting to crowd",
+      "charismatic tech leader addressing audience"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "image",
+    "named_hint": true
+  },
+  {
+    "gid": "the-openai-debate:s02n07",
+    "project": "the-openai-debate",
+    "query": "burning money furnace",
+    "queries": [
+      "burning money furnace",
+      "cash burning in industrial furnace",
+      "money incinerator flames close up",
+      "dollars turning to ash fire",
+      "metaphor for financial loss fire"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "general",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "the-openai-debate:s02n08",
+    "project": "the-openai-debate",
+    "query": "black hole abstract concept",
+    "queries": [
+      "black hole abstract concept",
+      "deep space black hole vortex",
+      "abstract dark void swallowing light",
+      "digital money falling into abyss",
+      "financial loss metaphor dark vortex"
+    ],
+    "origin": "need",
+    "entity_kind": null,
+    "evocative": true,
+    "category": "general",
+    "media_type": "video",
+    "named_hint": false
+  }
+]
