@@ -551,10 +551,37 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                     if not frames:
                         return prev
                     segs = _search_transcript_lib(need, n) if want_transcript_lib else []
+                    # CROSS-TIER RANGE DEDUP. Two indexes over one corpus find the same shot from both
+                    # sides, and neither tier can see the other's picks: each dedups only within itself,
+                    # and the claim ledger is read at SEARCH time but written at DOWNLOAD time (which the
+                    # engine runs concurrently), so it cannot catch an overlap inside one need. Measured
+                    # live on a diamond beat: the segment tier returned SouthDak1940 @537.2s+5.0s while
+                    # the frame tier returned the same film @534.9s+12.0s — the second CONTAINS the first.
+                    # That is two downloads of one shot, and two near-identical clips in the author's menu.
+                    # The FRAME wins the overlap: its range is the real shot (keyframe → next cut) whereas
+                    # the segment's is a flat ≤5s guess from an arbitrary point in a 45s window.
+                    fr_ranges = [(str(c.meta.get("source_url") or ""), float(c.meta.get("clip_start", 0)),
+                                  float(c.meta.get("clip_dur", 0))) for c in frames]
+
+                    def _overlaps_a_frame(c):
+                        u = str(c.meta.get("source_url") or "")
+                        s = float(c.meta.get("clip_start", 0))
+                        e = s + float(c.meta.get("clip_dur", 0))
+                        return any(fu == u and s < fs + fd and fs < e for fu, fs, fd in fr_ranges)
+
+                    kept_segs, dropped = [], 0
+                    for c in segs:
+                        if _overlaps_a_frame(c):
+                            dropped += 1
+                            continue
+                        kept_segs.append(c)
+                    if dropped:                      # no silent cap: say what the dedup removed
+                        print(f"  [acquire] {dropped} segment hit(s) dropped — the frame tier already "
+                              f"holds that shot with its true boundaries", flush=True)
                     woven, i = [], 0
-                    while i < max(len(segs), len(frames)):
-                        if i < len(segs):
-                            woven.append(segs[i])
+                    while i < max(len(kept_segs), len(frames)):
+                        if i < len(kept_segs):
+                            woven.append(kept_segs[i])
                         if i < len(frames):
                             woven.append(frames[i])
                         i += 1

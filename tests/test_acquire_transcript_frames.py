@@ -154,3 +154,51 @@ def test_the_k_nearest_store_is_tail_trimmed(monkeypatch, tmp_path):
     ctx = _wire(monkeypatch, tmp_path, frames, hits, cat)
     out = ctx.search_clips({"query": "q", "queries": ["q"]}, 4)
     assert [c.meta["source_url"] for c in out] == ["https://www.youtube.com/watch?v=good"]
+
+def test_the_two_tiers_do_not_pull_the_same_shot_twice(monkeypatch, tmp_path):
+    """Two indexes over ONE corpus find the same shot from both sides. Neither tier can see the other's
+    picks — each dedups only within itself, and the claim ledger is read at SEARCH time but written at
+    DOWNLOAD time (run concurrently by the engine), so it cannot catch an overlap inside a single need.
+
+    Measured live on a diamond beat: the segment tier returned SouthDak1940 @537.2s+5.0s while the frame
+    tier returned the same film @534.9s+12.0s — the second CONTAINS the first. Two downloads of one shot,
+    and two near-identical clips in the author's menu. The FRAME must win: its range is the real shot
+    (keyframe → next cut), the segment's is a flat guess from an arbitrary point in a 45s window."""
+    from nolan.acquire import context as C
+    from nolan import transcript_frames as tfr
+    from nolan import transcript_lib as tl
+    url = "https://archive.org/details/SouthDak1940"
+    cat = {"SouthDak1940": {"url": url, "kind": "archive", "channel": "", "frames": 35}}
+
+    class _Hit:                       # what VectorSearch yields for a transcript segment
+        def __init__(self, ts, score):
+            self.video_id, self.video_path, self.score = 7, url, score
+            self.timestamp_start, self.timestamp_end = ts, ts + 40.0
+            self.description, self.transcript = "said something", "said something"
+
+    db = tmp_path / "c.db"; db.write_bytes(b"")
+    monkeypatch.setattr(C, "_resolve_clips_db", lambda cfg: db)
+    import nolan.indexer as _ix, nolan.vector_search as _vsm
+    monkeypatch.setattr(_ix, "VideoIndex", lambda p: type("I", (), {"footage_video_ids": lambda s: set()})())
+    # 537.2s OVERLAPS the frame shot; 100.0s does not and must survive
+    monkeypatch.setattr(_vsm, "VectorSearch", lambda **k: type(
+        "V", (), {"search": lambda s, **kw: [_Hit(537.2, 0.704), _Hit(100.0, 0.68)]})())
+    monkeypatch.setattr(tl, "load_catalog", lambda *a, **k: cat)
+    monkeypatch.setattr(tl, "copyright_free_ids", lambda *a, **k: set())
+    monkeypatch.setattr(tfr, "visual_search", lambda q, n=24, **k: [
+        {"video_id": "SouthDak1940", "start": 534.9, "score": 0.709, "caption": "a drill",
+         "summary": "a drill", "asset_type": "archival-footage", "content_kind": "broll", "objects": []}])
+    monkeypatch.setattr(tfr, "frames_for_video", lambda v, **k: [
+        {"t": 534.9, "kind": "keyframe"}, {"t": 546.9, "kind": "keyframe"}])
+
+    ctx = C.build_context(type("Cfg", (), {"clip_seconds": 30})(), want_stock=False, want_library=False,
+                          want_clip=False, want_gen=False, want_clips_library=False,
+                          want_transcript_lib=True, want_transcript_frames=True, clip_lib_min_sim=0.55)
+    out = ctx.search_clips({"query": "q", "queries": ["q"]}, 4)
+    by_src = [(c.source, round(float(c.meta["clip_start"]), 1)) for c in out]
+    assert ("transcript_frames", 534.9) in by_src, f"the frame shot must survive: {by_src}"
+    # the frame range 534.9-546.9 CONTAINS the 537.2 segment window — it must not be pulled as well
+    assert not any(s == "transcript_lib" and 534.9 <= t <= 546.9 for s, t in by_src), \
+        f"the same shot was pulled twice: {by_src}"
+    # …and a NON-overlapping segment from the same film is untouched (this is a dedup, not a tier kill)
+    assert any(s == "transcript_lib" and t < 200 for s, t in by_src), f"over-culled: {by_src}"
