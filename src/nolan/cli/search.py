@@ -258,3 +258,36 @@ def semantic_search(ctx, query, limit, level, project, output):
         click.echo(f"Results saved to: {output_path}")
 
 
+@main.command('sync-lexical')
+def sync_lexical():
+    """Rebuild the BM25 lexical index over the transcript library.
+
+    The dense counterpart of `sync-vectors`. Derived and disposable: it owns nothing, so run it
+    after any ingest or caption pass (or delete lexical.db and run it again).
+    """
+    from nolan import transcript_fts as fts
+    s = fts.build()
+    click.echo(f"segments {s['segments']} · frames {s['frames']} · videos {s['videos']}")
+
+
+@main.command('lexical-search')
+@click.argument('query')
+@click.option('--k', default=8, help='How many hits to show.')
+@click.option('--kind', type=click.Choice(['segment', 'frame']), default=None,
+              help='Restrict to one tier.')
+@click.option('--titles', is_flag=True, help='Match TITLES only — the identity anchor.')
+def lexical_search(query, k, kind, titles):
+    """Probe the lexical channel, and report whether the corpus supports the query at all.
+
+    `cover` is the fraction of the query's IDF-weighted information that ONE document holds.
+    A low cover with terms listed as missing is the abstain signal: nothing to find, spend nothing.
+    """
+    from nolan import transcript_fts as fts
+    s = fts.support(query)
+    click.echo(f"support: cover {s['cover']:.2f} (corpus {s['corpus_cover']:.2f})"
+               + (f" · MISSING from the library: {', '.join(s['missing'])}" if s['missing'] else ""))
+    for h in fts.search(query, k=k, kind=kind, fields=('title' if titles else None)):
+        click.echo(f"  {h['score']:7.2f} {h['kind']:<7} {h['title'][:48]:<48} "
+                   f"@{h['start']:.0f}s  {h['text'][:70]}")
+
+
