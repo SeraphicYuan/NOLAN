@@ -51,6 +51,64 @@ def test_no_block_hand_writes_a_camera_tween_any_more():
     assert not offenders, f"camera tweens with a literal duration: {offenders}"
 
 
+def test_every_camera_call_site_takes_the_WHOLE_contract():
+    """`_camera_for` returns (tween, style, depth) and a caller that keeps only the tween is broken.
+
+    The style is what a long-axis pan needs — it re-SIZES the element. Without it the tween translates
+    a `background-size:cover` crop by the full travel: measured on a 1200x3600 poster through
+    `annotate`, `y: 0 -> -2301px` on a 1080px element, dragging the picture off the frame and exposing
+    the page background. That is the edge-exposure bug `camera/solve.py` exists to make
+    unrepresentable, and it was live on FIVE of the six call sites (`_data_ground`, `annotate`, `hero`,
+    `_cmp_media`, `_layout_cell`) because each took `_camera_for(...)[0]`.
+
+    They also skipped `data-camera`, so `temporal_gate` could not tell a hold the camera CHOSE from a
+    clip that froze (WIRING_CHECKLIST pitfall #7). `_camera_mount` is the one dialect; a sixth site
+    that hand-rolls it is pitfall #4 in the module built to prevent pitfall #4.
+    """
+    import ast
+    tree = ast.parse(SRC)
+    partial, callers = [], []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and getattr(node.func, "id", "") == "_camera_for":
+            callers.append(node.lineno)
+        # `_camera_for(...)[0]` — the tween kept, the style and the decision dropped
+        if (isinstance(node, ast.Subscript) and isinstance(node.value, ast.Call)
+                and getattr(node.value.func, "id", "") == "_camera_for"
+                and isinstance(getattr(node, "slice", None), ast.Constant) and node.slice.value == 0):
+            partial.append(node.lineno)
+    assert not partial, ("these call sites keep only the tween and drop the style + the decision — "
+                         f"use _camera_mount (compose.py lines {partial})")
+    # …and the one dialect must be the one in use: _camera_for has exactly ONE caller now
+    assert len(callers) == 1, (f"_camera_for should only be called by _camera_mount; called at "
+                               f"lines {callers}")
+    assert SRC.count("_camera_mount(") >= 6, "blocks are bypassing the shared mount"
+
+
+def test_a_long_axis_pan_resizes_the_element_it_moves(tmp_path, monkeypatch):
+    """The whole contract, end to end through a block that is NOT media_ground.
+
+    A tall source through `annotate` must come out with the element re-sized (so the travel reveals
+    picture) and the decision recorded — the two halves the old `[0]` dropped.
+    """
+    pytest.importorskip("PIL")
+    from PIL import Image
+    src = tmp_path / "poster.jpg"
+    Image.new("RGB", (1200, 3600), (90, 90, 110)).save(src)
+    monkeypatch.setattr(compose, "_ASSET_BASE", tmp_path, raising=False)
+    sc = {"id": "an1", "type": "annotate", "start": 0.0, "dur": 12.0,
+          "data": {"src": "poster.jpg", "camera": {"move": "pan-down"},
+                   "callouts": [{"x": 0.4, "y": 0.4, "text": "a callout"}]}}
+    out = str(compose.BLOCKS["annotate"]("an1", sc))
+    tag = re.search(r'<[^<>]*id="an1-img"[^<>]*>', out)
+    assert tag, out[:300]
+    tag = tag.group(0)
+    assert "data-camera=" in tag, "the decision was not recorded — temporal_gate cannot read it"
+    assert re.search(r"height:\s*\d{4}", tag), f"long-axis pan did not re-size the element: {tag[:200]}"
+    # the camera's background-size must WIN over the element's own `cover`
+    sizes = re.findall(r"background-size:\s*([^;\"]+)", tag)
+    assert sizes and "100%" in sizes[-1], f"element's own cover still wins: {sizes}"
+
+
 def test_the_map_camera_is_the_only_declared_exception():
     """If someone ports geo into the registry, this test should start failing — that is the point."""
     hits = [m.group(0) for m in re.finditer(r'tl\.to\("#\{sid\}-(?:plane|world)"[^;]*duration:[\d.]+', SRC)]

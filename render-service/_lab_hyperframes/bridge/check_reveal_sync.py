@@ -37,6 +37,9 @@ ALLOW = {
     "carousel":        "carousel/card-focus layout entrance — cosmetic arrangement, not a data reveal",
     "chat_thread":     "chat message beats — deliberate dialogue pacing",
     "_cmp_text":       "comparison / juxtaposition text-side lines — reading cadence",
+    "_line_at":        "the PRE-SYNC fallback inside _cmp_text: a panel line uses spec._line_cues[li] "
+                       "when the aligner resolved one (sync._retime_panels descends into the side "
+                       "dict), and only falls back to the reading cadence when it did not",
     "_panel_content":  "comparison panel text lines — reading cadence",
 }
 

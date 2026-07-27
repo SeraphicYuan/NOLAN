@@ -140,6 +140,10 @@ CUE_BLOCKS: FrozenSet[str] = frozenset({
     "dumbbell", "funnel", "gauge", "geo", "histogram", "isotype", "layout", "ledger", "pie", "process",
     "quadrant", "sankey", "scale", "slope", "small_multiples", "spans", "spectrum", "stat", "trajectory",
     "venn",
+    # comparison_table joined when its ROWS learned to reveal one at a time. It used to paint the whole
+    # matrix at start+0.4 and hold, so a 5-row table was fully readable before the VO had made its
+    # second point — a comparison is argued row by row.
+    "comparison_table",
 })
 
 CUE_KEY = "at"

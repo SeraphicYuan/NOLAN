@@ -140,6 +140,32 @@ honesty test doesn't exist.**
    (text lines, gallery entrance, code cascade, chat beats). A new data
    block that hand-rolls its stagger is unshippable.
 
+9b. **Prose with nowhere to write the answer** — pitfall #9's blind spot, and
+   the reason "the visual is ahead of the voice" kept coming back. #9 covers
+   a LIST of elements: each carries `_cue`, so the aligner has somewhere to
+   put its answer. Every other authored string had no such field, so sync
+   could not pin it *even in principle* — and the guard could not see the
+   problem either, because `check_reveal_sync.py` looks for a hardcoded
+   *stagger* and a block that reveals everything at one fixed offset matches
+   no stagger pattern. *Incident:* `pull_quote` revealed its whole quote at
+   `start + 0.5`; diamond-v3 at 3:41 shows a 13-word quote complete ~3.7s
+   before the narration reaches it, while `check_reveal_sync` reported OK.
+   Measured across the 50 blocks: a `title` on 29 of them, `quote`+`cite`,
+   `text`, `caption`, and every two-sided block's side prose (which lives one
+   level down, under `left`/`right`/`paper`, where none of the layers looked).
+   *Rule:* a block that reveals PROSE reads `compose._prose_cue(d, field,
+   start)`, which consumes the `data._field_cues` that `sync._retime_prose`
+   resolves; `sync.PROSE_FIELDS` maps each field to how far into its beat it
+   may be held (a quote may wait for its words, a title may only be nudged —
+   parking a title trades a lead for a headless frame). *Enforcement:*
+   `tests/test_reveal_sync_contract.py` composes EVERY block twice, plain and
+   with cues injected, and fails if the timeline does not move — a
+   behavioural test, because a static one cannot tell `times[i]` from a
+   literal (a first pass at this audit wrongly cleared `timeline`, which
+   contains zero references to the cue system). Deliberate cadences are
+   declared in `DELIBERATE_CADENCE` with a justification, never omitted in
+   silence.
+
 10. **A gate for a rule nobody proved exists.** Before enforcing a rule,
     find the artifacts that violate it and confirm they are actually
     broken. *Incident:* a post-mortem asked for `assemble-index.mjs`'s

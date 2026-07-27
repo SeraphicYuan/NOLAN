@@ -328,6 +328,60 @@ _transcript_lib_hits`, both `VectorSearch(search_level="segments")` — spoken w
 has no frame level, so the gemma captions this whole loop exists to produce are consumed by the UI and
 never by a render.
 
+## Panels, the camera contract, and the reveal layer prose fell through (2026-07-27)
+
+Four defects from watching the v3 render, each of which turned out to be a CLASS rather than a case.
+
+**A framed quote was an opaque slab, not glass — CSS specificity.** `.glass` is (0,1,0);
+`.blk-pull_quote.sv-framed .pq-wrap` is (0,3,0), so its `background:var(--surface)` repainted the
+frosted plate solid. The tint was still solved and the backdrop still blurred — diamond-v3 3:16 shipped
+`--glass-tint:56` under an opaque card. Same shape in `comparison_table`. `.stmt-card` was the
+instructive near-miss: it paints at the SAME specificity as `.glass` and rendered correctly only
+because `.glass` is declared eleven lines lower. Source order is not a contract; all three now carry
+`:not(.glass)` and a test fails on any rule that repaints a glass-capable wrapper.
+
+**Glass over a full-bleed wrapper is not a panel, it is a windshield.** `.pq-wrap` / `.ct-wrap` are
+`inset:0`, so 3 of pull_quote's 4 variants laid a 26px blur and a ~54% tint over the ENTIRE picture —
+3:40 is an Oppenheimer portrait washed to flat beige. The predicate is the layout-variant registry's
+own `zone == "framed"`, not a second list: `highlight_statement` had it right all along (it emits
+`.stmt-card` only for `framed-card`). Removing the plate then exposed a THIRD bug, and only looking at
+the render found it: `.footage .pq-wrap .pq-body` forces theme ink with no shadow — correct on a plate,
+dark-on-photograph without one. Those overrides are now scoped to `.glass`.
+
+**Five of the six camera call sites kept the tween and threw away the rest.** `_camera_for` returns
+(tween, style, decision) and `_data_ground`, `annotate`, `hero`, `_cmp_media` and `_layout_cell` all
+took `[0]`. The style is what a long-axis pan needs — measured on a 1200x3600 poster through
+`annotate`: `y: 0 -> -2301px` on a 1080px `background-size:cover` element, dragging the picture off the
+frame and exposing the page background, i.e. the exact edge-exposure bug `camera/solve.py` exists to
+make unrepresentable. They also skipped `data-camera`, so `temporal_gate` could not tell a deliberate
+hold from a frozen clip there. One `_camera_mount` helper now applies all three (style APPENDED, since
+those blocks declare their own `background-size:cover` and the later declaration wins), and an AST test
+fails on any `_camera_for(...)[0]`.
+
+**And the reveal contract had a hole the guard could not see.** `check_reveal_sync.py` hunts a
+hardcoded `start + LEAD + i*STEP`; `pull_quote` revealed its whole quote at `start + 0.5`, one literal,
+matching no stagger — so it passed while being deaf. 3:41 shows a 13-word quote complete 3.66s before
+the narration reaches it. The cause is structural: sync had two cue surfaces, `_cue` per ELEMENT and
+`_line_cues` per LINE, and every other authored string fell between them with nowhere to write an
+answer — a `title` on 29 of the 50 blocks, `quote`/`cite`, `text`, `caption`, and every two-sided
+block's side prose, which lives one level down under `left`/`right`/`paper` where no layer looked.
+
+So a THIRD layer: `sync._retime_prose` resolves `data._field_cues`, `compose._prose_cue` consumes it,
+`_retime_panels` runs the line and field layers again inside each side. `PROSE_FIELDS` is a field →
+HOLD-FRACTION map, not a list, because the two kinds of prose differ: a quote is the payload and may
+wait as long as the narration takes; a title is the frame's anchor, and parking it 6s in trades a lead
+for a headless frame (0.35 of the beat, past which it opens on the beat as before). `kicker` stays out
+— design copy, not narration. Also wired: comparison_table reveals ROW BY ROW (a comparison is argued
+row by row; it used to paint the whole matrix at start+0.4 and hold), split_view's reading side, and 27
+title/caption reveals. Measured: 35 → 44 of 50 blocks track narration; the remaining 6 are declared
+cadences with justifications.
+
+**The instrument matters as much as the fixes.** A static pass over compose.py wrongly cleared
+`timeline` (it reads `{t:.2f}` where `t = times[i]`, indistinguishable from a literal) — `timeline`
+contains zero references to the cue system. `tests/test_reveal_sync_contract.py` asks the BLOCK
+instead: compose it twice, once plain and once with cues injected, and fail if the timeline does not
+move. Self-contained fixtures from `catalog.json`, so it needs no user project. Suite 2,217 passing.
+
 ## The frames test — the camera meets a real pool, and three things were wrong (2026-07-26)
 
 Before running the camera umbrella end-to-end, three frames of diamond-v2 (`f03` / `f04` / `f09`)

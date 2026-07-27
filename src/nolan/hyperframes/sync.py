@@ -395,6 +395,85 @@ def _retime_reveals(sc: Dict, d: Dict, words) -> int:
     return done
 
 
+# LAYER 2 for a WHOLE FIELD. The first two layers cover a list of ELEMENTS (`_cue`) and a list of LINES
+# (`_line_cues`); every other authored string fell between them, and there was no field to write an
+# answer into — so the aligner could not pin them even in principle. Measured across the 50 blocks: a
+# `title` on 29 of them, `quote`+`cite` on pull_quote, `text` on social_card, `caption` on newshead.
+# That gap is why "the visual is ahead of the VO" kept coming back and kept being fixed one field at a
+# time: diamond-v3 3:41 shows a 13-word quote complete at `start+0.5` of a 15.9s scene while the
+# narration is still 4s away from saying it.
+#
+# `kicker` is deliberately NOT here. It is design copy, not narration (the 12:23 lead + the 17s drag
+# both came from letting a kicker drive placement), and that lesson is pinned by its own test.
+# field -> how far INTO its beat that field may be held back, as a fraction of the beat.
+#
+# Not one rule for all prose, because the two kinds behave differently on screen. A QUOTE or a
+# statement is the beat's payload: it can wait as long as the narration takes to reach it, because the
+# ground and the mark carry the frame meanwhile. A TITLE is the frame's anchor — hold it to the moment
+# it is spoken and a data block sits headless for seconds, trading a lead for a hole. So a title may be
+# nudged, not parked; past its bound the old open-on-the-beat behaviour is the right answer and the
+# field simply stays unpinned.
+PROSE_FIELDS = {
+    "quote": 1.0, "statement": 1.0, "text": 1.0, "body": 1.0, "answer": 1.0, "claim": 1.0,
+    "cite": 1.0, "note": 1.0, "caption": 0.8, "lead": 0.5,
+    "title": 0.35, "headline": 0.35, "subtitle": 0.35,
+}
+_PROSE_MIN_WORDS = 3          # below this a "field" is a label, and a label is not worth anchoring
+
+
+def _retime_prose(sc: Dict, d: Dict, words) -> int:
+    """LAYER 3 — resolve each authored PROSE FIELD to the absolute time the VO speaks it.
+
+    Writes `data._field_cues = {field: absolute_time}`. Verbatim first (a quote usually IS the script
+    line), then its distinctive content words, mirroring `_retime_lines`. Field-name-agnostic within
+    `PROSE_FIELDS`, so a block that grows a new prose field is covered the moment it is named there.
+
+    Bounded the same way every other layer is: only inside the scene's own window, so a resolution can
+    move a reveal WITHIN its beat and never out of it. Idempotent — the map is rebuilt each sync, so
+    removing text un-pins it."""
+    if not words:
+        return 0
+    start, dur = float(sc.get("start", 0) or 0), float(sc.get("dur", 0) or 0)
+    d.pop("_field_cues", None)
+    out, done = {}, 0
+    for f, hold in PROSE_FIELDS.items():
+        txt = d.get(f)
+        if not isinstance(txt, str) or len(txt.split()) < _PROSE_MIN_WORDS:
+            continue
+        t = _phrase_time(txt, words, after=start)
+        if t is None:
+            content = [w for w in _norm(txt) if w not in _STOP and len(w) > 2]
+            if len(content) >= 2:
+                t = _phrase_time(" ".join(content[:6]), words, after=start)
+        if t is None or not (start <= t < start + dur):
+            continue
+        if (t - start) > hold * dur:
+            continue                  # past what this field may be held back — open on the beat instead
+        out[f] = round(t, 3)
+        done += 1
+    if out:
+        d["_field_cues"] = out
+    return done
+
+
+# The panel blocks keep their prose ONE LEVEL DOWN — `comparison` / `juxtaposition` under `left`/`right`,
+# `split_view` under `paper`/`right` — where none of the three layers were looking. So a two-sided
+# scene, which is precisely the shape whose halves the narration visits in turn, was the least
+# anchorable block we had.
+_PANEL_KEYS = ("left", "right", "paper", "top", "bottom", "a", "b")
+
+
+def _retime_panels(sc: Dict, d: Dict, words) -> int:
+    """Run the LINE and FIELD layers again inside each side panel of a two-sided block."""
+    n = 0
+    for k in _PANEL_KEYS:
+        side = d.get(k)
+        if isinstance(side, dict):
+            n += _retime_lines(sc, side, words)
+            n += _retime_prose(sc, side, words)
+    return n
+
+
 def _retime_lines(sc: Dict, d: Dict, words) -> int:
     """LAYER 2 for TEXT — resolve each on-screen LINE's spoken time → data._line_cues (absolute), so a text
     block reveals its lines AS the VO reads them (kinetic typography), not on a fixed stagger that front-loads
@@ -402,6 +481,10 @@ def _retime_lines(sc: Dict, d: Dict, words) -> int:
     juxtaposition sides, …) whose lines are (usually verbatim) script text. Monotonic; a line that doesn't
     resolve is left None so the composer spreads it. Idempotent (recomputed each sync)."""
     lines = d.get("lines")
+    if not isinstance(lines, list) and isinstance(d.get("title"), list):
+        # a comparison/split_view SIDE carries its lines as a list-valued `title` — same content, and
+        # `_cmp_text` reads it as lines, so it gets the same treatment rather than a second mechanism
+        lines = d.get("title")
     if not isinstance(lines, list) or not lines or not words:
         return 0
     start, dur = float(sc.get("start", 0) or 0), float(sc.get("dur", 0) or 0)
@@ -1128,6 +1211,8 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                         cues += 1
                 revs += _retime_reveals(sc, d, words)  # spread fixed-offset reveals over the (retimed) window
                 revs += _retime_lines(sc, d, words)    # VO-sync each on-screen text LINE to when it's read
+                revs += _retime_prose(sc, d, words)    # VO-sync each whole prose FIELD (quote/title/…)
+                revs += _retime_panels(sc, d, words)   # …and again inside each side of a 2-panel block
                 revs += _retime_doc_annotations(sc, d, words)  # VO-sync document annotations to the spoken word
             # anchor-lint: per-scene WINDOW + verdict, so degenerate windows are visible BEFORE a render
             # (a mis-heard anchor silently produces a 0.94s or 27s window — this was ~80% of the rework).

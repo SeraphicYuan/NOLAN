@@ -42,8 +42,13 @@ CSS = """
 .sv-rail-accent .stmt{left:11cqw;}
 .stmt-rail{position:absolute;left:5.5cqw;bottom:16.5cqh;width:0.7cqw;height:23cqh;background:var(--accent);}
 .stmt-card{position:absolute;inset:13cqh 11cqw;border:var(--bw,2px) solid var(--text);border-radius:var(--r-card,4px);
-  box-shadow:var(--card-shadow,none);background:var(--surface);display:flex;flex-direction:column;
+  box-shadow:var(--card-shadow,none);display:flex;flex-direction:column;
   justify-content:center;align-items:center;padding:0 5cqw;}
+/* opaque only when it is NOT a frosted plate. This rule and `.glass` are the same specificity, so
+   until now the card rendered as glass purely because `.glass` is declared a few lines below — source
+   order is not a contract, and the same oversight one specificity level up is what made the framed
+   pull_quote a solid slab. */
+.stmt-card:not(.glass){background:var(--surface);}
 /* GLASS: a panel over real media stops being an opaque slab. The ground reads through it, blurred —
    the frosted plate a broadcast designer would cut. Applied automatically when the scene has an
    image/video ground (author opts out with `panel:"solid"`); `--glass-tint` is DERIVED per scene from
@@ -67,10 +72,15 @@ CSS = """
    The selectors carry `.footage` so they OUT-SPECIFY the register rules further down the sheet — at
    equal specificity those would win on order alone, which is how the kicker stayed white on the first
    attempt at this fix. */
-.footage .stmt-card .stmt.footage-t,.footage .pq-wrap .pq-body,
-.footage .ct-wrap .ct-rlabel,.footage .ct-wrap .ct-cell{color:var(--text);text-shadow:none;}
-.footage .stmt-card .kick,.footage .pq-wrap .pq-cite,
-.footage .pq-wrap .pq-mark{color:var(--text-2,var(--text));text-shadow:none;}
+/* …and each selector carries the PANEL, because "a panel replaces the ground" is only true where a
+   panel exists. `.pq-wrap` / `.ct-wrap` are full-bleed on every non-framed variant and no longer take
+   glass there, so an unscoped rule painted THEME INK straight onto a photograph: the 3:41 Oppenheimer
+   quote came back dark-on-portrait the moment the plate was removed. Without a plate the light-on-
+   footage treatment further down the sheet is the right one, and it now gets to apply. */
+.footage .stmt-card .stmt.footage-t,.footage .pq-wrap.glass .pq-body,
+.footage .ct-wrap.glass .ct-rlabel,.footage .ct-wrap.glass .ct-cell{color:var(--text);text-shadow:none;}
+.footage .stmt-card .kick,.footage .pq-wrap.glass .pq-cite,
+.footage .pq-wrap.glass .pq-mark{color:var(--text-2,var(--text));text-shadow:none;}
 .sv-framed-card .stmt{position:static;left:auto;bottom:auto;max-width:none;text-align:center;}
 .sv-framed-card .kick{position:static;left:auto;top:auto;text-align:center;margin-bottom:1.4cqh;}
 /* universal overflow guard: a word wider than its box WRAPS instead of breaching the margin (a heavy
@@ -180,7 +190,12 @@ CSS = """
 .blk-pull_quote.sv-side-mark .pq-wrap{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2cqw;padding:0 8cqw;text-align:left;}
 .blk-pull_quote.sv-side-mark .pq-mark{font-size:34cqw;line-height:0.6;height:auto;grid-row:1;}
 .blk-pull_quote.sv-side-mark .pq-body,.blk-pull_quote.sv-side-mark .pq-cite{grid-column:2;}
-.blk-pull_quote.sv-framed .pq-wrap{inset:12cqh 12cqw;border:var(--bw,2px) solid var(--rule);border-radius:var(--r-card,4px);box-shadow:var(--card-shadow,none);background:var(--surface);padding:0 6cqw;}
+/* `:not(.glass)` is load-bearing — `.blk-pull_quote.sv-framed .pq-wrap` is specificity (0,3,0) and
+   `.glass` is (0,1,0), so an unguarded `background:var(--surface)` here REPAINTS the frosted plate
+   opaque. The tint is still solved, the backdrop is still blurred, and none of it is visible: diamond-
+   v3 at 3:16 carried `--glass-tint:56` under a solid slab. Same guard on `.sv-panel .ct-wrap`. */
+.blk-pull_quote.sv-framed .pq-wrap{inset:12cqh 12cqw;border:var(--bw,2px) solid var(--rule);border-radius:var(--r-card,4px);box-shadow:var(--card-shadow,none);padding:0 6cqw;}
+.blk-pull_quote.sv-framed .pq-wrap:not(.glass){background:var(--surface);}
 /* ledger layout variants (P3) — base .lg-wrap == rows. */
 .blk-ledger.sv-two-col .lg-wrap{display:grid;grid-template-columns:1fr 1fr;column-gap:5cqw;align-content:center;}
 .blk-ledger.sv-two-col .lg-row.first{border-top:none;}
@@ -197,8 +212,10 @@ CSS = """
 .ct-hcell{padding:1.4cqh 0.8cqw;font-family:var(--eyebrow-font,var(--font-mono)),ui-monospace;font-weight:700;font-size:0.96cqw;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);border-bottom:var(--bw,2px) solid var(--accent);text-align:center;align-self:end;}
 .ct-hcell.hi{color:var(--accent);}
 .ct-corner{border-bottom:var(--bw,2px) solid var(--accent);}
-.ct-rlabel{padding:1.7cqh 1.2cqw 1.7cqh 0;font-family:var(--font-display-en);font-style:var(--display-style,normal);font-weight:var(--display-weight,600);font-size:1.5cqw;line-height:1.15;border-bottom:1px solid var(--rule);display:flex;align-items:center;}
-.ct-cell{padding:1.7cqh 0.8cqw;text-align:center;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:center;font-family:var(--font-body);font-size:1.2cqw;}
+/* rows start hidden: their reveal is per-row now, and on a SEEKED timeline anything not hidden in CSS
+   shows at full opacity before its tween ever runs. */
+.ct-rlabel{opacity:0;padding:1.7cqh 1.2cqw 1.7cqh 0;font-family:var(--font-display-en);font-style:var(--display-style,normal);font-weight:var(--display-weight,600);font-size:1.5cqw;line-height:1.15;border-bottom:1px solid var(--rule);display:flex;align-items:center;}
+.ct-cell{opacity:0;padding:1.7cqh 0.8cqw;text-align:center;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:center;font-family:var(--font-body);font-size:1.2cqw;}
 .ct-col-hi{background:var(--surface-3);}
 .chip{display:inline-flex;align-items:center;justify-content:center;width:2.4cqw;height:2.4cqw;border-radius:50%;font-weight:800;font-size:1.15cqw;line-height:1;}
 .chip.yes{background:var(--accent);color:var(--accent-ink);}
@@ -209,7 +226,8 @@ CSS = """
 .blk-comparison_table.sv-centered .kick{left:0;right:0;top:11cqh;text-align:center;}
 .blk-comparison_table.sv-centered .kick::after{margin-left:auto;margin-right:auto;}
 .blk-comparison_table.sv-centered .ct-wrap{padding:0 16cqw;}
-.blk-comparison_table.sv-panel .ct-wrap{inset:17cqh 9cqw 11cqh;border:var(--bw,2px) solid var(--rule);border-radius:var(--r-card,4px);box-shadow:var(--card-shadow,none);background:var(--surface);padding:0 4cqw;}
+.blk-comparison_table.sv-panel .ct-wrap{inset:17cqh 9cqw 11cqh;border:var(--bw,2px) solid var(--rule);border-radius:var(--r-card,4px);box-shadow:var(--card-shadow,none);padding:0 4cqw;}
+.blk-comparison_table.sv-panel .ct-wrap:not(.glass){background:var(--surface);}
 .blk-comparison_table.sv-compact .ct-rlabel,.blk-comparison_table.sv-compact .ct-cell{padding-top:1cqh;padding-bottom:1cqh;}
 .blk-comparison_table.sv-compact .ct-rlabel{font-size:1.2cqw;}
 /* ledger_list: a dense hairline-separated row-list (ordinal + title + description + meta) — TOC / index /
@@ -868,6 +886,28 @@ def _reveal_cues(items, start=0.0):
     return out
 
 
+def _prose_cue(d, field, start, dur=None, lead=0.5):
+    """When a whole PROSE FIELD should appear: the moment the VO says it, else `start + lead`.
+
+    The third reveal layer, and the one that was missing. `_reveal_cues` covers a list of ELEMENTS and
+    `data._line_cues` covers a list of LINES; a block's own prose — a quote, a title, a caption — had no
+    cue to read, so it appeared on a wall clock. diamond-v3 3:41 held a 13-word quote fully on screen at
+    `start+0.5` of a 15.9s beat while the narration was still four seconds from reaching it, and no
+    amount of aligner work could have moved it: there was nothing to move.
+
+    `sync._retime_prose` resolves `data._field_cues[field]` (ABSOLUTE, inside the scene window). The
+    fallback IS the old behaviour, so an un-aligned project renders exactly as before.
+    """
+    c = (d or {}).get("_field_cues") or {}
+    t = c.get(field)
+    if t is None:
+        return start + lead
+    t = float(t)
+    if dur:                          # never past the beat it belongs to — leave room to read it
+        t = min(t, start + float(dur) - 0.6)
+    return max(float(start), t)
+
+
 def _reveal_times(n, start, dur, cues=None, lead=0.6, frac=0.62, minstep=0.5, tail=0.5):
     """n absolute reveal times. cues[i] (aligner-resolved) WINS — reveal on the spoken word; else spread the
     reveal across ~`frac` of the scene (≥minstep apart) so it fills the hold instead of dumping. Monotonic,
@@ -1064,6 +1104,57 @@ def _camera_for(g, dur, sel, start, *, default_amount=None, cue=None, narration=
     return lines, camera.emit_style(plan), depth
 
 
+def _camera_mount(frag, elem_id, spec, dur, start, *, cue=None, narration="", default_amount=None):
+    """Apply the FULL camera contract to an element already appended to `frag`. Returns (tl, depth).
+
+    `_camera_for` returns THREE things and all three are load-bearing:
+
+      the TWEEN     what moves
+      the STYLE     a long-axis pan re-SIZES the element (`height/width/left`). Without it the tween
+                    translates a `background-size:cover` crop by the full travel — measured on a
+                    1200x3600 poster through `annotate`: `y: 0 -> -2301px` on a 1080px element, which
+                    drags the picture off the frame and exposes the page background. That is the exact
+                    edge-exposure bug `nolan/camera/solve.py` exists to make unrepresentable.
+      the DECISION  `data-camera` / `data-camera-why`, which is how `temporal_gate` tells a hold the
+                    camera CHOSE from a clip that simply froze (WIRING_CHECKLIST pitfall #7).
+
+    Five of the six call sites used to take `_camera_for(...)[0]` — the tween alone — so a long-axis
+    plan was a latent edge bug on `annotate`, `hero`, comparison media, layout cells and every data
+    ground, and none of them could be told apart from a frozen scene. One helper, one dialect: a sixth
+    call site that hand-rolls this is pitfall #4 in the module built to prevent it
+    (`tests/test_camera_compose.py` fails on a bare `_camera_for(...)[0]`).
+    """
+    cam, camsty, depth = _camera_for(spec, dur, f"#{elem_id}", start, cue=cue, narration=narration,
+                                     default_amount=default_amount)
+    i = next((k for k, f in enumerate(frag) if f'id="{elem_id}"' in f), None)
+    if i is None:                                   # nothing to decorate — the tween still stands
+        return cam, depth
+    # Scope the edit to the element's OWN tag. A fragment can hold several tags (annotate emits its
+    # wrapper and its image in one f-string), so a bare `.replace('style="', ...)` lands on whichever
+    # came first — the wrapper — and the ground never gets resized.
+    m = re.search(r"<[^<>]*\bid=\"" + re.escape(elem_id) + r"\"[^<>]*>", frag[i])
+    if not m:
+        return cam, depth
+    dec = (globals().get("_CAMERA_LOG") or [{}])[-1]
+    tag = m.group(0)
+    anchor = f'id="{elem_id}"'
+    new = tag.replace(anchor, f'{anchor} data-camera="{esc(str(dec.get("move", "")))}"'
+                              f' data-camera-why="{esc(str(dec.get("why", ""))[:180])}"', 1)
+    if camsty:
+        # APPENDED, not prepended. The camera's style overrides the element's own — `annotate` and
+        # `hero` declare `background-size:cover` inline, and a long-axis pan needs `100% auto`; the
+        # later declaration wins, so prepending silently loses the fit while looking applied.
+        m2 = re.search(r'style="([^"]*)"', new)
+        if m2:
+            base = m2.group(1)
+            joined = base + ("" if not base or base.rstrip().endswith(";") else ";") + camsty
+            new = new[:m2.start(1)] + joined + new[m2.end(1):]
+        else:
+            new = new[:-1].rstrip() + f' style="{camsty}">'
+    frag[i] = frag[i][:m.start()] + new + frag[i][m.end():]
+    return cam, depth
+
+
 def media_ground(sid, ground, start, dur, narration=""):
     """Reusable BLOCK: full-bleed ground. image -> dimmed image + scrim + Ken-Burns;
     paper -> flat mist/parchment; transparent -> scrim only (root video shows through).
@@ -1085,17 +1176,9 @@ def media_ground(sid, ground, start, dur, narration=""):
         frag += _fx_overlays(_treat, sid, start, dur)   # blend_overlay treatments (grain/scanlines) over the image
         _camspec = ground.get("camera")
         _camat = _camspec.get("at") if isinstance(_camspec, dict) else None
-        cam, camsty, depth = _camera_for(ground, dur, f"#{sid}-gnd", start, cue=_camat,
-                                          narration=narration or ground.get("_narration", ""))
+        cam, depth = _camera_mount(frag, f"{sid}-gnd", ground, dur, start, cue=_camat,
+                                   narration=narration or ground.get("_narration", ""))
         tl += cam
-        _dec = (globals().get("_CAMERA_LOG") or [{}])[-1]
-        gi = next(i for i, f in enumerate(frag) if f'id="{sid}-gnd"' in f)
-        frag[gi] = frag[gi].replace(
-            'class="clip gnd"',
-            f'class="clip gnd" data-camera="{esc(str(_dec.get("move", "")))}"'
-            f' data-camera-why="{esc(str(_dec.get("why", ""))[:180])}"', 1)
-        if camsty:                                       # a long-axis pan re-sizes the ground element
-            frag[gi] = frag[gi].replace('style="background-image', f'style="{camsty}background-image')
         if depth:
             # PARALLAX: the subject cutout rides ABOVE the scrim on its own layer and moves further
             # than the ground behind it. That difference in rate IS the depth — one plate at two
@@ -1171,8 +1254,8 @@ def _data_ground(sid, d, start, dur, blk):
                 f'style="position:absolute;inset:0;background-image:url(\'{esc(g["src"])}\');"></div>',
                 f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                 f'style="position:absolute;inset:0;background:{veil};pointer-events:none;"></div>']
-        tl = _camera_for(dict(g, kb=[f0, f1]), dur, f"#{sid}-dgnd", start,
-                         cue=g.get("at"), narration=g.get("_narration", ""))[0]
+        tl = _camera_mount(frag, f"{sid}-dgnd", dict(g, kb=[f0, f1]), dur, start,
+                           cue=g.get("at"), narration=g.get("_narration", ""))[0]
         return frag, tl
     if kind in ("video", "transparent"):
         # FOOTAGE behind data. media_ground's scrim is a directional gradient tuned for lower-left TEXT;
@@ -1299,10 +1382,32 @@ def _glass_tint(d, box=(0.11, 0.13, 0.89, 0.87), floor=0.42, ceil=0.88, target=4
     return int(round(min(a, ceil) * 100))
 
 
-def _glass(d, box=(0.11, 0.13, 0.89, 0.87)):
-    """('' | ' glass', '' | ' style="--glass-tint:NN"') for a panel element in scene data `d`."""
+def _is_panel_variant(block, variant):
+    """Is this block+variant an actual PANEL — a plate inset from the frame — or the whole frame?
+
+    Asked of the layout-variant registry (`zone == "framed"`), not re-decided here: the registry already
+    says which arrangement is a bordered card, and a second opinion in the composer is a second dialect.
+
+    This matters because glass over a full-bleed wrapper is not a frosted panel, it is a frosted
+    WINDSHIELD. `.pq-wrap` and `.ct-wrap` are `position:absolute;inset:0`, so `centered`, `editorial`
+    and `side-mark` (3 of pull_quote's 4 variants) were putting a 26px blur and a ~54% tint over the
+    ENTIRE picture — diamond-v3 at 3:40 is an Oppenheimer portrait washed to a flat beige. When the
+    plate is the frame, there is no plate: show the picture and let the footage register carry the text,
+    which is what `highlight_statement` has always done (it emits `.stmt-card` ONLY for `framed-card`).
+    """
+    v = ((_layout_variants().get(block) or {}).get("variants") or {}).get(variant) or {}
+    return str(v.get("zone", "")) == "framed"
+
+
+def _glass(d, box=(0.11, 0.13, 0.89, 0.87), *, block=None, variant=None):
+    """('' | ' glass', '' | ' style="--glass-tint:NN"') for a panel element in scene data `d`.
+
+    `block`/`variant` are how a caller says "this wrapper is only sometimes a panel"; omit them for an
+    element that is inset by construction (`.stmt-card`)."""
     if not _grounded(d) or str(d.get("panel", "")).lower() == "solid":
         return "", ""
+    if block is not None and variant is not None and not _is_panel_variant(block, variant):
+        return "", ""                                  # full-bleed: no plate at all, show the picture
     return " glass", f' style="--glass-tint:{_glass_tint(d, box)}"'
 
 
@@ -1650,7 +1755,7 @@ def bullet_list(sid, sc):
         html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}'
                   if op and op in t else esc(t))
         frag.append(f'<div id="{sid}-t" class="bl-title">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.3});')
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     numbered = bool(d.get("numbered")) or variant == "numbered-rail"   # the rail variant is ordinal by design
     frag.append('<div class="bl-wrap">')
     _items = d.get("items", [])
@@ -1686,17 +1791,21 @@ def pull_quote(sid, sc):
     q, hi = d.get("quote", ""), d.get("hi", "")
     qhtml = (f'{esc(q.split(hi,1)[0])}<span class="hl">{esc(hi)}</span>{esc(q.split(hi,1)[1])}'
              if hi and hi in q else esc(q))
-    _gc, _gs = _glass(d, box=(0.12, 0.12, 0.88, 0.88))
+    _gc, _gs = _glass(d, box=(0.12, 0.12, 0.88, 0.88), block="pull_quote", variant=variant)
     frag.append(f'<div class="pq-wrap{_gc}"{_gs}>')
     frag.append(f'<div id="{sid}-qm" class="pq-mark">“</div>')
     frag.append(f'<div id="{sid}-q" class="pq-body">{qhtml}</div>')
     if d.get("cite"):
         frag.append(f'<div id="{sid}-c" class="pq-cite">{esc(d["cite"])}</div>')
     frag.append('</div></section>')
-    tl.append(f'tl.fromTo("#{sid}-qm",{{opacity:0,scale:0.72,y:8}},{{opacity:1,scale:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.3});')
-    tl.append(f'tl.fromTo("#{sid}-q",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.7,ease:"power3.out"}},{start+0.5});')
+    # The quote lands WHEN IT IS SPOKEN (layer 3). The mark leads it in by a beat and the attribution
+    # follows it, so the group still reads as one gesture wherever the narration puts it.
+    qt = _prose_cue(d, "quote", start, dur, lead=0.5)
+    tl.append(f'tl.fromTo("#{sid}-qm",{{opacity:0,scale:0.72,y:8}},{{opacity:1,scale:1,y:0,duration:0.6,ease:"power3.out"}},{max(start, qt - 0.2):.2f});')
+    tl.append(f'tl.fromTo("#{sid}-q",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.7,ease:"power3.out"}},{qt:.2f});')
     if d.get("cite"):
-        tl.append(f'tl.fromTo("#{sid}-c",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5}},{start+1.2});')
+        ct = _prose_cue(d, "cite", start, dur, lead=1.2)
+        tl.append(f'tl.fromTo("#{sid}-c",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5}},{max(qt + 0.4, ct):.2f});')
     pf, pt = _props_of(sid, sc)
     return g + frag + pf, tl + pt
 
@@ -1724,20 +1833,29 @@ def comparison_table(sid, sc):
     if d.get("kicker"):
         frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
-    _gc, _gs = _glass(d, box=(0.09, 0.17, 0.91, 0.89))
+    _gc, _gs = _glass(d, box=(0.09, 0.17, 0.91, 0.89), block="comparison_table", variant=variant)
     frag.append(f'<div class="ct-wrap{_gc}"{_gs}><div id="{sid}-g" class="ct-grid" '
                 f'style="grid-template-columns:1.6fr repeat({n},1fr)">')
     frag.append('<div class="ct-corner"></div>')
     for c in cols:
         hi = " hi" if c.get("highlight") else ""
         frag.append(f'<div class="ct-hcell{hi}">{esc(c.get("label", ""))}</div>')
-    for row in rows:
-        frag.append(f'<div class="ct-rlabel">{esc(row.get("label", ""))}</div>')
+    for i, row in enumerate(rows):
+        frag.append(f'<div class="ct-rlabel" id="{sid}-r{i}">{esc(row.get("label", ""))}</div>')
         for j, cell in enumerate(row.get("cells", [])):
             hi = " ct-col-hi" if j < len(cols) and cols[j].get("highlight") else ""
-            frag.append(f'<div class="ct-cell{hi}">{_chip(cell)}</div>')
+            frag.append(f'<div class="ct-cell{hi}" id="{sid}-r{i}c{j}">{_chip(cell)}</div>')
     frag.append('</div></div></section>')
-    tl.append(f'tl.fromTo("#{sid}-g",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.7,ease:"power3.out"}},{start+0.4});')
+    # The FRAME arrives whole (a table that assembles itself cell by cell reads as a glitch), but each
+    # ROW lands when the narration reaches it — a comparison is argued row by row. Before this the whole
+    # matrix appeared at `start+0.4` and then held, so a 5-row table was fully readable four seconds
+    # before the VO had made its second point.
+    tl.append(f'tl.fromTo("#{sid}-g",{{opacity:0,y:16}},{{opacity:1,duration:0.5,ease:"power3.out"}},{start+0.4});')
+    rtimes = _reveal_times(len(rows), start, dur, _reveal_cues(rows, start), lead=0.7)
+    for i in range(len(rows)):
+        sels = ",".join([f"#{sid}-r{i}"] + [f"#{sid}-r{i}c{j}" for j in range(len(rows[i].get("cells", [])))])
+        tl.append(f'tl.fromTo("{sels}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:{_reveal_dur(rtimes, i, start, dur, d=d):.2f},'
+                  f'ease:"{_reveal_ease(d)}",stagger:0.04}},{rtimes[i]:.2f});')
     pf, pt = _props_of(sid, sc)
     return g + frag + pf, tl + pt
 
@@ -1807,7 +1925,7 @@ def geo_map(sid, sc):
         f'tl.from("#{sid}-pin",{{scale:0,duration:0.5,ease:"back.out(3)"}},{start+1.5});',
         f'tl.to("#{sid}-lead",{{strokeDashoffset:0,duration:0.55,ease:"power2.inOut"}},{start+1.7});',
         f'tl.fromTo("#{sid}-k",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.5}},{start+1.9});',
-        f'tl.fromTo("#{sid}-t",{{opacity:0,y:20}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+2.05});',
+        f'tl.fromTo("#{sid}-t",{{opacity:0,y:20}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=2.05):.2f});',
         f'tl.fromTo("#{sid}-s",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.6}},{start+2.3});',
     ]
     if routes:   # animate each route arc drawing (strokeDashoffset) + its endpoints/label, staggered
@@ -1994,7 +2112,7 @@ def timeline(sid, sc):
                   if op and op in t else esc(t))
         frag.append(f'<div id="{sid}-title" class="clip tltitle" data-start="{start}" data-duration="{dur}" '
                     f'data-track-index="3">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.2});')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.2):.2f});')
     return frag, tl
 
 def newshead(sid, sc):
@@ -2108,7 +2226,7 @@ def newshead(sid, sc):
         tl.append(f'tl.fromTo("#{sid}-photo",{{opacity:0,x:44,scale:1.05,rotation:{ptilt-2}}},{{opacity:1,x:0,scale:1,rotation:{ptilt},duration:0.6,ease:"power3.out"}},{start+0.7});')
         if d.get("caption"):
             frag.append(f'<div id="{sid}-cap" class="nhcap" style="left:{px_l}px;top:{py_l+ph+10}px;width:{pw}px;">{esc(d["caption"])}</div>')
-            tl.append(f'tl.fromTo("#{sid}-cap",{{opacity:0}},{{opacity:1,duration:0.4}},{start+1.25});')
+            tl.append(f'tl.fromTo("#{sid}-cap",{{opacity:0}},{{opacity:1,duration:0.4}},{_prose_cue(d, "caption", start, lead=1.25):.2f});')
         if d.get("arrow"):
             frag.append(arrow_svg(cw, ch, px_l + 16, py_l + 16))
 
@@ -2352,7 +2470,7 @@ def _diagram_3d(sid, sc):
         t2, op = d["title"], d.get("titleHi", "")
         html_t = (f'{esc(t2.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t2.split(op,1)[1])}' if op and op in t2 else esc(t2))
         frag.append(f'<div id="{sid}-title" class="clip dg3-title" data-start="{start}" data-duration="{dur}" data-track-index="3">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.35});')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.35):.2f});')
     return frag, tl
 
 
@@ -2451,7 +2569,7 @@ def diagram(sid, sc):
                   if op and op in t else esc(t))
         frag.append(f'<div id="{sid}-title" class="clip dgtitle{" on-dark" if dark else ""}" data-start="{start}" '
                     f'data-duration="{dur}" data-track-index="4">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.35});')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.35):.2f});')
     return frag, tl
 
 
@@ -2472,7 +2590,9 @@ def _cmp_media(pid, spec, mtrack, start, dur):
     kb = spec.get("kenburns", True)
     if kb:
         f0, f1 = kb if isinstance(kb, list) else [1.05, 1.16]
-        tl += _camera_for({"kb": [f0, f1], "src": spec.get("src")}, dur, f"#{mid}", start)[0]
+        tl += _camera_mount(frag, mid, {"kb": [f0, f1], "src": spec.get("src"),
+                                        "camera": spec.get("camera")}, dur, start,
+                            narration=str(spec.get("label") or ""))[0]
     if spec.get("scrim", True):
         frag.append('<div class="cmp-scrim"></div>')
     vig = float(spec.get("vignette", 0) or 0)
@@ -2495,11 +2615,20 @@ def _cmp_text(pid, spec, start, dur, reg, bottom):
         op = spec.get("highlight", "")
         reveal = spec.get("reveal")
         rbase = "var(--text)" if reg == "paper" else "#F6F7F6"
+        # A panel's lines land WHEN THEY ARE READ. `sync._retime_panels` resolves them one level down
+        # (the side dict), because a two-sided scene is exactly the shape whose halves the narration
+        # visits in turn — and it was the least anchorable block we had until the cues descended.
+        _lc = spec.get("_line_cues") or []
+
+        def _line_at(li):
+            c = _lc[li] if li < len(_lc) and _lc[li] is not None else None
+            return float(c) if c is not None else start + 0.6 + li * 0.28
+
         frag.append('<div class="t">')
         for li, ln in enumerate(lines):
             tid = f"{pid}-t{li}"
             if reveal in REVEALS and reveal != "rise":
-                inner, cls, attr, tll = reveal_text(tid, ln, reveal, start, start + 0.6 + li * 0.28, dur, operative=(op or None), base=rbase)
+                inner, cls, attr, tll = reveal_text(tid, ln, reveal, start, _line_at(li), dur, operative=(op or None), base=rbase)
                 frag.append(f'<span class="{("ln " + cls).strip()}" id="{tid}"{attr}>{inner}</span>')
                 tl += tll
             else:
@@ -2510,7 +2639,7 @@ def _cmp_text(pid, spec, start, dur, reg, bottom):
                     inner = esc(ln)
                 frag.append(f'<span class="ln" id="{tid}">{inner}</span>')
                 tl.append(f'tl.fromTo("#{tid}",{{opacity:0,yPercent:55}},{{opacity:1,yPercent:0,duration:0.55,'
-                          f'ease:"power3.out"}},{start+0.6+li*0.28:.2f});')
+                          f'ease:"power3.out"}},{_line_at(li):.2f});')
         frag.append('</div>')
     frag.append('</div>')
     return frag, tl
@@ -2674,7 +2803,7 @@ def comparison(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     frag.append('</div>')
     return frag, tl
 
@@ -2754,7 +2883,7 @@ def juxtaposition(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     frag.append('</div>')
     return frag, tl
 
@@ -2780,8 +2909,8 @@ def annotate(sid, sc):
     kb = d.get("kb", True)
     if kb:
         f0, f1 = kb if isinstance(kb, list) else [1.04, 1.12]
-        tl += _camera_for({"kb": [f0, f1], "src": src}, dur,
-                          f"#{sid}-img", start, narration=str(sc.get("anchor") or ""))[0]
+        tl += _camera_mount(frag, f"{sid}-img", {"kb": [f0, f1], "src": src, "camera": d.get("camera")},
+                            dur, start, narration=str(sc.get("anchor") or ""))[0]
     svg = [f'<svg class="an-svg" viewBox="0 0 {W} {H}" preserveAspectRatio="none">']
     labels = []
     times = _reveal_times(len(callouts), start, dur, _reveal_cues(callouts, start))
@@ -2814,7 +2943,7 @@ def annotate(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     frag.append('</div>')
     return frag, tl
 
@@ -2880,7 +3009,7 @@ def quadrant(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -2926,7 +3055,7 @@ def venn(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -2982,7 +3111,7 @@ def sankey(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over = [over[0]] + svg + over[1:]
     over.append('</div>')
     return frag + over, tl
@@ -3038,7 +3167,7 @@ def scale(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -3103,7 +3232,7 @@ def pie(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -3151,7 +3280,7 @@ def funnel(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -3207,7 +3336,7 @@ def spectrum(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -3270,7 +3399,7 @@ def cycle(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -3324,7 +3453,7 @@ def detail_zoom(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -3346,8 +3475,8 @@ def hero(sid, sc):
     kb = d.get("kb", True)
     if kb:
         f0, f1 = kb if isinstance(kb, list) else [1.06, 1.15]
-        tl += _camera_for({"kb": [f0, f1], "src": src}, dur,
-                          f"#{sid}-img", start, narration=str(sc.get("anchor") or ""))[0]
+        tl += _camera_mount(frag, f"{sid}-img", {"kb": [f0, f1], "src": src, "camera": d.get("camera")},
+                            dur, start, narration=str(sc.get("anchor") or ""))[0]
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     over.append(f'<div class="hr-txt {side}">')
     if d.get("kicker"):
@@ -3463,7 +3592,7 @@ def connection_board(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -3513,7 +3642,7 @@ def spans(sid, sc):
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
-            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.3):.2f});')
     over.append('</div>')
     return frag + over, tl
 
@@ -3639,7 +3768,7 @@ def gallery(sid, sc):
         html_t = (f'{esc(t.split(op, 1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op, 1)[1])}'
                   if op and op in t else esc(t))
         world.append(f'<div id="{sid}-title" class="galtitle" style="z-index:8;">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.2):.2f});')
 
     # spotlight one: hero scales up + lifts (raised z); others dim + blur = "background blurred"
     if hero is not None:
@@ -3800,7 +3929,7 @@ def carousel(sid, sc):
         html_t = (f'{esc(t.split(op, 1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op, 1)[1])}'
                   if op and op in t else esc(t))
         world.append(f'<div id="{sid}-title" class="cartitle">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.2):.2f});')
 
     world.append('</div>')
     return frag + world, tl
@@ -4082,7 +4211,7 @@ def document(sid, sc):
         t2, op = d["title"], d.get("titleHi", "")
         html_t = (f'{esc(t2.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t2.split(op,1)[1])}' if op and op in t2 else esc(t2))
         frag.append(f'<div id="{sid}-title" class="doc-title">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.35});')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.35):.2f});')
     frag.append('</div>')  # close overlay
     return frag, tl
 
@@ -4182,7 +4311,7 @@ def chart(sid, sc):
         html_t = (f'{esc(t.split(op, 1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op, 1)[1])}'
                   if op and op in t else esc(t))
         world.append(f'<div id="{sid}-t" class="ch-title">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.2):.2f});')
     world.append(f'<div class="ch-base" style="left:{PX - 20}px;bottom:{BASE}px;width:{PW + 40}px;"></div>')
     for g in range(1, 4):
         world.append(f'<div class="ch-grid" style="left:{PX - 20}px;bottom:{BASE + PH * g / 3:.0f}px;width:{PW + 40}px;"></div>')
@@ -4335,7 +4464,7 @@ def code(sid, sc):
               if op and op in t else esc(t))
         world.append(f'<div id="{sid}-t" class="cd-title">{ht}</div>')
         top = 18
-        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.2):.2f});')
     world.append(f'<div id="{sid}-win" class="cd-win" style="top:{top}cqh;background:{ct["bg"]};">')
     dots = ('<span class="cd-dot" style="background:#ff5f56"></span><span class="cd-dot" style="background:#ffbd2e">'
             '</span><span class="cd-dot" style="background:#27c93f"></span>')
@@ -4427,7 +4556,9 @@ def social_card(sid, sc):
                  f'<span><b>{esc(str(d.get("reposts", 0)))}</b> Reposts</span>'
                  f'<span class="soc-heart"><b>{esc(str(d.get("likes", 0)))}</b> Likes</span></div>')
         cls = "soc-x"
-    tl.insert(0, f'tl.fromTo("#{w}",{{opacity:0,y:30,scale:0.96}},{{opacity:1,y:0,scale:1,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+    # The card arrives as ONE object (a post that assembled itself line by line would read as a fake),
+    # so the whole thing lands when the VO reaches the words ON it.
+    tl.insert(0, f'tl.fromTo("#{w}",{{opacity:0,y:30,scale:0.96}},{{opacity:1,y:0,scale:1,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "text", start, lead=0.2):.2f});')
     return frag + [f'<section class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" '
                    f'style="position:absolute;inset:0;"><div class="soc-wrap" style="{anchor}">'
                    f'<div id="{w}" class="soc-card {cls}">{inner}</div></div></section>'], tl
@@ -5129,9 +5260,15 @@ def split_view(sid, sc):
     frag.append(f'<div id="{sid}-div" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="3" '
                 f'style="position:absolute;left:{(px+pw) if paper_left else cx+cw}px;top:0;width:4px;height:{H}px;'
                 f'background:var(--accent);opacity:0;"></div>')
-    tl = [f'tl.fromTo("#{sid}-paper",{{opacity:0,x:{-60 if paper_left else 60}}},{{opacity:1,x:0,duration:0.6,ease:"power3.out"}},{start+0.2:.2f});',
-          f'tl.fromTo("#{sid}-content",{{opacity:0,x:{60 if paper_left else -60}}},{{opacity:1,x:0,duration:0.6,ease:"power3.out"}},{start+0.35:.2f});',
-          f'tl.to("#{sid}-div",{{opacity:0.9,duration:0.4}},{start+0.5:.2f});']
+    # The reading side arrives as ONE panel, so its arrival is what tracks the voice: the earliest of
+    # its own prose cues (`sync._retime_panels` resolves them on the `right` dict), else the old offset.
+    _rc = [c for c in (right.get("_line_cues") or []) if c is not None]
+    _rf = list((right.get("_field_cues") or {}).values())
+    ct = min(_rc + _rf) if (_rc or _rf) else start + 0.35
+    ct = max(float(start), min(float(ct), start + dur - 0.6))
+    tl = [f'tl.fromTo("#{sid}-paper",{{opacity:0,x:{-60 if paper_left else 60}}},{{opacity:1,x:0,duration:0.6,ease:"power3.out"}},{min(start+0.2, ct):.2f});',
+          f'tl.fromTo("#{sid}-content",{{opacity:0,x:{60 if paper_left else -60}}},{{opacity:1,x:0,duration:0.6,ease:"power3.out"}},{ct:.2f});',
+          f'tl.to("#{sid}-div",{{opacity:0.9,duration:0.4}},{min(start+0.5, ct+0.15):.2f});']
     return frag, tl
 
 
@@ -5149,7 +5286,7 @@ def _dataviz_head(sid, sc, ink):
                   if op and op in t else esc(t))
         frag.append(f'<div id="{sid}-t" style="position:absolute;left:300px;top:128px;font-family:var(--font-display);'
                     f'font-weight:800;font-size:46px;letter-spacing:-.01em;color:{ink};opacity:0">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.2:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.2):.2f});')
     return frag, tl
 
 
@@ -5767,8 +5904,9 @@ def _layout_cell(sid, i, cell, box, t0, end=None):
             # Ken-Burns across the REST OF THE CELL, never a literal 6s: on a 14s beat the old
             # tween finished at t0+6 and the cell then sat frozen; on a 4s beat it was cut mid-move.
             # (Narration owns duration — see docs/CAMERA_PROGRAM.md.)
-            tl += _camera_for({"src": src}, max(1.5, (end - t0) if end is not None else 6.0),
-                              f"#{cid}-img", t0)[0]
+            tl += _camera_mount(frag, f"{cid}-img", {"src": src, "camera": cell.get("camera")},
+                                max(1.5, (end - t0) if end is not None else 6.0), t0,
+                                narration=str(cell.get("label") or cell.get("caption") or ""))[0]
         if cell.get("label") or cell.get("caption"):
             frag.append(f'<div style="position:absolute;left:0;bottom:0;width:100%;box-sizing:border-box;'
                         f'padding:{max(12,h*0.05):.0f}px {max(14,w*0.04):.0f}px;color:#fff;'
@@ -5896,7 +6034,7 @@ def _layout_overlay(sid, sc, d, slots, n, start, dur, dark, ink, esc):
                   if op and op in t else esc(t))
         frag.append(f'<div id="{sid}-t" style="position:absolute;left:100px;top:120px;'
                     f'font-family:var(--font-display);font-weight:800;font-size:46px;color:{ink};{sh}opacity:0">{html_t}</div>')
-        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.2:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{_prose_cue(d, "title", start, lead=0.2):.2f});')
     # 3 · FOREGROUND cells — each on a surface backing card at its placed box (legible over any footage)
     band_bottom = any(str((slots[k] or {}).get("place", "")).lower() in ("band", "band-bottom", "bottom", "lower-third")
                       for k in range(1, n))
