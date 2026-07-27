@@ -51,3 +51,50 @@ def test_embed_and_visual_search_roundtrip(tmp_path):
     # a purely TEXTUAL query (no colour cue) must find the frame by its caption via the hybrid BGE path
     txt = tf.visual_search("factory warning sign", n=10, base_dir=store)
     assert txt and txt[0]["video_id"] == "vidREDxxxxx"
+
+
+# --- the SHOT GRID: the unit both retrieval tiers speak in -------------------------------------
+
+def _grid(monkeypatch, grid):
+    from nolan import transcript_frames as tfr
+    monkeypatch.setattr(tfr, "shot_grid", lambda base_dir=None: grid)
+    return tfr
+
+
+def test_shot_bounds_returns_the_shot_containing_the_timestamp(monkeypatch):
+    """The SEGMENT tier's reason for existing here: a transcript hit lands at an arbitrary point
+    inside a window that can run 45s, so it must be moved onto the cut that contains it — the same
+    unit the frame tier already returns."""
+    tfr = _grid(monkeypatch, {"v": [0.0, 534.9, 546.9, 560.0]})
+    assert tfr.shot_bounds("v", 537.2) == (534.9, 12.0)      # mid-shot -> that shot's true bounds
+
+
+def test_shot_bounds_declines_before_the_first_cut(monkeypatch):
+    """Snapping to frames[0] would TELEPORT a hit to an unrelated part of the film. Declining lets
+    the caller keep its own window, which is wrong-but-local rather than wrong-and-elsewhere."""
+    tfr = _grid(monkeypatch, {"v": [534.9, 546.9]})
+    assert tfr.shot_bounds("v", 100.0) is None
+
+
+def test_shot_bounds_declines_when_the_video_has_no_grid(monkeypatch):
+    """74 of 253 library rows are uncaptioned and have no cut list at all. None is the honest
+    answer; a fabricated boundary would be indistinguishable from a real one downstream."""
+    tfr = _grid(monkeypatch, {"other": [0.0, 5.0]})
+    assert tfr.shot_bounds("v", 10.0) is None
+
+
+def test_shot_bounds_clamps_a_long_shot(monkeypatch):
+    """A 400s static shot is not a clip — the cap makes it a usable trim, not a play-through."""
+    tfr = _grid(monkeypatch, {"v": [0.0, 400.0]})
+    assert tfr.shot_bounds("v", 10.0)[1] == 12.0
+
+
+def test_storing_frames_invalidates_the_cached_grid(monkeypatch, tmp_path):
+    """The hub both CAPTIONS and ACQUIRES in one process, so a grid cached before a caption pass
+    would hide the very shots that pass just created."""
+    from nolan import transcript_frames as tfr
+    tfr._GRID_CACHE["x"] = {"v": [1.0]}
+    monkeypatch.setattr(tfr, "frame_lib", lambda **k: type(
+        "L", (), {"add_file": lambda s, *a, **kw: None})())
+    tfr.embed_frames([(1.0, tmp_path / "a.jpg")], "v", "http://x", title="t")
+    assert tfr._GRID_CACHE == {}

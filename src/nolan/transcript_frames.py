@@ -550,6 +550,8 @@ def embed_frames(frames: List[Tuple[float, Path]], video_id: str, watch_url: str
             n += 1
         except Exception:
             continue
+    if n:
+        invalidate_shot_grid()      # the grid this just changed must not be served from cache
     return n
 
 
@@ -574,6 +576,68 @@ def split_caption(caption: str) -> Dict[str, Any]:
         if not matched and not out["summary"] and i == 0:
             out["summary"] = p
     return out
+
+
+# ---------------------------------------------------------------------------------------------
+# The SHOT GRID — the unit both retrieval tiers should speak in.
+#
+# Keyframes come from `detect_cuts` -> `plan_shots`, i.e. one per detected shot, so the gap from a
+# keyframe to the next IS the shot. That makes this the `shots` table `_clip_window`'s docstring
+# says a transcript segment cannot supply, and it is why the two tiers used to return incomparable
+# units: the frame tier trimmed a real shot while the segment tier took a flat 5s from an arbitrary
+# point in a 45s window. Same corpus, same film, two different answers for one cut — which is how
+# they came to download the same shot twice.
+#
+# Cached per process and per scope: the naive lookup rescans the WHOLE frame catalog for every
+# call, and at 17k frames that is paid once per candidate per need.
+_GRID_CACHE: Dict[str, Dict[str, List[float]]] = {}
+
+
+def invalidate_shot_grid() -> None:
+    """Drop the cached grid. Called whenever frames are stored, so a long-lived process (the hub,
+    which both captions AND acquires) never serves a grid that predates its own captioning."""
+    _GRID_CACHE.clear()
+
+
+def shot_grid(base_dir=None) -> Dict[str, List[float]]:
+    """{video_id: sorted keyframe times} for the whole captioned tier, in ONE catalog pass."""
+    key = str(base_dir or "")
+    if key not in _GRID_CACHE:
+        grid: Dict[str, List[float]] = {}
+        for a in frame_lib(base_dir=base_dir).catalog.list(status="active"):
+            tg = _parse_tags(getattr(a, "tags", "") or "")
+            if tg.get("kind") != "keyframe":
+                continue
+            vid = tg.get("video_id")
+            if vid:
+                grid.setdefault(vid, []).append(float(tg.get("t", 0) or 0))
+        for v in grid.values():
+            v.sort()
+        _GRID_CACHE[key] = grid
+    return _GRID_CACHE[key]
+
+
+def shot_bounds(video_id: str, t: float, default: float = 5.0, min_dur: float = 2.0,
+                max_dur: float = 12.0, base_dir=None) -> Optional[Tuple[float, float]]:
+    """The real shot CONTAINING time `t` -> (start, dur), or None when the video has no grid.
+
+    Returning None rather than a guess is deliberate: 74 of 253 library rows are uncaptioned and
+    therefore have no shot grid at all, so the caller must fall back visibly instead of being
+    handed a fabricated boundary.
+    """
+    frames = shot_grid(base_dir=base_dir).get(str(video_id) or "")
+    if not frames:
+        return None
+    prev = [x for x in frames if x <= t + 0.4]
+    if not prev:
+        # `t` precedes the first detected cut, so no shot on this grid contains it. Snapping to
+        # frames[0] would TELEPORT the hit to an unrelated part of the film — decline instead and
+        # let the caller keep its own window.
+        return None
+    start = prev[-1]
+    nxt = next((x for x in frames if x > start + 0.4), None)
+    dur = (nxt - start) if nxt else default
+    return start, max(min_dur, min(float(dur), max_dur))
 
 
 def frames_for_video(video_id: str, base_dir=None) -> List[Dict[str, Any]]:

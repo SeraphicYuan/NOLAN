@@ -79,6 +79,9 @@ def _wire(monkeypatch, tmp_path, frames, hits, catalog, project_dir=None):
     monkeypatch.setattr(tl, "copyright_free_ids", lambda *a, **k: set())
     monkeypatch.setattr(tfr, "visual_search", lambda q, n=24, **k: hits)
     monkeypatch.setattr(tfr, "frames_for_video", lambda v, **k: frames)
+    # the SHOT GRID both tiers now snap to, stubbed from the same keyframe fixture
+    monkeypatch.setattr(tfr, "shot_grid", lambda base_dir=None: {
+        vid: sorted(f["t"] for f in frames if f.get("kind") == "keyframe") for vid in catalog})
     return C.build_context(type("Cfg", (), {"clip_seconds": 30})(), want_stock=False, want_library=False,
                            want_clip=False, want_gen=False, want_clips_library=False,
                            want_transcript_lib=False, want_transcript_frames=True,
@@ -190,6 +193,7 @@ def test_the_two_tiers_do_not_pull_the_same_shot_twice(monkeypatch, tmp_path):
          "summary": "a drill", "asset_type": "archival-footage", "content_kind": "broll", "objects": []}])
     monkeypatch.setattr(tfr, "frames_for_video", lambda v, **k: [
         {"t": 534.9, "kind": "keyframe"}, {"t": 546.9, "kind": "keyframe"}])
+    monkeypatch.setattr(tfr, "shot_grid", lambda base_dir=None: {"SouthDak1940": [534.9, 546.9]})
 
     ctx = C.build_context(type("Cfg", (), {"clip_seconds": 30})(), want_stock=False, want_library=False,
                           want_clip=False, want_gen=False, want_clips_library=False,

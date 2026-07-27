@@ -426,10 +426,20 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                             if key not in best or r.score > best[key].score:
                                 best[key] = r
                     ranked = sorted(best.values(), key=lambda r: float(r.score), reverse=True)[:clip_lib_max]
-                    out = []
+                    out, snapped = [], 0
                     for r in ranked:
                         url = r.video_path
                         start, dur = _clip_window(r.timestamp_start, r.timestamp_end, clip_seconds)
+                        # SNAP TO THE SHOT GRID. `_clip_window` takes a flat ≤5s slice from an
+                        # arbitrary point inside a transcript window that can run 45s, so the trim
+                        # routinely straddles a cut. The captioned frame tier holds the real cut
+                        # list, so a segment hit can be moved onto the shot that CONTAINS it — the
+                        # same unit the frame tier already returns. Uncaptioned videos have no grid
+                        # and keep the guess (reported below, never silently).
+                        snap = _tfr.shot_bounds(_src_id(url), float(r.timestamp_start), default=dur)
+                        if snap:
+                            start, dur = snap
+                            snapped += 1
                         dup = range_is_claimed(claims, url, start, dur)
                         if dup:                       # the hero pool already pulled this shot — don't twin it
                             print(f"  [acquire] skip {url.rsplit('/', 1)[-1]}@{start:.0f}s — already claimed "
@@ -445,23 +455,23 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                                   "copyright_free": cfree, "kind": kind, "channel": channel,
                                   "description": r.description, "transcript": r.transcript,
                                   "source_url": str(url), "clip_start": start, "clip_dur": dur,
+                                  "shot_snapped": bool(snap),
                                   "similarity": round(float(r.score), 3)}))
+                    if out:                      # no silent caps: say how many kept the flat guess
+                        print(f"  [acquire] segments: {snapped}/{len(out)} snapped to the shot grid"
+                              f"{'' if snapped == len(out) else ' (the rest are uncaptioned videos)'}",
+                              flush=True)
                     return out
 
                 def _shot_window(vid, t0, default=5.0):
-                    """The REAL shot this keyframe opens: from its own timestamp to the NEXT keyframe.
+                    """The REAL shot this keyframe opens — now `transcript_frames.shot_bounds`.
 
-                    Keyframes come from `detect_cuts` → `plan_shots`, i.e. one per detected shot, so the
-                    gap to the next frame IS the shot length. This is the thing `_clip_window`'s docstring
-                    says it cannot do from a transcript segment ("a true single-shot trim needs the `shots`
-                    table") — the captioned frame tier is that table."""
-                    try:
-                        fr = [f["t"] for f in _tfr.frames_for_video(vid) if f.get("kind") == "keyframe"]
-                    except Exception:
-                        fr = []
-                    nxt = next((t for t in sorted(fr) if t > t0 + 0.4), None)
-                    dur = (nxt - t0) if nxt else default
-                    return max(2.0, min(float(dur), 12.0))          # a shot, not a play-through
+                    Promoted out of here so the SEGMENT tier can use the same grid: two indexes over
+                    one corpus must return the same unit, or their scores fuse across incomparable
+                    things and their ranges overlap by construction. (It also stopped rescanning the
+                    whole 17k-frame catalog once per candidate.)"""
+                    b = _tfr.shot_bounds(vid, t0, default=default)
+                    return b[1] if b else default
 
                 def _search_transcript_frames(need, n):
                     """The SHOWN tier: retrieve by what a frame LOOKS like, not by what is said over it.
@@ -558,8 +568,10 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                     # live on a diamond beat: the segment tier returned SouthDak1940 @537.2s+5.0s while
                     # the frame tier returned the same film @534.9s+12.0s — the second CONTAINS the first.
                     # That is two downloads of one shot, and two near-identical clips in the author's menu.
-                    # The FRAME wins the overlap: its range is the real shot (keyframe → next cut) whereas
-                    # the segment's is a flat ≤5s guess from an arbitrary point in a 45s window.
+                    # The FRAME wins the overlap. Since both tiers now snap to the same shot grid the
+                    # two ranges are usually IDENTICAL rather than merely overlapping, so this collapses
+                    # exactly; the interval test remains for the uncaptioned videos that have no grid
+                    # and therefore still carry `_clip_window`'s flat guess.
                     fr_ranges = [(str(c.meta.get("source_url") or ""), float(c.meta.get("clip_start", 0)),
                                   float(c.meta.get("clip_dur", 0))) for c in frames]
 
