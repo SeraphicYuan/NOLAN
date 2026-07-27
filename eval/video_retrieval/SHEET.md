@@ -315,3 +315,50 @@ Leave blank to skip — the scorer reports how much was labelled.
 - [ ] `eiffel-tower-gustaves-monstr` @2981s +3s — **Eiffel Tower Gustave's ' Monstrous' Vision For** — A dark, grainy, black and white shot shows a small, indistinct dark object or shape floating in 
 - [ ] `201369_Lead_Matrix_Outtakes_` @313s +2s — **Lead Matrix Outtakes: can 02** — A close-up shot shows dark, worm-like or tube-shaped structures moving through a murky, light-co
 - [ ] `apollo-112019` @2618s +12s — **Apollo 11** — A close-up view of a textured, light-colored surface, possibly a planet or moon, against a solid
+
+## _control:neg:sushi — sushi preparation in a Tokyo restaurant
+*control · video · concrete · look · 7 candidates*
+
+> NEGATIVE CONTROL — the library cannot serve this beat, so every row below is pre-labelled `n` and needs no work. An empty list is the CORRECT answer; anything listed is a channel failing to abstain. Flip a row to `y` only if the corpus genuinely holds it.
+
+- [ ] `Hoteland` @248s +5s — **Hotel and Restaurant Workers** — of the deep when they appear before us filet of sole with a foreign name supreme of soul or perh
+- [ ] `Hoteland` @416s +5s — **Hotel and Restaurant Workers** — that would tax the ability of scores of small fry to lick clean. Step by step or banquet is prep
+- [ ] `Hoteland` @95s +5s — **Hotel and Restaurant Workers** — Tremendous planning prodigious hard work must go on in the hotel kitchen to make the meal seem e
+- [ ] `Hoteland` @317s +5s — **Hotel and Restaurant Workers** — when you come to table they will do their best to keep you from noticing the work that goes into
+- [ ] `Hoteland` @605s +12s — **Hotel and Restaurant Workers** — A man prepares or clears a table in a restaurant setting while the narration discusses the luxur
+- [ ] `Hoteland` @112s +9s — **Hotel and Restaurant Workers** — Black and white footage shows hotel kitchen staff preparing food, illustrating the narrator's po
+- [ ] `2318_Table_Manners_02_00_00_` @254s +12s — **Table Manners** — A person is demonstrating proper table etiquette, specifically how to place utensils on a plate,
+
+## _control:neg:penguins — penguins on Antarctic sea ice
+*control · video · concrete · look · 5 candidates*
+
+> NEGATIVE CONTROL — the library cannot serve this beat, so every row below is pre-labelled `n` and needs no work. An empty list is the CORRECT answer; anything listed is a channel failing to abstain. Flip a row to `y` only if the corpus genuinely holds it.
+
+- [ ] `SanFranc1963` @84s +5s — **San Francisco: Story of a City** — the habitations. Whirling about the tide with waters of the Golden Gate the fog swallows the gre
+- [ ] `thegalapagosfinches` @543s +12s — **The Galapagos Finches** — A penguin stands on a dark, rocky shoreline looking out toward the water.
+- [ ] `thegalapagosfinches` @205s +4s — **The Galapagos Finches** — Several white seabirds with black markings are perched on and moving among dark rocks.
+- [ ] `000473_20200521` @776s +12s — **Home movie: 000473: Alaska Matanuska Valley** — A distant ship sails on a calm ocean under a hazy sky, with several seagulls in the foreground.
+- [ ] `0053_Visoes_da_Amazonia_05_0` @121s +12s — **Visoes da Amazonia** — A black and white shot shows two large birds with outstretched wings standing on a beach near so
+
+## _control:neg:knitting — close-up of hands knitting a wool scarf
+*control · video · concrete · look · 4 candidates*
+
+> NEGATIVE CONTROL — the library cannot serve this beat, so every row below is pre-labelled `n` and needs no work. An empty list is the CORRECT answer; anything listed is a channel failing to abstain. Flip a row to `y` only if the corpus genuinely holds it.
+
+- [ ] `0707MiscColorShots` @297s +12s — **[Miscellaneous Color Shots]** — A close-up view shows the textured, multicolored patterns and stitching of a quilted fabric.
+- [ ] `202275_Television_Commercial` @1329s +2s — **Television Commercials: Classic and Comedy** — A close-up of hands working on patterned fabric accompanies a discussion about the global utilit
+- [ ] `the-rise-and-fall-of-al-capo` @138s +4s — **The Rise And Fall Of Al Capone – Chicago’s Mos** — A close-up shot shows a person's hands guiding a piece of blue fabric through a sewing machine n
+- [ ] `einstein-and-eddington-2008` @232s +12s — **Einstein and Eddington (2008)** — A close-up shot shows a person's hands interacting with a small, colorful book or booklet.
+
+## _control:neg:volcano — lava flowing from an erupting volcano at night
+*control · video · concrete · look · 7 candidates*
+
+> NEGATIVE CONTROL — the library cannot serve this beat, so every row below is pre-labelled `n` and needs no work. An empty list is the CORRECT answer; anything listed is a channel failing to abstain. Flip a row to `y` only if the corpus genuinely holds it.
+
+- [ ] `0691_Yellowstone_National_Pa` @276s +5s — **Yellowstone National Park** — It is a periodically erupting spring the water runs in the from melting snow or rain and when it
+- [ ] `0575_Copper_Mining_and_Smelt` @461s +5s — **Copper: Mining and Smelting** — it by for the first time it becomes hot enough to melt these bonuses reach almost twenty eight h
+- [ ] `watch?v=SXX3MMSpgTs` @0s +5s — **Volcano No Copyright video  | Free volcano Vid** — Volcano No Copyright video  | Free volcano Videos | No copyright video | volcano Stock Footage
+- [ ] `0691_Yellowstone_National_Pa` @304s +10s — **Yellowstone National Park** — The narrator explains the geological process of a periodically erupting spring, such as Emerald 
+- [ ] `255-AD-15` @184s +9s — **Launch of the Saturn 5, 255-AD-15** — A rocket launches from a pad against a dark twilight sky, with bright flames erupting from its b
+- [ ] `0691_Yellowstone_National_Pa` @292s +12s — **Yellowstone National Park** — A black and white view of Emerald Pool, a periodically erupting spring where water meets molten 
+- [ ] `200734_New_York_Worlds_Fair_` @3261s +12s — **New York World's Fair (Part 5)** — A fountain is illuminated with pink and white light against a dark night background, captured on

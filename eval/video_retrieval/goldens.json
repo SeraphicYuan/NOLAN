@@ -533,5 +533,61 @@
     "category": "general",
     "media_type": "video",
     "named_hint": false
+  },
+  {
+    "gid": "_control:neg:sushi",
+    "project": "_control",
+    "query": "sushi preparation in a Tokyo restaurant",
+    "queries": [
+      "sushi preparation in a Tokyo restaurant"
+    ],
+    "origin": "negative",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "control",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "_control:neg:penguins",
+    "project": "_control",
+    "query": "penguins on Antarctic sea ice",
+    "queries": [
+      "penguins on Antarctic sea ice"
+    ],
+    "origin": "negative",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "control",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "_control:neg:knitting",
+    "project": "_control",
+    "query": "close-up of hands knitting a wool scarf",
+    "queries": [
+      "close-up of hands knitting a wool scarf"
+    ],
+    "origin": "negative",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "control",
+    "media_type": "video",
+    "named_hint": false
+  },
+  {
+    "gid": "_control:neg:volcano",
+    "project": "_control",
+    "query": "lava flowing from an erupting volcano at night",
+    "queries": [
+      "lava flowing from an erupting volcano at night"
+    ],
+    "origin": "negative",
+    "entity_kind": null,
+    "evocative": false,
+    "category": "control",
+    "media_type": "video",
+    "named_hint": false
   }
 ]

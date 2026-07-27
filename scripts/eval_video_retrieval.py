@@ -61,6 +61,25 @@ CHANNELS = {                      # name -> (want_transcript_lib, want_transcrip
     "both": (True, True),
 }
 
+# NEGATIVE CONTROLS — beats this library cannot possibly serve.
+#
+# These are the only reason we know the scores are meaningless: measured against a
+# diamond/Prelinger/finance corpus, "sushi preparation in a Tokyo restaurant" scored 0.649 and
+# "penguins on Antarctic sea ice" 0.671, against 0.72 for genuine on-domain hits. A dense index is
+# k-nearest — it returns k rows for ANY query — so the only honest question to ask a retrieval
+# channel is whether it can say NOTHING. They need no labels: the ground truth is "nothing here is
+# relevant", so the metric is simply whether the channel returned anything at all.
+#
+# They are a permanent fixture, not a one-off probe. As the library grows the expected maximum of
+# N background draws rises while on-domain scores stay flat, so this is the number that tells us
+# when a threshold has silently expired.
+NEGATIVE_CONTROLS = (
+    ("neg:sushi", "sushi preparation in a Tokyo restaurant"),
+    ("neg:penguins", "penguins on Antarctic sea ice"),
+    ("neg:knitting", "close-up of hands knitting a wool scarf"),
+    ("neg:volcano", "lava flowing from an erupting volcano at night"),
+)
+
 
 def _load_needs(project: str):
     f = VIDEOS / project / "capture" / "needs.json"
@@ -120,6 +139,33 @@ def _title_of(cat, url: str) -> str:
     return str((cat.get(sid) or {}).get("title") or sid or "?")
 
 
+def _pool_candidates(ctxs, cat, need, gid, per_channel):
+    """Run ONE need through every channel and pool what they return, keyed by (url, start).
+
+    Pooling — rather than scoring each channel against its own candidates — is what makes the
+    comparison fair: a human judges each shot ONCE and every channel is scored against that shared
+    judgement, so no channel gets credit merely for having proposed a candidate.
+    """
+    pooled = {}
+    for cname, ctx in ctxs.items():
+        try:
+            cands = ctx.search_clips(need, per_channel) or []
+        except Exception as e:
+            print(f"    ! {gid} {cname}: {type(e).__name__}: {e}")
+            cands = []
+        for rank, c in enumerate(cands[:per_channel]):
+            m = c.meta or {}
+            key = (str(m.get("source_url") or ""), round(float(m.get("clip_start", 0)), 1))
+            row = pooled.setdefault(key, {
+                "gid": gid, "url": key[0], "start": key[1],
+                "dur": round(float(m.get("clip_dur", 0)), 1),
+                "title": _title_of(cat, key[0]), "source": c.source,
+                "caption": str(m.get("description") or "")[:160].replace("\n", " "),
+                "ranks": {}, "relevant": ""})
+            row["ranks"][cname] = rank            # where each channel placed it
+    return pooled
+
+
 def cmd_extract(args) -> int:
     from nolan.config import load_config
     from nolan.acquire.context import build_context
@@ -165,24 +211,24 @@ def cmd_extract(args) -> int:
                             "category": need.get("category"), "media_type": need.get("media_type"),
                             # an authored key asset IS an identity question; no detector needed
                             "named_hint": True if origin == "key_asset" else _named_hint(q, ents)})
-            pooled = {}
-            for cname, ctx in ctxs.items():
-                try:
-                    cands = ctx.search_clips(need, args.per_channel) or []
-                except Exception as e:
-                    print(f"    ! {gid} {cname}: {type(e).__name__}: {e}")
-                    cands = []
-                for rank, c in enumerate(cands[: args.per_channel]):
-                    m = c.meta or {}
-                    key = (str(m.get("source_url") or ""), round(float(m.get("clip_start", 0)), 1))
-                    row = pooled.setdefault(key, {
-                        "gid": gid, "url": key[0], "start": key[1],
-                        "dur": round(float(m.get("clip_dur", 0)), 1),
-                        "title": _title_of(cat, key[0]), "source": c.source,
-                        "caption": str(m.get("description") or "")[:160].replace("\n", " "),
-                        "ranks": {}, "relevant": ""})
-                    row["ranks"][cname] = rank            # where each channel placed it
-            sheet.extend(pooled.values())
+            sheet.extend(_pool_candidates(ctxs, cat, need, gid, args.per_channel).values())
+
+    # The negative controls, through the SAME channels and the same pooling. Auto-labelled `n`:
+    # the ground truth is that the library cannot serve these, so a returned candidate is wrong by
+    # construction. `auto` marks them so a human can flip any the corpus turns out to genuinely
+    # hold (Prelinger is a general archive — this is a stated assumption, not a certainty).
+    print(f"  negative controls: {len(NEGATIVE_CONTROLS)} beats the library cannot serve")
+    for nid, q in NEGATIVE_CONTROLS:
+        gid = f"_control:{nid}"
+        goldens.append({"gid": gid, "project": "_control", "query": q, "queries": [q],
+                        "origin": "negative", "entity_kind": None, "evocative": False,
+                        "category": "control", "media_type": "video", "named_hint": False})
+        need = {"query": q, "queries": [q], "id": nid, "media_type": "video",
+                "category": "archival", "evocative": False}
+        rows = list(_pool_candidates(ctxs, cat, need, gid, args.per_channel).values())
+        for r in rows:
+            r["relevant"], r["auto"] = "n", True
+        sheet.extend(rows)
 
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "goldens.json").write_text(json.dumps(goldens, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -213,7 +259,12 @@ def _write_sheet(goldens, sheet):
                   f"{'NAMED' if g['named_hint'] else 'look'}"
                   f"{' · ' + str(g['entity_kind']) if g.get('entity_kind') else ''}"
                   f" · {len(rows)} candidates*", ""]
-        if not rows:
+        if g.get("origin") == "negative":
+            lines += ["> NEGATIVE CONTROL — the library cannot serve this beat, so every row below "
+                      "is pre-labelled `n` and needs no work. An empty list is the CORRECT answer; "
+                      "anything listed is a channel failing to abstain. Flip a row to `y` only if "
+                      "the corpus genuinely holds it.", ""]
+        elif not rows:
             lines += ["> no channel returned anything (this is the ABSTAIN case — correct if the "
                       "library genuinely lacks it)", ""]
         for r in rows:
@@ -238,13 +289,16 @@ def cmd_score(args) -> int:
     print(f"labelled {len(labelled)}/{len(rows)} candidates across {len(done_gids)}/{len(goldens)} needs")
 
     ks = [int(x) for x in str(args.k).split(",")]
-    slices = {"ALL": lambda g: True,
-              "look": lambda g: not g["named_hint"],
+    # Negative controls are scored separately (abstain), never mixed into the relevance slices —
+    # they have no relevant answer, so averaging them in would flatter every channel equally.
+    neg_gids = [gid for gid, g in goldens.items() if g.get("origin") == "negative"]
+    slices = {"ALL": lambda g: g.get("origin") != "negative",
+              "look": lambda g: not g["named_hint"] and g.get("origin") != "negative",
               "named": lambda g: g["named_hint"],
               "  from needs": lambda g: g.get("origin") == "need",
               "  key assets": lambda g: g.get("origin") == "key_asset",
-              "evocative": lambda g: g["evocative"],
-              "concrete": lambda g: not g["evocative"]}
+              "evocative": lambda g: g["evocative"] and g.get("origin") != "negative",
+              "concrete": lambda g: not g["evocative"] and g.get("origin") != "negative"}
     print(f"\n{'slice':<12}{'n':>4}  " + "  ".join(f"{c:>22}" for c in CHANNELS))
     print(f"{'':16}  " + "  ".join(f"{'  '.join(f's@{k}' for k in ks):>22}" for _ in CHANNELS))
     for sname, keep in slices.items():
@@ -264,6 +318,55 @@ def cmd_score(args) -> int:
             cells.append("  ".join(f"{100 * hits[k] / len(gids):5.1f}" for k in ks))
         print(f"{sname:<12}{len(gids):>4}  " + "  ".join(f"{c:>22}" for c in cells))
     print("\nsuccess@k = % of needs where at least one USABLE shot appeared in that channel's top k")
+
+    # ---- precision@1 -------------------------------------------------------------------------
+    # success@k asks "is there something good in the top k" — the right question for a beat, but it
+    # is blind to what we actually ship: the FIRST pick. A channel that puts junk at rank 0 and a
+    # hit at rank 4 scores identically at k=5 to one that gets it right first time. p@1 is the
+    # metric this program optimises, because a wrong pick becomes a shot in the video.
+    print(f"\n{'slice':<12}{'n':>4}  " + "  ".join(f"{c + ' p@1':>14}" for c in CHANNELS))
+    for sname, keep in slices.items():
+        gids = [g for g in done_gids if keep(goldens[g])]
+        if not gids:
+            continue
+        cells = []
+        for cname in CHANNELS:
+            top, hit = 0, 0
+            for gid in gids:
+                first = [r for r in labelled if r["gid"] == gid
+                         and int((r.get("ranks") or {}).get(cname, -1)) == 0]
+                if not first:
+                    continue                      # channel returned nothing (or its top-1 is unlabelled)
+                top += 1
+                if str(first[0]["relevant"]).lower().startswith("y"):
+                    hit += 1
+            cells.append(f"{100 * hit / top:5.1f} (n={top})" if top else "     — (n=0)")
+        print(f"{sname:<12}{len(gids):>4}  " + "  ".join(f"{c:>14}" for c in cells))
+    print("p@1 = % of needs whose TOP pick was usable; n = needs where that channel picked at all")
+
+    # ---- abstain on the negative controls ----------------------------------------------------
+    if neg_gids:
+        by_gid = {}
+        for r in rows:
+            by_gid.setdefault(r["gid"], []).append(r)
+        print(f"\n{'ABSTAIN':<12}{len(neg_gids):>4}  " + "  ".join(f"{c:>14}" for c in CHANNELS))
+        cells, mean = [], []
+        for cname in CHANNELS:
+            quiet, total = 0, 0
+            for gid in neg_gids:
+                got = [r for r in by_gid.get(gid, []) if cname in (r.get("ranks") or {})]
+                total += len(got)
+                if not got:
+                    quiet += 1
+            cells.append(f"{100 * quiet / len(neg_gids):5.1f}%")
+            mean.append(f"{total / len(neg_gids):5.2f}")
+        print(f"{'  silent':<12}{'':>4}  " + "  ".join(f"{c:>14}" for c in cells))
+        print(f"{'  junk/need':<12}{'':>4}  " + "  ".join(f"{c:>14}" for c in mean))
+        print("silent = % of impossible beats the channel correctly returned NOTHING for.\n"
+              "junk/need = mean candidates returned for a beat with no true answer (each one is a\n"
+              "download we would pay for). Both are the numbers that expire as the library grows.")
+    else:
+        print("\n! no negative controls in goldens.json — re-run `extract` to add them")
     return 0
 
 
