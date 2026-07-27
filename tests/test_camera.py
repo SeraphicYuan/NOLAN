@@ -113,11 +113,38 @@ def test_a_tall_source_pans_its_real_long_axis():
     assert wide["mode"] == "cover"                    # a wide source has no long axis to reveal
 
 
+def test_a_long_axis_pan_frames_the_PICTURE_not_the_FILE():
+    """f09 shipped a pan across a photographed ad and travelled over the ad's own black surround.
+
+    The first fix was a symmetric 6% overscan — an invented number against a measured problem. That
+    source carries 7.7% black on the left and 11.8% on the right (asymmetric: the page is photographed
+    askew), so 6% could not remove it, and on a source with NO border the same 6% quietly cropped real
+    picture. The geometry now solves against a measured content box, and both halves of that matter:
+    """
+    img = (1536, 1600)
+    bordered = camera.plan("pan-down", dur=16.0, img=img, content=(0.06, 0.03, 0.94, 1.0))
+    # the content, not the file, spans the canvas — so the element is wider by exactly the border
+    assert bordered["element_width"] > 1920 * 1.05, bordered
+    assert bordered["element_left"] < -50, "the left border is not being pushed off-frame"
+    # and the pan STARTS below the top border rather than on it
+    assert bordered["from"]["y"] < -1.0, bordered["from"]
+    assert any("surround" in n for n in bordered["notes"]), bordered["notes"]
+
+    # a source with no border must be left alone — only the sub-pixel bleed
+    clean = camera.plan("pan-down", dur=16.0, img=img, content=(0.0, 0.0, 1.0, 1.0))
+    assert abs(clean["element_width"] - 1920 * solve.LONG_AXIS_BLEED) < 1.0, clean
+    assert not [n for n in clean["notes"] if "surround" in n]
+    # …and omitting the measurement entirely behaves exactly like an unbordered source
+    assert camera.plan("pan-down", dur=16.0, img=img)["element_width"] == clean["element_width"]
+
+
 def test_a_narrow_source_will_not_fake_a_long_axis_pan():
     """Long-axis is width-fit, so the floor there is 'at least canvas-wide' — a different question
     from the cover-mode upscale, and asking the wrong one holds on the move that was actually right."""
-    p = camera.plan("pan-down", dur=10.0, img=(900, 2700))
-    assert p["move"] == "hold" and any("narrower" in n for n in p["notes"])
+    p = camera.plan("pan-down", dur=10.0, img=(500, 2700))       # 3.8x width-fit — genuine mush
+    assert p["move"] == "hold" and any("width-fit" in n for n in p["notes"])
+    ok = camera.plan("pan-down", dur=10.0, img=(1024, 3000))      # 1.9x — no worse than standing still
+    assert ok["mode"] == "long-axis" and ok["move"] == "pan-down", ok["notes"]
 
 
 def test_a_low_res_source_holds_instead_of_upscaling():
@@ -130,6 +157,14 @@ def test_a_low_res_source_holds_instead_of_upscaling():
     # the floor switched the whole feature off across most of a real pool.
     stock = camera.plan("push-in", dur=12.0, img=(1920, 1080))
     assert stock["move"] == "push-in", stock["notes"]
+    # the REAL pool's shapes must move: these are actual diamond-v2 assets that the delta-based floor
+    # held, each already softer than its own move while standing perfectly still.
+    for real in ((1024, 1024), (1024, 602), (900, 508), (1536, 1600), (1179, 786)):
+        p = camera.plan("push-in", dur=12.0, img=real)
+        assert p["move"] != "hold", (real, p["notes"])
+    # and the genuinely tiny still holds
+    for tiny in ((492, 640), (510, 1072), (640, 360)):
+        assert camera.plan("push-in", dur=12.0, img=tiny)["move"] == "hold", tiny
 
 
 # --- the emitter ----------------------------------------------------------------------------------

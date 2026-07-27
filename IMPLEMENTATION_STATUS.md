@@ -222,6 +222,50 @@ _transcript_lib_hits`, both `VectorSearch(search_level="segments")` — spoken w
 has no frame level, so the gemma captions this whole loop exists to produce are consumed by the UI and
 never by a render.
 
+## The frames test — the camera meets a real pool, and three things were wrong (2026-07-26)
+
+Before running the camera umbrella end-to-end, three frames of diamond-v2 (`f03` / `f04` / `f09`)
+were composed as standalone probe projects and rendered WITH their VO section wavs, so sync is
+judgeable by ear rather than by arithmetic agreeing with itself. A frame renders in minutes against
+~25 for the video, and every feature under test lives at the frame level.
+
+**Confirmed:** `f03`'s process steps land 6.84 / 9.24 / 11.64 (2.4s apart, no pile-up), step 1 on the
+word with a +0.00s delta; the 12:49 card reads at 56% glass tint; the long-axis pan reveals 561px of
+an ad that cover-fit was cropping away.
+
+**Three defects, all fixed here:**
+
+1. **The resolution floor measured the wrong thing.** It compared TOTAL upscale against a small
+   tolerance and charged all of it to the camera, but a ground is already scaled to cover the frame
+   whether a camera exists or not. On this pool: 30 of 47 image assets are narrower than the canvas,
+   median width 1179px, static cover already pays a median 1.82x — **31 of 47 were over the 18%
+   "tolerance" while standing perfectly still**, so the feature switched itself off on most of a real
+   project. The floor now asks what the camera ADDS against a mush threshold (2.6x total): 7 of 10
+   grounds move where 3 did, and each hold names a source that really is too small.
+2. **A long-axis pan framed the FILE, so it travelled across the source's own black surround.** The
+   "A Diamond Is Forever" asset is a photograph of the 1947 page lying on black, shot askew — 7.7%
+   left, 11.8% right. The first attempt was a symmetric 6% overscan, an invented number that cannot
+   remove 11.8% on one side and quietly crops real picture on an unbordered source. The geometry now
+   solves against a MEASURED content box (`camera.target.content_box`): a purity-gated edge scan,
+   calibrated on this pool because a naive percentile fires on 40 of 47 assets and the purity gate on
+   the 14 that genuinely carry a border. A flat image (every strip "pure") is guarded — a test caught
+   it inventing a 30% border on all four sides of a solid plate. What remains is the tilt wedge, which
+   no axis-aligned crop removes; **deskewing the asset** is that fix and it belongs to asset cleanup.
+3. **A number-carrying data element anchored on its LABEL, not its number** (sync organ, surfaced by
+   the camera work). "only ten percent" is spoken at 20.52; the gauge item's label ("had a diamond in
+   them") at 22.68 — so the arc drew 2.16s after the figure it illustrates. `sync._value_time` prefers
+   the number's spoken time, searched only WITHIN the scene and only BEFORE the label, so a false
+   match can never push a reveal later than the time it already had; a bare number (no unit word to
+   disambiguate it) is only accepted within 6s of its label. The gauge now fires at 20.52, on "ten".
+
+**And one misdiagnosis, recorded rather than buried.** A frame render came back black and was read as
+"a track-0 clip renders outside the `#root` scope where the theme tokens live". The shipped video
+disproved it — `diagram` and `geo` both put themed backgrounds on track 0 and render correctly. The
+real cause was the probe harness: its mount div omitted the `data-composition-id` that production
+sets, so the runtime never scoped the sub-composition's CSS and every `var(--...)` resolved to nothing.
+The product change was reverted and `tests/test_ground_parity.py` keeps the lesson: reproduce a render
+the way production assembles it, or the render lies to you.
+
 ## The camera umbrella — ken-burns as a registry, not four hardcoded tweens (2026-07-26)
 
 `src/nolan/camera/` (registry · solve · emit · select · target), wired into the composer at

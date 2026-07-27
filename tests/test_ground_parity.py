@@ -82,3 +82,24 @@ def test_the_ground_sits_behind_the_content():
     wrap = re.search(r'<div id="p-wrap"[^>]*data-track-index="(\d+)"', html)
     assert gnd and wrap, html[:400]
     assert int(gnd.group(1)) < int(wrap.group(1)), "the content is painted UNDER the ground"
+
+
+def test_a_data_block_paints_a_themed_page_background():
+    """A data block with no authored ground must still paint the theme's page colour.
+
+    Kept from a MISDIAGNOSIS worth recording: a frame-level render of the gauge came back black, and I
+    read it as "a track-0 clip renders outside the `#root` scope where the theme tokens live". The
+    shipped video disproved it — `diagram` and `geo` both put a themed background on track 0 and render
+    correctly. The real cause was my own probe harness: its mount div omitted `data-composition-id`,
+    which production sets, so the runtime never scoped the sub-composition's CSS and every `var(--…)`
+    resolved to nothing. The product was fine. Reproduce a render the way production assembles it, or
+    the render lies to you.
+    """
+    import re
+    for block in ("gauge", "isotype", "chart"):
+        sc = {"id": "p", "start": 0.0, "dur": 9.0,
+              "data": {"items": [{"value": 40, "label": "x"}], "series": [{"label": "a", "value": 2}],
+                       "bins": [{"x0": 0, "x1": 2, "count": 1}]}}
+        html = "".join(compose.BLOCKS[block]("p", sc)[0])
+        assert re.search(r'style="[^"]*background:[^"]*var\(--', html), \
+            f"{block} paints no themed background at all"

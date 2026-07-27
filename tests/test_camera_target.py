@@ -136,3 +136,41 @@ def test_a_read_only_sidecar_does_not_break_targeting(img, monkeypatch):
         target._save(img, {})
     monkeypatch.setattr(target, "_save", lambda *a, **k: None)
     assert target.image_size(img) == (1600, 900)
+
+
+def test_the_content_box_measures_a_border_instead_of_assuming_one(tmp_path):
+    """The measurement's calibration IS the feature: a purity gate is what separates a real surround
+    from a dark edge in a photograph. A naive percentile fired on 40 of the 47 diamond-v2 assets; this
+    fires on 14. Both directions are load-bearing, so both are pinned here."""
+    np = pytest.importorskip("numpy")
+    from PIL import Image
+
+    def _box(arr, tmp, name):
+        p = tmp / name
+        Image.fromarray(arr.astype("uint8")).save(p)
+        target._MEM.clear()
+        return target.content_box(p)
+
+    # a clean letterbox: 10% black top and bottom over a mid-grey picture
+    a = np.full((400, 400), 128.0)
+    a[:40] = 0.0
+    a[-40:] = 0.0
+    box = _box(a, tmp_path, "letterbox.png")
+    assert box[1] > 0.05 and box[3] < 0.95, box
+    assert box[0] == 0.0 and box[2] == 1.0, "invented a left/right border that isn't there"
+
+    # a photograph with a dark region touching one edge is NOT a border (the gate that matters)
+    b = np.full((400, 400), 128.0)
+    b[:, :60] = 20.0
+    b[:200, :60] = 190.0                    # …because only half of that strip is dark
+    assert _box(b, tmp_path, "photo.png")[0] == 0.0, "a dark picture edge was cropped as a border"
+
+
+def test_the_content_box_fails_soft_and_caches_like_every_other_measurement(tmp_path):
+    assert target.content_box(tmp_path / "does-not-exist.png") is None
+    from PIL import Image
+    p = tmp_path / "cached.png"
+    Image.new("L", (200, 200), 128).save(p)
+    target._MEM.clear()
+    assert target.content_box(p) == (0.0, 0.0, 1.0, 1.0)          # a flat image has no border to find
+    assert json.loads((p.parent / (p.name + ".camera.json")).read_text())["content_box"]

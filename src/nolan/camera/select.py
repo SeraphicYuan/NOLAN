@@ -50,7 +50,8 @@ def select(*, narration: str = "", dur: float = 6.0, img: Optional[Tuple[int, in
     if img and img[0] > 0:
         cw, ch = canvas
         if (img[1] / img[0]) > (ch / cw) * 1.35:
-            return ("pan-down", "tall source — pans down its long axis")
+            return ("pan-down", f"source is {img[1] / img[0]:.2f}:1 against a {ch / cw:.2f}:1 canvas — "
+                                f"pans its long axis so the whole frame is seen, not a centre band")
 
     # 4. a very short beat cannot hold a considered move
     if dur < 3.0:

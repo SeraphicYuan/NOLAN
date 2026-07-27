@@ -1015,8 +1015,12 @@ def _camera_for(g, dur, sel, start, *, default_amount=None, cue=None, narration=
         box = got["box"] if got else None
         if box is None:
             move, _why = camera.registry.degrade(move, {"target"})
+    # What the picture is, as opposed to what the file is: a photographed page lies on black, a scan
+    # carries a white margin. The long-axis pan frames against this, so it crops the surround away
+    # instead of travelling across it (f09's "A Diamond Is Forever" ad: 7.7% black left, 11.8% right).
     plan = camera.plan(move, dur=float(dur), target=tgt, box=box, img=img,
-                       amount=spec.get("amount", default_amount))
+                       amount=spec.get("amount", default_amount),
+                       content=_ct.content_box(path) if path else None)
     globals()["_CAMERA_PREV_FAMILY"] = camera.registry.family_of(plan["move"])
     lines = camera.emit_for(plan, sel, start, float(dur), cue=cue)
 

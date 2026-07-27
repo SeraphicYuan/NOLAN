@@ -19,7 +19,7 @@ MOVES = registry.MOVES
 
 
 def plan(move: str, *, dur: float, target=None, box=None, img: Optional[Tuple[int, int]] = None,
-         amount: Optional[float] = None, canvas=(solve.CANVAS_W, solve.CANVAS_H)) -> Dict:
+         amount: Optional[float] = None, canvas=(solve.CANVAS_W, solve.CANVAS_H), content=None) -> Dict:
     """Resolve a move id + inputs into a geometry plan for `emit`.
 
     Always returns a dict carrying `move` and `notes` — a caller can render it blind, and anything the
@@ -35,7 +35,8 @@ def plan(move: str, *, dur: float, target=None, box=None, img: Optional[Tuple[in
     elif mid in ("pan-right", "pan-left", "pan-down", "pan-up", "parallax-pan"):
         direction = {"pan-right": "right", "pan-left": "left", "pan-down": "down",
                      "pan-up": "up"}.get(mid, "right")
-        out = solve.solve_pan(dur=dur, direction=direction, amount=amount, img=img, canvas=canvas)
+        out = solve.solve_pan(dur=dur, direction=direction, amount=amount, img=img, canvas=canvas,
+                              content=content)
     elif mid in ("push-to-detail", "read-along", "scan-column") and box:
         out = solve.solve_box(dur=dur, box=box, canvas=canvas)
     elif mid == "pull-out":
@@ -50,11 +51,14 @@ def plan(move: str, *, dur: float, target=None, box=None, img: Optional[Tuple[in
 
     if out.get("to") and img:
         if out.get("mode") == "long-axis":
-            # width-fit, not cover: the requirement is that the source is at least canvas-WIDE. The
-            # cover formula would read a 1000x3000 poster as a 1.9x upscale and hold on a move that is
-            # actually the honest one for it.
-            why = (f"source {img[0]}x{img[1]} is narrower than the {canvas[0]}px canvas"
-                   if img[0] < canvas[0] * 0.98 else None)
+            # Width-fit, so the factor is canvas_w/img_w — measured on the CONTENT, since a source whose
+            # picture is 80% of the file is upscaled by the surround it is about to crop away. Judged
+            # against the SAME mush floor as cover, for the same reason: a 600x800 portrait pays 3.2x
+            # standing still under cover-fit, so "narrower than the canvas" was never the camera's fault.
+            cw = (content[2] - content[0]) if content else 1.0
+            fit = canvas[0] / max(1, img[0] * max(0.05, cw))
+            why = (f"source {img[0]}x{img[1]} is {fit:.2f}x width-fit (mush floor {solve.MUSH_FACTOR:.2f}x)"
+                   if fit > solve.MUSH_FACTOR else None)
         else:
             why = solve.resolution_floor(img, float(out["to"].get("scale", 1.0)), canvas)
         if why:

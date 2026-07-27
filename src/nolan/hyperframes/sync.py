@@ -302,6 +302,43 @@ def _phrase_time(phrase: str, words, after: float = 0.0) -> Optional[float]:
 
 _ELEMENT_ANCHOR_KEYS = ("at", "anchor")     # per-element spoken-phrase anchor ("show it AS you say it")
 _ELEMENT_LABEL_KEYS = ("label", "text", "term", "title", "name", "heading")   # element's own display text (S2 auto-anchor)
+_UNIT_WORDS = {"%": "percent", "B": "billion", "M": "million", "K": "thousand", "T": "trillion",
+               "x": "times", "$": "dollars"}                # suffix/unit glyph → the word the VO says
+_VALUE_BARE_MAX_LEAD = 6.0     # a BARE number may only pull a reveal this far ahead of its own label
+
+
+def _value_time(el: Dict, d: Dict, words, *, start: float, before: Optional[float]) -> Optional[float]:
+    """When an element's number is SPOKEN — the moment the reveal actually illustrates.
+
+    S2 auto-anchors on an element's LABEL, which is right for a bullet but wrong for a number: the VO
+    says "only TEN PERCENT of American engagement rings HAD A DIAMOND IN THEM", so anchoring the gauge
+    on its label fires the arc 2.2s after the figure it is drawing (measured on diamond-v2 f04s02 —
+    "ten percent" at 20.52, "had a diamond in them" at 22.68). A number-carrying element is about its
+    number; that is what the eye is waiting for.
+
+    Searched only WITHIN the scene and only BEFORE the label hit, so a false match can never push a
+    reveal later or out of its scene — the worst case is the label time we already had. A number+unit
+    phrase ("10 percent") is distinctive enough to trust anywhere in that window; a BARE number is
+    accepted only within `_VALUE_BARE_MAX_LEAD` of the label, so a stray earlier "10" cannot drag it."""
+    raw = el.get("value")
+    if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
+        return None
+    num = str(raw).strip()
+    if not num or not any(c.isdigit() for c in num):
+        return None
+    unit = next((el.get(k) or (d or {}).get(k) for k in ("suffix", "unit", "prefix")
+                 if (el.get(k) or (d or {}).get(k))), None)
+    word = _UNIT_WORDS.get(str(unit).strip()) if unit else None
+    limit = before if before is not None else float("inf")
+
+    if word:                                                 # "10 percent" — distinctive, trust the window
+        t = _phrase_time(f"{num} {word}", words, after=start)
+        if t is not None and t < limit:
+            return t
+    t = _phrase_time(num, words, after=start)                # bare "10" — only right next to its label
+    if t is not None and t < limit and (before is None or before - t <= _VALUE_BARE_MAX_LEAD):
+        return t
+    return None
 
 
 def _retime_reveals(sc: Dict, d: Dict, words) -> int:
@@ -347,6 +384,11 @@ def _retime_reveals(sc: Dict, d: Dict, words) -> int:
                     t = _phrase_time(label, words, after=start)
                     if t is None:
                         t = _phrase_time(" ".join(content), words, after=start)
+                # …then the element's NUMBER, which usually precedes the label in the sentence and is
+                # the thing the reveal draws. Never later than the label — see _value_time.
+                vt = _value_time(el, d, words, start=start, before=t)
+                if vt is not None:
+                    t = vt
             if t is not None and start <= t < start + dur:
                 el["_cue"] = round(t, 3)                         # ABSOLUTE; composer clamps monotonically
                 done += 1

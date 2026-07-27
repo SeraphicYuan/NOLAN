@@ -79,6 +79,11 @@ def emit_blur(selector: str, start: float, dur: float, *, from_px: float = 16.0,
 def emit_style(plan: Dict) -> str:
     """Extra inline style the element needs for this plan (long-axis pans re-size the ground)."""
     if plan.get("mode") == "long-axis" and plan.get("element_height"):
-        # width-fit so the FULL image is present vertically, then translate across the real overflow
-        return f"height:{plan['element_height']:.0f}px;background-size:100% auto;"
+        # The full image is present vertically (so the pan reveals real content, not a crop sliding
+        # around), and the element is a touch WIDER than the canvas with a matching negative offset, so
+        # the source's own border stays outside the frame.
+        return (f"height:{plan['element_height']:.0f}px;"
+                f"width:{plan.get('element_width', 1920):.0f}px;"
+                f"left:{plan.get('element_left', 0):.0f}px;right:auto;"
+                f"background-size:100% auto;")
     return ""

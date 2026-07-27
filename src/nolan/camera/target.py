@@ -85,6 +85,85 @@ def image_size(path) -> Optional[Tuple[int, int]]:
     return size
 
 
+BORDER_MIN = 0.015          # below this a "border" is a dark edge in the picture, not a surround
+BORDER_MAX = 0.30           # above this we are cropping the subject, not a border — distrust it
+_PURITY = 0.95              # a border strip is ~entirely surround; a dark photo edge is not
+_TOL = 16.0                 # grey levels from the corner colour still counted as "the surround"
+
+
+def content_box(path) -> Optional[Tuple[float, float, float, float]]:
+    """The picture INSIDE the file: (x0, y0, x1, y1) as fractions, cropping a flat surround.
+
+    Why the camera needs this. `ka_a_diamond_is_forever_document_2.jpg` is not the 1947 ad — it is a
+    PHOTOGRAPH of the ad, lying on black, shot slightly askew. Measured: a black margin of 7.7% on the
+    left and 11.8% on the right (p90 11.3% / 18.8%, asymmetric because of the tilt). Long-axis panning
+    it width-fits the FILE, so the pan travels across that black and the module's own rule — never
+    expose an edge — breaks on the axis it is not moving along. The first attempt at this was a
+    symmetric 6% overscan, which is the right instinct with a made-up number: it cannot remove 11.8%
+    on one side and 7.7% on the other, and on an unbordered source it silently crops real picture.
+
+    So measure instead of guess. Rows/columns are scanned from each edge inward while they stay flat
+    (low spread) and close to the corner colour, which catches a black photo surround, a white scan
+    margin and a letterboxed still alike. Bounded on both ends: under `BORDER_MIN` there is nothing
+    worth cropping, and over `BORDER_MAX` the "border" is more likely the picture (a dark vignette, a
+    night sky) — in both cases the full frame is returned and the camera behaves exactly as before.
+    A strip counts as surround only if it is ~entirely surround (`_PURITY`), which is what separates a
+    real border from a dark edge in a photograph: across the diamond-v2 pool that gate takes the
+    false-positive rate from "nearly every asset" (a naive percentile fires on 40 of 47) to the 14 that
+    genuinely carry one. The price is that the box is CONSERVATIVE on a TILTED source — a strip stops
+    being pure the moment one row's page corner enters it — so on that ad it removes ~3% of the ~8-12%
+    black. The rest is a wedge that no axis-aligned crop can take; deskewing the asset is the fix, and
+    it belongs to asset cleanup, not to the camera.
+
+    (A residual measure was tried here and removed: "how much of the kept edge is still surround-
+    coloured" reads 0.42 on the tilted black ad and 0.87 on a white document whose page is simply
+    white. A warning that fires on every clean scan is worse than no warning.)
+
+    Cached in the sidecar; ~15ms on a 128px thumbnail. None if the file can't be read."""
+    p = Path(path)
+    cached = _load(p).get("content_box")
+    if cached:
+        return tuple(cached)
+    try:
+        from PIL import Image
+        import numpy as np
+    except ImportError:
+        return None
+    try:
+        with Image.open(p) as im:
+            a = np.asarray(im.convert("L").resize((128, 128), Image.BILINEAR), dtype=float)
+    except (OSError, ValueError):
+        return None
+
+    n = 128
+    ref = float(np.median([a[:3, :3], a[:3, -3:], a[-3:, :3], a[-3:, -3:]]))
+    m = np.abs(a - ref) <= _TOL                                   # True where the pixel IS the surround
+    if m.mean() > 0.9:
+        # The whole file matches the "surround" colour — a flat card, a near-empty scan, a solid plate.
+        # Every strip then passes the purity gate and the scan runs to BORDER_MAX, "finding" a 30%
+        # border on all four sides of an image that has none. There is no picture to distinguish from
+        # a border here, so there is no crop to make.
+        _save(p, dict(_load(p), content_box=[0.0, 0.0, 1.0, 1.0]))
+        return (0.0, 0.0, 1.0, 1.0)
+
+    def _depth(mask) -> float:
+        """Deepest leading strip of `mask` (columns) that is at least `_PURITY` surround."""
+        best = 0
+        for d in range(1, int(n * BORDER_MAX) + 1):
+            if mask[:, :d].mean() >= _PURITY:
+                best = d
+            else:
+                break
+        return best / n
+
+    left, right = _depth(m), _depth(m[:, ::-1])
+    top, bottom = _depth(m.T), _depth(m.T[:, ::-1])
+    left, right, top, bottom = (0.0 if v < BORDER_MIN else v for v in (left, right, top, bottom))
+    box = (left, top, 1.0 - right, 1.0 - bottom)
+    _save(p, dict(_load(p), content_box=list(box)))
+    return box
+
+
 def _energy_point(path) -> Optional[Tuple[float, float]]:
     """Attention centroid from local CONTRAST on a 64px thumbnail — no model, ~10ms.
 

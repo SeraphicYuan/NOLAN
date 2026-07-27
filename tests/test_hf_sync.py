@@ -395,6 +395,47 @@ def test_retime_reveals_auto_anchors_unanchored_items_by_label():
     assert its[2].get("_cue") is None                                       # lone common word → unpinned (spread)
 
 
+def test_a_number_element_anchors_on_its_NUMBER_not_its_trailing_label():
+    """S2's label auto-anchor is right for a bullet and wrong for a figure.
+
+    Measured on diamond-v2 f04s02: the VO says "only ten percent of American engagement rings had a
+    diamond in them" — "ten percent" at 20.52, the item's label at 22.68 — so anchoring the gauge on
+    its label drew the arc 2.16s AFTER the number it illustrates. The number is what the eye waits for.
+    """
+    from nolan.whisper import WordTimestamp
+    toks = "only ten percent of american engagement rings had a diamond in them".split()
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(toks)]
+    label_t = float(toks.index("had"))
+
+    sc = {"type": "gauge", "start": 0.0, "dur": 20.0,
+          "data": {"suffix": "%", "items": [{"value": 10, "label": "had a diamond in them"}]}}
+    sync._retime_reveals(sc, sc["data"], words)
+    assert abs(sc["data"]["items"][0]["_cue"] - 1.0) < 0.01, "did not land on 'ten'"
+    assert sc["data"]["items"][0]["_cue"] < label_t
+
+    # an EXPLICIT `at` is the author's call and still wins outright
+    sc2 = {"type": "gauge", "start": 0.0, "dur": 20.0, "data": {"suffix": "%", "items": [
+        {"value": 10, "label": "had a diamond in them", "at": "had a diamond"}]}}
+    sync._retime_reveals(sc2, sc2["data"], words)
+    assert abs(sc2["data"]["items"][0]["_cue"] - label_t) < 0.01
+
+    # a BARE number far from its label must NOT drag the reveal: "10" is said at t=1, the label at t=14,
+    # a 13s lead — beyond _VALUE_BARE_MAX_LEAD, and with no unit word there is nothing to disambiguate it.
+    far = "10 of them a long digression about something else entirely then dumped surplus onto the market".split()
+    fwords = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(far)]
+    sc3 = {"type": "stat", "start": 0.0, "dur": 30.0,
+           "data": {"items": [{"value": 10, "label": "dumped surplus onto the market"}]}}
+    sync._retime_reveals(sc3, sc3["data"], fwords)
+    assert abs(sc3["data"]["items"][0]["_cue"] - float(far.index("dumped"))) < 0.01, \
+        "a stray earlier number dragged the reveal off its label"
+
+    # …and a reveal is never pushed LATER than the label it already had
+    sc4 = {"type": "stat", "start": 0.0, "dur": 30.0,
+           "data": {"items": [{"value": 10, "label": "long digression"}]}}
+    sync._retime_reveals(sc4, sc4["data"], fwords)
+    assert sc4["data"]["items"][0]["_cue"] <= float(far.index("long"))
+
+
 # --- kicker is DESIGN COPY, not narration (postmortem item 3 + the 12:23 lead) -----------------
 
 def test_kicker_alone_does_not_drive_placement_or_corroboration():

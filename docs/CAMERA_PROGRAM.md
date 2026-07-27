@@ -236,6 +236,14 @@ stock still — the most common asset shape in the pool — could take no push a
 would have switched itself off across most of a real project. 18% is the band where a still holds up,
 and it still catches the 360p library sources by a wide margin (they need ~3x).
 
+**…and 18% was still the wrong QUESTION** (found by rendering three real frames, below). It compared
+the TOTAL upscale against a small tolerance and charged all of it to the camera — but a ground is
+already scaled to cover the frame whether a camera exists or not. Measured on the diamond-v2 pool: 30
+of 47 image assets are narrower than the canvas, median width 1179px, and the static ground already
+pays a median 1.82x (max 5.68x), so **31 of 47 were over the "tolerance" while standing perfectly
+still**. The floor now asks what the camera ADDS against a genuine mush threshold (`MUSH_FACTOR`
+2.6x total): 7 of 10 grounds move where 3 did, and every hold names a source that really is too small.
+
 **Alternation state is per FRAME.** It began as a module global carried across frames, which would have
 made a frame's camera depend on which frames happened to be composed before it — and the incremental
 renderer composes only the ones that changed. `compose_frame` resets it.
@@ -265,6 +273,36 @@ move and asserting no `repeat`/`yoyo`/`random` and an absolute time on every twe
 - **`detail_zoom` — the one block that IS a camera — was not using the module**, and the first version of
   the honesty test matched only `gnd|dgnd|-img`, so it slipped through on a `-cam` selector with a literal
   0.95s leg. Its legs are now a fraction of the stop's dwell, and the test covers every media selector.
+
+### Found by rendering three real frames (f03 / f04 / f09, with their VO)
+
+Frames rather than the whole video because all of it lives at the frame level and a frame renders in
+minutes against ~25. Three things confirmed — the process steps land 2.4s apart instead of piling up,
+the 12:49 card reads at 56% glass tint, and the long-axis pan reveals 561px of an ad that cover-fit was
+cropping — and three defects came back:
+
+- **The resolution floor was measuring the wrong thing** (above). The biggest single finding, and only
+  measurement on a real pool could have produced it.
+- **A long-axis pan frames the FILE, so it travelled across the source's own border.** That ad is a
+  PHOTOGRAPH of the 1947 page, lying on black, shot askew: 7.7% black on the left, 11.8% on the right.
+  The first fix was a symmetric 6% overscan — the right instinct with an invented number, which cannot
+  remove 11.8% on one side and quietly crops real picture on a source with no border at all. The
+  geometry now solves against a MEASURED content box (`target.content_box`, a purity-gated edge scan;
+  a naive percentile fires on 40 of 47 assets, the purity gate on the 14 that genuinely have one).
+  What remains is the tilt wedge — no axis-aligned crop removes that, and **deskewing the asset is the
+  fix**; it belongs to asset cleanup, not to the camera.
+- **A number-carrying element anchored on its LABEL, not its number** — a sync-organ defect the camera
+  surfaced. "only ten percent" is spoken at 20.52; the item's label ("had a diamond in them") at 22.68,
+  so the gauge arc drew 2.2s after the figure it illustrates. `sync._value_time` now prefers the
+  number's spoken time, searched only inside the scene and only BEFORE the label, so a false match can
+  never push a reveal later than what it already had.
+
+And one misdiagnosis worth keeping: a frame render came back **black**, and the conclusion "a track-0
+clip renders outside the `#root` scope where the theme tokens live" was wrong. The shipped video
+disproved it (`diagram` and `geo` both put themed backgrounds on track 0 and render fine); the real
+cause was the probe harness, whose mount div omitted the `data-composition-id` production sets, so the
+runtime never scoped the sub-composition's CSS. Reproduce a render the way production assembles it, or
+the render lies to you. (`tests/test_ground_parity.py` keeps the lesson.)
 
 ### Not yet built (named so nobody assumes otherwise)
 
