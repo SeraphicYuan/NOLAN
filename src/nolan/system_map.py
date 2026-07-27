@@ -60,9 +60,9 @@ LABS = [
      "imports": "source footage + analysis", "feeds": "indexed segments → clip search"},
     {"id": "images", "label": "Picture Library", "path": "/images",
      "imports": "curated stills (CLIP+BGE)", "feeds": "library tier of the asset engine"},
-    {"id": "visuallib", "label": "Visual Lib (not-held)", "path": "/images",
+    {"id": "visuallib", "label": "Visual Lib (not-held)", "path": "/visual-lib",
      "imports": "museum/archive collections as metadata + thumbnail (no bytes)",
-     "feeds": "promotion (`images fetch`) → the held Picture Library"},
+     "feeds": "promotion (Fetch / `images fetch`) → the held Picture Library"},
     {"id": "extract", "label": "Extract Assets", "path": "/extract",
      "imports": "hi-def images from URLs", "feeds": "picture library"},
 ]

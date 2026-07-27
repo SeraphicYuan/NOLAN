@@ -400,7 +400,7 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
 
 
 def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int] = None,
-                       describer=None, model: str = "vlm") -> int:
+                       describer=None, model: str = "vlm", progress=None) -> int:
     """T2, on demand: caption not-held rows that lack a description, from their THUMBNAIL.
 
     Bounded by `limit` on purpose — this is the expensive tier and it is spent on what retrieval
@@ -442,6 +442,8 @@ def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int]
         library.catalog.update(a.id, description_source=model)
         library._index_discovery(library.catalog.get(a.id), thumb)
         done += 1
+        if progress:
+            progress(done, limit)
     return done
 
 

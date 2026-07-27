@@ -10,8 +10,8 @@ description: >
   identity for named works, CLIP over thumbnails for look), the promotion edge into the held
   Picture Library, and the invariants (the tier is opt-in on every read path, identity is
   catalog-derived never model-asserted, collection rights are sticky, coverage is stated honestly).
-  Read before touching imagelib/harvest.py, the `held` tier in imagelib/catalog.py + store.py, or
-  the `nolan images harvest / discover / fetch / collections` commands.
+  Read before touching imagelib/harvest.py, the `held` tier in imagelib/catalog.py + store.py, the
+  `/visual-lib` page, or the `nolan images harvest / discover / fetch / collections` commands.
 kind: methodology
 purpose: >
   Orient any Visual Lib task — which tier owns what, why retrieval is routed rather than blended,
@@ -24,6 +24,7 @@ uses: []
 documents:
   module: src/nolan/imagelib/harvest.py
   store: src/nolan/imagelib/store.py
+  page: src/nolan/webui/routes/visual_lib.py
 loaded_by: []
 evals:
   - scripts/eval_visuallib_recall.py
@@ -72,6 +73,32 @@ nolan images collections                                 # coverage per collecti
 `harvest(source, ...)` → `HarvestReport` (scanned / added / refreshed / skipped_no_image /
 skipped_rights / refused_gate / errors + quoted reasons). A bounded crawl that reported only its
 successes would read as full coverage.
+
+## The surface — `/visual-lib`
+
+Its OWN page, not a tab on `/images`, for the reason `/transcripts` is not a tab on `/library`:
+the two tiers answer different questions with different verbs. `/images` curates what we HOLD
+(cutout, reject, shortlist, promote-to-global); this page FINDS what we don't. Folding them put
+two grammars in one control strip — "license contains" and "scope" acting on one tier while
+cutout/reject acted on the other. `/images` keeps a query-carrying bridge link instead of a tier
+dropdown, and the page's own Fetch is the promotion edge back.
+
+- **Search** — the routed query over not-held rows, each card carrying its score, institution,
+  sticky rights, a QID badge where the source handed one over, and `Fetch`.
+- **Collections** — harvest form (source + optional Met department/theme + limit) and the
+  harvested table with per-collection coverage. Long by nature, so it is a background job with
+  progress, never a request.
+- **Coverage** — what the library actually knows, with the T2 caption batch. It states that
+  catalog prose does not count as a caption, so a 0%-captioned collection reads as 0%.
+
+Ownership splits by RESOURCE, not by page: row-level ops stay in `routes/images_extract`
+(`/api/images/discover`, `/api/images/{id}/fetch`); tier-level ops are new resources in
+`routes/visual_lib` (`/api/visuallib/{sources,collections,harvest,caption}`). The source and
+department pickers are served FROM `harvest.SOURCES` / `MET_DEPARTMENTS` — a menu copied into a
+template by hand is the menu that rots (WIRING_CHECKLIST pitfall #5), and
+`tests/test_hub_images.py` asserts the picker equals the registry. Batch bounds are parsed by
+`_bounded_limit`: an explicit `0` is refused, never widened to the default — `or default` on a
+falsy bound is a bounded crawl unbounding itself.
 
 ## Adapters
 

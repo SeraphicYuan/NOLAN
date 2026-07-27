@@ -3309,3 +3309,74 @@ async def publish_article(job, *, src: str, theme: str = "press", type: str = "e
     job.set_progress(1.0, f"{ws.name}: {summary}")
     return {"ok": ok, "slug": ws.name, "sections": len(sections),
             "article_html": str(html), "workspace": str(ws), "summary": summary}
+
+
+# --------------------------------------------------------------------------
+# Visual Lib — the not-held picture tier (see skills/lab/visual-library.md)
+# --------------------------------------------------------------------------
+
+async def harvest_visual_lib(job, *, source: str, limit: int = 200, dept: Optional[str] = None,
+                             query: Optional[str] = None, scope: str = "global",
+                             project: Optional[str] = None):
+    """Harvest a collection into the discovery tier (metadata + a 512px thumbnail, no bytes).
+
+    A job rather than a request because it is genuinely long: measured, ~900 Art Institute rows
+    took ~25 minutes (a thumbnail fetch and a CLIP embed each), and the Met costs an extra request
+    per object. The summary reports what was REFUSED and what ERRORED alongside what landed — a
+    bounded crawl that lists only its successes reads as full coverage.
+    """
+    from nolan.imagelib.harvest import SOURCES, harvest
+
+    if source not in SOURCES:
+        raise RuntimeError(f"unknown harvest source {source!r} (known: {', '.join(sorted(SOURCES))})")
+    kw = {k: v for k, v in (("dept", dept), ("query", query)) if v}
+    job.set_progress(0.02, f"Harvesting {source} ({limit} rows) …")
+
+    def _progress(rep):
+        done = rep.added + rep.refreshed
+        job.set_progress(min(0.97, 0.02 + 0.95 * done / max(limit, 1)),
+                         f"{source}: {done}/{limit} rows indexed")
+
+    rep = await asyncio.to_thread(harvest, source, limit=limit, scope=scope, project=project,
+                                  progress=_progress, **kw)
+    d = rep.to_dict()
+    dropped = d["skipped_no_image"] + d["skipped_rights"] + d["refused_gate"] + d["errors"]
+    summary = (f"{d['added']} added, {d['refreshed']} refreshed"
+               + (f", {dropped} dropped ({d['skipped_rights']} rights, {d['refused_gate']} gate, "
+                  f"{d['errors']} errors)" if dropped else ""))
+    job.set_progress(1.0, f"{rep.collection}: {summary}")
+    d["summary"] = summary
+    return d
+
+
+async def caption_visual_lib(job, *, limit: int = 25, collection_id: Optional[int] = None,
+                             scope: str = "global", project: Optional[str] = None,
+                             provider: Optional[str] = None):
+    """T2 on demand: caption not-held rows that lack a model description, from their thumbnail.
+
+    Bounded by `limit` on purpose — captioning a 132k-row catalog is not a plan; this is spent on
+    what retrieval or a human surfaced. The caption lands in `description` and NEVER touches
+    `identity_source`: a caption is a reading of the picture, an identity is a claim about which
+    picture it is, and only one of those may be a model's guess.
+    """
+    from nolan.config import load_config
+    from nolan.imagelib import ImageLibrary
+    from nolan.imagelib.describe import make_describer
+    from nolan.imagelib.harvest import describe_discovery
+
+    cfg = load_config()
+    lib = ImageLibrary(scope=scope, project=project)
+    describer = make_describer(cfg, provider=provider)
+    model = provider or getattr(cfg.vision, "provider", "vlm")
+    job.set_progress(0.03, f"Captioning up to {limit} not-held rows …")
+
+    def _progress(done, total):
+        job.set_progress(min(0.97, 0.03 + 0.94 * done / max(total, 1)),
+                         f"captioned {done}/{total}")
+
+    n = await asyncio.to_thread(describe_discovery, lib, limit=limit,
+                                collection_id=collection_id, describer=describer,
+                                model=model, progress=_progress)
+    stats = lib.discovery_stats(collection_id=collection_id)
+    job.set_progress(1.0, f"captioned {n}; coverage now {stats['described_pct']}%")
+    return {"captioned": n, "model": model, **stats}

@@ -71,16 +71,6 @@
         <input type="text" id="q" placeholder="e.g. soldiers in a trench">
       </div>
       <div>
-        <!-- Tier, not a filter: HELD searches the images whose bytes we keep; VISUAL LIB searches
-             the catalog-scale index of images we don't (metadata + thumbnail), where a hit is a
-             pointer and "Fetch" is the one edge that pulls the real file into the held library. -->
-        <label for="tier">Tier</label>
-        <select id="tier">
-          <option value="held">Held (Picture Library)</option>
-          <option value="discovery">Visual Lib (not held)</option>
-        </select>
-      </div>
-      <div>
         <label for="scope">Scope</label>
         <select id="scope">
           <option value="global">Global</option>
@@ -128,6 +118,7 @@
     </div>
 
     <div id="meta" class="meta"></div>
+    <div id="vlbridge" class="meta" style="display:none"></div>
     <div id="grid" class="grid"></div>
   </div>
 
@@ -205,25 +196,32 @@
 
     function run(){
       var q = qEl.value.trim();
-      var tier = (document.getElementById("tier")||{}).value || "held";
-      var url;
-      if (tier === "discovery") {
-        url = "/api/images/discover?q="+encodeURIComponent(q)+"&"+params().toString();
-      } else {
-        url = q ? "/api/images/search?q="+encodeURIComponent(q)+"&"+params().toString()
-                : "/api/images/list?"+params().toString();
-      }
+      var url = q ? "/api/images/search?q="+encodeURIComponent(q)+"&"+params().toString()
+                  : "/api/images/list?"+params().toString();
       meta.textContent = "Loading...";
       fetch(url).then(function(r){return r.json();}).then(function(d){
         render(d.results||[], q ? "result(s) for '"+q+"'" : "asset(s)");
-        if (tier === "discovery" && d.stats) {
-          // Coverage, stated: a 3%-captioned collection must never look complete.
-          meta.textContent += " · " + d.stats.discovery + " indexed, " +
-            d.stats.described_pct + "% captioned, " + d.stats.held + " held";
-        }
+        offerVisualLib(q, (d.results||[]).length);
       }).catch(function(e){ meta.textContent = "Error: "+e.message; });
     }
-    (document.getElementById("tier")||{}).onchange = run;
+
+    // The BRIDGE to the other tier — a link, not a mode. This page's verbs (cut out, reject,
+    // shortlist, promote-to-global) all assume a file on disk; Visual Lib's rows have none, so a
+    // tier switch here put two grammars in one toolbar. Offered exactly when it is useful: a
+    // search that came back thin, carrying the query across.
+    function offerVisualLib(q, n){
+      var el = document.getElementById("vlbridge");
+      if (!el) return;
+      if (!q || n >= 6){ el.style.display = "none"; return; }
+      fetch("/api/images/discover?scope=global&k=1").then(function(r){return r.json();})
+        .then(function(d){
+          var idx = (d.stats||{}).discovery || 0;
+          if (!idx){ el.style.display = "none"; return; }
+          el.style.display = "";
+          el.innerHTML = "Only " + n + " here. <b>" + idx + "</b> more images are indexed but not held — "
+            + '<a href="/visual-lib?q=' + encodeURIComponent(q) + '">search Visual Lib →</a>';
+        }).catch(function(){ el.style.display = "none"; });
+    }
 
     // ---- bulk action-bar verbs (operate on the current selection) ----
     // fetch() only rejects on network errors, so we must inspect .ok per call

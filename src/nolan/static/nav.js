@@ -28,6 +28,7 @@
       { id: "clips", label: "Clips", href: "/clips" },
       { id: "clipper", label: "Clip from URL", href: "/clipper" },
       { id: "images", label: "Picture Library", href: "/images" },
+      { id: "visual-lib", label: "Visual Lib", href: "/visual-lib" },
       { id: "extract", label: "Extract Assets", href: "/extract" },
       { id: "broll", label: "Evocative B-roll", href: "/broll" },
       { id: "tonal-broll", label: "Tonal B-roll (gallery)", href: "/tonal-broll/" },

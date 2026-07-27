@@ -115,6 +115,41 @@ def test_hub_discovery_tier_endpoints(tmp_path):
         assert len(client.get("/api/images/list?scope=global").json()["results"]) == 1
 
 
+def test_hub_visual_lib_page_and_registry_endpoints(tmp_path):
+    """The Visual Lib page and its TIER-level endpoints. The source picker is served from the
+    harvest registry so the UI cannot drift from the adapters (pitfall #5)."""
+    root = tmp_path / "lib"
+
+    def fake_paths(scope="global", project=None):
+        return root / "global"
+
+    with patch.object(store_mod, "library_paths", side_effect=fake_paths), \
+         patch.object(store_mod, "ClipEmbedder", FakeEmbedder):
+        client = TestClient(create_hub_app(db_path=None, projects_dir=None))
+
+        assert client.get("/visual-lib").status_code == 200
+
+        from nolan.imagelib.harvest import SOURCES
+        srcs = client.get("/api/visuallib/sources").json()["sources"]
+        assert {s["id"] for s in srcs} == set(SOURCES), "the picker must come from the registry"
+        assert all(s["rights"] for s in srcs), "every source states its rights"
+        met = [s for s in srcs if s["id"] == "met"][0]
+        assert "Photographs" in met["departments"]
+
+        cols = client.get("/api/visuallib/collections").json()
+        assert cols["collections"] == [] and cols["stats"]["discovery"] == 0
+
+        # an unknown source is refused rather than started
+        r = client.post("/api/visuallib/harvest", json={"source": "louvre", "limit": 5})
+        assert r.status_code == 400 and "louvre" in r.json()["detail"]
+        # an explicit limit of 0 is refused, never silently widened to the default batch
+        assert client.post("/api/visuallib/harvest",
+                           json={"source": "artic", "limit": 0}).status_code == 400
+        assert client.post("/api/visuallib/caption", json={"limit": 0}).status_code == 400
+        assert client.post("/api/visuallib/harvest",
+                           json={"source": "artic", "limit": "many"}).status_code == 400
+
+
 def test_hub_add_by_url(tmp_path):
     root = tmp_path / "lib"
     raw = (tmp_path / "src.png")

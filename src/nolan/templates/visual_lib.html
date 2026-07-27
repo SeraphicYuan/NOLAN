@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Lib · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+    .wrap { max-width: 1180px; margin: 24px auto; padding: 0 20px; }
+    h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 2px; }
+    .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+    .tab { padding: 9px 16px; cursor: pointer; font-weight: 600; color: var(--text-secondary); border-bottom: 2px solid transparent; }
+    .tab.on { color: var(--text-primary); border-bottom-color: var(--accent, #4f7cff); }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input[type=text], input[type=number], select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); padding: 8px 10px; font-size: 13px; }
+    #q { flex: 1; min-width: 260px; }
+    .btn { background: var(--accent, #4f7cff); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn.ghost { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); }
+    .btn.mini { padding: 4px 9px; font-size: 12px; }
+    .btn:disabled { opacity: .55; cursor: default; }
+    .dim { color: var(--text-secondary); font-size: 12px; }
+    .warn { color: #e0a83a; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-top: 12px; }
+    .tile { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+    .imgwrap { position: relative; aspect-ratio: 4/3; background: #111; display: flex; align-items: center; justify-content: center; }
+    .imgwrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .score { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.66); color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+    .body { padding: 9px 10px; display: flex; flex-direction: column; gap: 3px; }
+    .ttl { font-weight: 600; font-size: 13px; line-height: 1.3; }
+    .who { color: var(--text-secondary); font-size: 12px; }
+    .badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+    .badge { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); color: var(--text-secondary); }
+    .badge.qid { border-color: #4f7cff55; color: #7d9bff; }
+    .badge.cap { border-color: #3fb95055; color: #4cc267; }
+    .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--text-secondary); font-weight: 600; font-size: 12px; }
+    .bar { height: 6px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; min-width: 90px; }
+    .bar > i { display: block; height: 100%; background: var(--accent, #4f7cff); }
+    .log { font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; color: var(--text-secondary);
+           background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-top: 8px; max-height: 200px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <script src="/static/nav.js" data-active="visual-lib"></script>
+  <div class="wrap">
+    <h1>Visual Lib</h1>
+    <!-- The one sentence that has to land: these are pictures we do NOT hold. Everything on this
+         page is a pointer until you Fetch it. -->
+    <div class="sub">Museum and archive collections indexed as <b>catalog metadata + a thumbnail</b> — the bytes
+      stay where they are. Search a corpus far larger than any library you'd download, then
+      <b>Fetch</b> the one a beat earns into the <a href="/images">Picture Library</a>.</div>
+
+    <div class="tabs">
+      <div class="tab on" data-tab="search" onclick="showTab('search')">Search</div>
+      <div class="tab" data-tab="collections" onclick="showTab('collections')">Collections</div>
+      <div class="tab" data-tab="coverage" onclick="showTab('coverage')">Coverage</div>
+    </div>
+
+    <!-- ===== SEARCH ===== -->
+    <div id="tab-search">
+      <div class="card">
+        <div class="row">
+          <input type="text" id="q" placeholder="a rainy cobbled boulevard under umbrellas — or name a work"
+                 onkeydown="if(event.key==='Enter')doSearch()">
+          <select id="collection"><option value="">All collections</option></select>
+          <button class="btn" onclick="doSearch()">Search</button>
+        </div>
+        <!-- Retrieval is ROUTED, so say so: a named query is answered from the catalog's words,
+             a look query by CLIP over the thumbnail. Users otherwise read a look-miss as "broken". -->
+        <div class="dim" style="margin-top:7px">Naming a work searches the <b>catalog</b>; describing one searches the
+          <b>pictures</b>. Both work — describing is where this beats keyword search.</div>
+        <div id="meta" class="dim" style="margin-top:8px"></div>
+        <div id="grid" class="grid"></div>
+      </div>
+    </div>
+
+    <!-- ===== COLLECTIONS ===== -->
+    <div id="tab-collections" style="display:none">
+      <div class="card">
+        <b>Harvest a collection</b>
+        <div class="dim" style="margin:4px 0 10px">One row per catalog record: identity, rights and a 512px
+          thumbnail. Long by nature — ~900 Art Institute rows take ~25 minutes, and the Met costs an extra
+          request per object — so it runs as a background job.</div>
+        <div class="row">
+          <select id="hsource" onchange="onSourceChange()"></select>
+          <select id="hdept" style="display:none"></select>
+          <input type="text" id="hquery" placeholder="theme (optional)" style="width:200px">
+          <input type="number" id="hlimit" value="200" min="1" step="50" style="width:100px" title="rows to INDEX">
+          <button class="btn" id="hbtn" onclick="startHarvest()">Harvest</button>
+        </div>
+        <div class="dim" id="hrights" style="margin-top:7px"></div>
+        <div class="log" id="hlog" style="display:none"></div>
+      </div>
+
+      <div class="card">
+        <b>Harvested collections</b>
+        <div class="dim" style="margin:4px 0 8px">Rights are asserted per collection and are sticky — a later
+          pass that knows nothing about them cannot overwrite them.</div>
+        <table id="ctable"><thead><tr>
+          <th>Collection</th><th>Indexed</th><th>Captioned</th><th>Rights</th><th>Last crawled</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <!-- ===== COVERAGE ===== -->
+    <div id="tab-coverage" style="display:none">
+      <div class="card">
+        <b>What this library actually knows</b>
+        <div class="dim" style="margin:4px 0 10px">Every harvested row carries the institution's own catalog prose.
+          A <i>caption</i> is different — a model reading the picture — and it is spent on demand, never in bulk,
+          so the percentage below is usually small by design. Catalog prose deliberately does not count toward it:
+          counting it would report an entirely un-captioned collection as complete.</div>
+        <div id="cov"></div>
+        <div class="row" style="margin-top:12px">
+          <select id="capcoll"><option value="">All collections</option></select>
+          <input type="number" id="caplimit" value="25" min="1" step="25" style="width:100px">
+          <button class="btn ghost" id="capbtn" onclick="startCaption()">Caption a batch</button>
+          <span class="dim">a model description + re-index, bounded to this many rows</span>
+        </div>
+        <div class="log" id="caplog" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var $ = function (s) { return document.querySelector(s); };
+    function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+    function showTab(t){
+      document.querySelectorAll(".tab").forEach(function(x){ x.classList.toggle("on", x.dataset.tab===t); });
+      ["search","collections","coverage"].forEach(function(n){
+        $("#tab-"+n).style.display = (n===t) ? "block" : "none";
+      });
+      if (t==="collections" || t==="coverage") loadCollections();
+    }
+
+    // ---- search ------------------------------------------------------------------
+    function tile(r){
+      var sc = (r.score != null) ? '<span class="score">'+r.score.toFixed(3)+'</span>' : '';
+      var who = [r.creator, r.date_text].filter(Boolean).map(esc).join(" · ");
+      var badges = '<span class="badge">'+esc(r.license||"license?")+'</span>'
+        + (r.wikidata_qid ? '<span class="badge qid" title="linked to Wikidata">'+esc(r.wikidata_qid)+'</span>' : '')
+        + (r.captioned ? '<span class="badge cap" title="a model has described this picture">captioned</span>' : '');
+      return '<div class="tile" data-id="'+r.id+'">'
+        + '<div class="imgwrap">'+sc+'<a href="'+esc(r.raw)+'" target="_blank" rel="noopener">'
+        +   '<img loading="lazy" src="'+esc(r.raw)+'" alt=""></a></div>'
+        + '<div class="body"><div class="ttl">'+esc(r.title||"(untitled)")+'</div>'
+        +   (who ? '<div class="who">'+who+'</div>' : '')
+        +   '<div class="who">'+esc(r.institution||r.source||"")+'</div>'
+        +   '<div class="badges">'+badges+'</div>'
+        +   '<div class="actions">'
+        +     (r.source_url ? '<a class="dim" href="'+esc(r.source_url)+'" target="_blank" rel="noopener">source ↗</a>' : '<span></span>')
+        +     '<button class="btn mini fetchbtn" data-id="'+r.id+'" title="Download the real image into the Picture Library">Fetch</button>'
+        +   '</div>'
+        + '</div></div>';
+    }
+
+    function doSearch(){
+      var q = $("#q").value.trim();
+      var cid = $("#collection").value;
+      $("#meta").textContent = "Loading…";
+      // ONE owner for row-level search: `/api/images/discover` acts on catalog rows, so it lives
+      // with the other row endpoints rather than being duplicated under this page's namespace.
+      fetch("/api/images/discover?scope=global&q="+encodeURIComponent(q)+(cid?("&collection_id="+cid):""))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var res = d.results || [];
+          $("#grid").innerHTML = res.map(tile).join("")
+            || '<div class="dim">Nothing indexed yet — harvest a collection first.</div>';
+          var st = d.stats || {};
+          $("#meta").innerHTML = res.length + (q ? " result(s) for “"+esc(q)+"”" : " newest")
+            + ' · <span class="dim">'+(st.discovery||0)+" indexed, "+(st.described_pct||0)
+            + "% captioned, "+(st.held||0)+" held</span>";
+        })
+        .catch(function(e){ $("#meta").textContent = "Error: "+e.message; });
+    }
+
+    // Fetch = promote_to_held. The row leaves this tier, so re-run the search after.
+    $("#grid").addEventListener("click", function(ev){
+      var b = ev.target.closest && ev.target.closest(".fetchbtn");
+      if (!b) return;
+      ev.preventDefault();
+      b.disabled = true; b.textContent = "Fetching…";
+      fetch("/api/images/"+b.dataset.id+"/fetch", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body: JSON.stringify({scope:"global"})})
+        .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+        .then(function(res){
+          if (!res.ok){ alert("Fetch refused: "+(res.d.detail||"unknown")); b.disabled=false; b.textContent="Fetch"; return; }
+          b.textContent = res.d.promoted ? "Held ✓" : "Already held";
+          setTimeout(doSearch, 600);
+        })
+        .catch(function(e){ alert("Fetch failed: "+e.message); b.disabled=false; b.textContent="Fetch"; });
+    });
+
+    // ---- collections + harvest ---------------------------------------------------
+    var SOURCES = [];
+    function loadSources(){
+      return fetch("/api/visuallib/sources").then(function(r){ return r.json(); }).then(function(d){
+        SOURCES = d.sources || [];
+        $("#hsource").innerHTML = SOURCES.map(function(s){
+          return '<option value="'+esc(s.id)+'">'+esc(s.id)+" — "+esc(s.title)+"</option>"; }).join("");
+        onSourceChange();
+      });
+    }
+    function onSourceChange(){
+      var s = SOURCES.filter(function(x){ return x.id === $("#hsource").value; })[0];
+      if (!s) return;
+      $("#hrights").textContent = "Rights: " + (s.rights || "?");
+      var dep = $("#hdept");
+      if ((s.departments||[]).length){
+        dep.style.display = "";
+        dep.innerHTML = '<option value="">All departments</option>'
+          + s.departments.map(function(x){ return '<option value="'+esc(x)+'">'+esc(x)+"</option>"; }).join("");
+      } else { dep.style.display = "none"; dep.innerHTML = ""; }
+    }
+
+    function loadCollections(){
+      fetch("/api/visuallib/collections").then(function(r){ return r.json(); }).then(function(d){
+        var cols = d.collections || [];
+        $("#ctable").querySelector("tbody").innerHTML = cols.length ? cols.map(function(c){
+          return "<tr><td><b>"+esc(c.title)+"</b><div class='dim'>"+esc(c.slug)+"</div></td>"
+            + "<td>"+c.indexed+"</td>"
+            + "<td>"+c.described+" <span class='dim'>("+c.described_pct+"%)</span></td>"
+            + "<td class='dim'>"+esc(c.rights||"?")+"</td>"
+            + "<td class='dim'>"+esc((c.last_crawled||"never").replace("T"," ").slice(0,16))+"</td></tr>";
+        }).join("") : "<tr><td colspan='5' class='dim'>Nothing harvested yet.</td></tr>";
+
+        var opts = '<option value="">All collections</option>' + cols.map(function(c){
+          return '<option value="'+c.id+'">'+esc(c.title)+"</option>"; }).join("");
+        ["#collection", "#capcoll"].forEach(function(sel){
+          var el = $(sel), keep = el.value; el.innerHTML = opts; el.value = keep;
+        });
+
+        var st = d.stats || {};
+        $("#cov").innerHTML = '<div class="row" style="gap:18px">'
+          + '<div><div class="dim">indexed (not held)</div><b style="font-size:19px">'+(st.discovery||0)+"</b></div>"
+          + '<div><div class="dim">captioned</div><b style="font-size:19px">'+(st.described||0)+"</b> "
+          +   '<span class="dim">('+(st.described_pct||0)+"%)</span></div>"
+          + '<div><div class="dim">held (Picture Library)</div><b style="font-size:19px">'+(st.held||0)+"</b></div>"
+          + "</div>"
+          + cols.map(function(c){
+              return '<div style="margin-top:10px"><div class="row" style="justify-content:space-between">'
+                + "<span>"+esc(c.title)+"</span><span class='dim'>"+c.described+"/"+c.indexed+" captioned</span></div>"
+                + '<div class="bar"><i style="width:'+(c.described_pct||0)+'%"></i></div></div>';
+            }).join("");
+      });
+    }
+
+    // ---- jobs --------------------------------------------------------------------
+    function pollJob(jobId, logEl, btnEl, btnLabel, onDone){
+      logEl.style.display = "block";
+      var t = setInterval(function(){
+        fetch("/api/jobs/"+jobId).then(function(r){ return r.json(); }).then(function(j){
+          logEl.textContent = (j.message || j.status || "") + "\n"
+            + ((j.log || []).slice(-14).join("\n"));
+          if (j.status === "completed" || j.status === "failed"){
+            clearInterval(t);
+            btnEl.disabled = false; btnEl.textContent = btnLabel;
+            if (j.status === "failed") logEl.textContent += "\nFAILED: " + (j.error || "");
+            else if (j.result && j.result.summary) logEl.textContent += "\n" + j.result.summary;
+            if (onDone) onDone();
+          }
+        }).catch(function(){ clearInterval(t); btnEl.disabled = false; btnEl.textContent = btnLabel; });
+      }, 2000);
+    }
+
+    function startHarvest(){
+      var b = $("#hbtn"); b.disabled = true; b.textContent = "Harvesting…";
+      fetch("/api/visuallib/harvest", {method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({source: $("#hsource").value, dept: $("#hdept").value || null,
+                              query: $("#hquery").value.trim() || null,
+                              limit: parseInt($("#hlimit").value || "200", 10)})})
+        .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+        .then(function(res){
+          if (!res.ok){ alert("Harvest refused: "+(res.d.detail||"unknown")); b.disabled=false; b.textContent="Harvest"; return; }
+          pollJob(res.d.job_id, $("#hlog"), b, "Harvest", loadCollections);
+        })
+        .catch(function(e){ alert("Harvest failed: "+e.message); b.disabled=false; b.textContent="Harvest"; });
+    }
+
+    function startCaption(){
+      var b = $("#capbtn"); b.disabled = true; b.textContent = "Captioning…";
+      fetch("/api/visuallib/caption", {method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({limit: parseInt($("#caplimit").value || "25", 10),
+                              collection_id: $("#capcoll").value || null})})
+        .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+        .then(function(res){
+          if (!res.ok){ alert("Caption refused: "+(res.d.detail||"unknown")); b.disabled=false; b.textContent="Caption a batch"; return; }
+          pollJob(res.d.job_id, $("#caplog"), b, "Caption a batch", loadCollections);
+        })
+        .catch(function(e){ alert("Caption failed: "+e.message); b.disabled=false; b.textContent="Caption a batch"; });
+    }
+
+    // A query carried over from the Picture Library's bridge link lands pre-filled and run.
+    var _q = new URLSearchParams(location.search).get("q");
+    if (_q) $("#q").value = _q;
+    loadSources().then(loadCollections).then(doSearch);
+  </script>
+</body>
+</html>

@@ -4,6 +4,44 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## Visual Lib gets its own page — and a bounded crawl that tried to unbound itself (2026-07-26)
+
+The not-held tier had a CLI and a `held=0` column and no surface. It now has `/visual-lib`
+(`webui/routes/visual_lib.py` + `templates/visual_lib.html`), a SEPARATE page rather than a tab on
+`/images` — the same call the transcript library made against `/library`, and for the same reason:
+the two tiers answer different questions with different verbs. `/images` curates what we HOLD
+(cutout, reject, shortlist, promote-to-global); this page FINDS what we don't (search a
+catalog-scale index, browse collections, harvest more, fetch the bytes when a beat earns one). The
+first attempt DID fold them together, and the toolbar told on it — "license contains" and "scope"
+acting on one tier while cutout/reject acted on the other, two grammars in one control strip.
+`/images` keeps a query-carrying bridge link where the tier dropdown was; Fetch is the edge back.
+
+Three tabs: **Search** (routed query, each card carrying its score, institution, sticky rights, a
+QID badge where the source handed one over), **Collections** (harvest form + per-collection
+coverage), **Coverage** (what the library actually knows, plus the bounded T2 caption batch —
+stating that catalog prose does not count as a caption, so a 0%-captioned collection reads as 0%).
+Harvest and caption run as background jobs with progress (`operations.harvest_visual_lib` /
+`caption_visual_lib`; ~900 Art Institute rows measured at ~25 minutes) and their summaries report
+what was REFUSED and what ERRORED alongside what landed.
+
+Ownership splits by RESOURCE, not by page: row-level ops stay in `routes/images_extract`
+(`/api/images/discover`, which gained `collection_id` and now returns `wikidata_qid`); tier-level
+ops are new resources in `routes/visual_lib` (`/api/visuallib/{sources,collections,harvest,
+caption}`). The source and department pickers are served from `harvest.SOURCES` /
+`MET_DEPARTMENTS` rather than hand-listed in the template — a menu copied by hand is the menu that
+rots — and `tests/test_hub_images.py` asserts the picker EQUALS the registry, so a new adapter
+appears in the form the moment it is registered and a removed one cannot linger as a dead button.
+
+**The bug the new test caught**, which is the module's own thesis turned on itself: `int(body.get
+("limit") or 200)` reads an explicit `0` as absent, so a caller asking for NOTHING would silently
+get a 200-row crawl. Both endpoints now parse bounds through `_bounded_limit` — absent means the
+default, present means honoured or refused with a 400. This tier's whole claim is that a bounded
+crawl reports what it dropped; a bound that quietly widens itself is the same lie one layer up.
+
+Verified against the real 1,091-row global catalog (Art Institute 841 + Met 250) in a browser, not
+just a test client: "a dark stormy seascape" returns Renoir's *Seascape* at 0.894 over Boudin,
+Manet and Dupré, every card rights-annotated, all three tabs live.
+
 ## Visual Lib — the picture library learns to index what it does NOT hold (2026-07-26)
 
 The transcript library indexes what other people's videos SAY without downloading them. This is the

@@ -111,7 +111,7 @@ def register(app, ctx):
 
     @app.get("/api/images/discover")
     async def api_images_discover(q: str = "", scope: str = "global", project: str = None,
-                                  k: int = 24):
+                                  k: int = 24, collection_id: int = None):
         """Search the NOT-HELD tier (Visual Lib). A hit is a POINTER, not a file — its `raw`
         serves the 512px thumbnail we do hold, and `fetch` is what pulls the real image."""
         import asyncio as _asyncio
@@ -119,18 +119,21 @@ def register(app, ctx):
         def _do():
             lib = _open_imagelib(scope, project)
             if q.strip():
-                rows = [(h.asset, h.score) for h in lib.search_discovery(q, k=k)]
+                rows = [(h.asset, h.score) for h in
+                        lib.search_discovery(q, k=k, collection_id=collection_id)]
             else:
-                rows = [(a, None) for a in lib.catalog.list(status="active", held=0, limit=k)]
+                rows = [(a, None) for a in lib.catalog.list(status="active", held=0, limit=k,
+                                                            collection_id=collection_id)]
             out = []
             for a, score in rows:
                 d = _img_dict(a, score, scope, project)
                 d.update({"held": 0, "source_ref": a.source_ref, "creator": a.creator,
                           "date_text": a.date_text, "institution": a.institution,
+                          "wikidata_qid": a.wikidata_qid,
                           "captioned": bool(a.description_source
                                             and a.description_source != "catalog")})
                 out.append(d)
-            return {"results": out, "stats": lib.discovery_stats(),
+            return {"results": out, "stats": lib.discovery_stats(collection_id=collection_id),
                     "collections": [c.to_dict() for c in lib.catalog.list_collections()]}
 
         return await _asyncio.to_thread(_do)

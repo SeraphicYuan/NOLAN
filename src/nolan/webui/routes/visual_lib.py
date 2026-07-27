@@ -1,0 +1,112 @@
+"""Visual Lib routes — the not-held picture tier's own surface (skills/lab/visual-library.md).
+
+A SEPARATE page from /images on purpose, and for the reason the transcript library is separate
+from /library: the two tiers answer different questions with different verbs. /images curates what
+we HOLD (cutout, reject, shortlist, promote-to-global); this page FINDS what we don't (search a
+catalog-scale index, browse collections, harvest more, fetch the bytes when a beat earns one).
+Folding them into one toolbar produced two grammars in one control strip — "license contains" and
+"scope" applying to one tier while cutout/reject applied to the other.
+
+Split of ownership with `routes.images_extract`, deliberately by RESOURCE rather than by page:
+  • row-level ops act on catalog rows and stay there — `/api/images/discover`, `/api/images/{id}/fetch`
+  • tier-level ops are new resources and live here — sources, collections, harvest, caption
+
+The source and department pickers are served FROM THE REGISTRY (`harvest.SOURCES`,
+`harvest.MET_DEPARTMENTS`), never hand-listed in the template: a catalog an agent or a UI copies
+by hand is the catalog that rots (WIRING_CHECKLIST pitfall #5).
+"""
+from fastapi import Body, HTTPException
+from fastapi.responses import HTMLResponse
+
+
+def _bounded_limit(raw, *, default):
+    """Parse a batch bound. `or default` would be wrong here: an explicit 0 is falsy, so a caller
+    asking for NOTHING would silently get the default batch — a bounded crawl unbounding itself,
+    the exact failure this tier reports against. Absent means default; present means honoured or
+    refused."""
+    if raw is None or raw == "":
+        return default
+    try:
+        limit = int(raw)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="limit must be a number")
+    if limit < 1:
+        raise HTTPException(status_code=400, detail="limit must be >= 1")
+    return limit
+
+
+def register(app, ctx):
+    templates_dir = ctx.templates_dir
+    job_manager = ctx.job_manager
+
+    def _open(scope, project):
+        from nolan.imagelib import ImageLibrary
+        return ImageLibrary(scope=scope or "global", project=(project or None))
+
+    @app.get("/visual-lib", response_class=HTMLResponse)
+    async def visual_lib_page():
+        tpl = templates_dir / "visual_lib.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>visual_lib.html not found</h1>"
+
+    @app.get("/api/visuallib/sources")
+    async def visuallib_sources():
+        """The harvest registry, as the UI's menu. Derived, so a new adapter appears in the form
+        the moment it is registered and a removed one cannot linger as a dead button."""
+        from nolan.imagelib.harvest import MET_DEPARTMENTS, SOURCES
+        out = []
+        for name, adapter in sorted(SOURCES.items()):
+            col = adapter["collection"]()
+            out.append({"id": name, "title": col.title, "rights": col.rights,
+                        "description": col.description,
+                        "departments": (sorted(MET_DEPARTMENTS.values()) if name == "met" else [])})
+        return {"sources": out}
+
+    @app.get("/api/visuallib/collections")
+    async def visuallib_collections(scope: str = "global", project: str = None):
+        """Every harvested collection with its OWN coverage — the T0 tier, browsable before any
+        member is captioned."""
+        lib = _open(scope, project)
+        out = []
+        for c in lib.catalog.list_collections():
+            st = lib.discovery_stats(collection_id=c.id)
+            d = c.to_dict()
+            d.update({"indexed": st["discovery"], "described": st["described"],
+                      "described_pct": st["described_pct"]})
+            out.append(d)
+        return {"collections": out, "stats": lib.discovery_stats()}
+
+    @app.post("/api/visuallib/harvest")
+    async def visuallib_harvest(body: dict = Body(...)):
+        """Start a harvest. Long by nature (~25 min for 900 artic rows; the Met costs an extra
+        request per object), so it is a background job with progress, not a request."""
+        from nolan.imagelib.harvest import SOURCES
+        from nolan.webui import operations
+        source = (body.get("source") or "").strip()
+        if source not in SOURCES:
+            raise HTTPException(status_code=400,
+                                detail=f"unknown source {source!r} (known: {sorted(SOURCES)})")
+        limit = _bounded_limit(body.get("limit"), default=200)
+        job = job_manager.start(
+            "visuallib-harvest", operations.harvest_visual_lib,
+            meta={"source": source, "limit": limit,
+                  "dept": body.get("dept") or None, "query": body.get("query") or None},
+            source=source, limit=limit, dept=(body.get("dept") or None),
+            query=(body.get("query") or None), scope=body.get("scope", "global"),
+            project=body.get("project") or None)
+        return {"job_id": job.id, "type": "visuallib-harvest"}
+
+    @app.post("/api/visuallib/caption")
+    async def visuallib_caption(body: dict = Body(default={})):
+        """Caption a BOUNDED batch of not-held rows (T2, on demand). Never the whole catalog."""
+        from nolan.webui import operations
+        limit = _bounded_limit(body.get("limit"), default=25)
+        cid = body.get("collection_id")
+        job = job_manager.start(
+            "visuallib-caption", operations.caption_visual_lib,
+            meta={"limit": limit, "collection_id": cid},
+            limit=limit, collection_id=(int(cid) if cid not in (None, "") else None),
+            scope=body.get("scope", "global"), project=body.get("project") or None,
+            provider=body.get("provider") or None)
+        return {"job_id": job.id, "type": "visuallib-caption"}
