@@ -84,7 +84,12 @@ NEGATIVE_CONTROLS = (
     ("neg:sushi", "sushi preparation in a Tokyo restaurant"),
     ("neg:penguins", "penguins on Antarctic sea ice"),
     ("neg:knitting", "close-up of hands knitting a wool scarf"),
-    ("neg:volcano", "lava flowing from an erupting volcano at night"),
+    # WAS "lava flowing from an erupting volcano at night" — the pixel judge caught that one out:
+    # the library really does hold "Volcano No Copyright video | Free volcano Stock Footage", so
+    # every channel that returned it was RIGHT and the control was wrong. A negative control has to
+    # be verified absent, not assumed absent — this one is (`sumo`, `wrestler`, `dohyo` all have
+    # document frequency 0 in the lexical index).
+    ("neg:sumo", "a sumo wrestler entering the dohyo arena"),
 )
 
 
@@ -238,10 +243,33 @@ def cmd_extract(args) -> int:
         sheet.extend(rows)
 
     OUT.mkdir(parents=True, exist_ok=True)
+    # CARRY LABELS FORWARD. Labels are the expensive resource here — a re-extract that wiped them
+    # would make every later phase unaffordable, and adding one arm or one control would silently
+    # cost a whole judging pass. Keyed on (gid, url, start): a candidate that survives re-pooling
+    # keeps its verdict, a new one arrives blank, a vanished one is simply gone.
+    lf = OUT / "labels.jsonl"
+    prior = {}
+    if lf.exists():
+        for line in lf.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                o = json.loads(line)
+                prior[(o["gid"], o["url"], round(float(o["start"]), 1))] = o
+    carried = 0
+    for r in sheet:
+        old = prior.get((r["gid"], r["url"], round(float(r["start"]), 1)))
+        if not old:
+            continue
+        for k in ("relevant", "auto", "judge", "judge_relevant", "judge_reason", "label_clash"):
+            if old.get(k) not in (None, ""):
+                r[k] = old[k]
+        carried += 1
     (OUT / "goldens.json").write_text(json.dumps(goldens, indent=2, ensure_ascii=False), encoding="utf-8")
-    with (OUT / "labels.jsonl").open("w", encoding="utf-8") as fh:
+    with lf.open("w", encoding="utf-8") as fh:
         for r in sheet:
             fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+    if prior:
+        print(f"carried {carried} existing labels forward; "
+              f"{len(sheet) - carried} candidates are new and unlabelled")
     _write_sheet(goldens, sheet)
     print(f"\n{len(goldens)} needs, {len(sheet)} candidates pooled to label")
     print(f"  {OUT / 'labels.jsonl'}   <- set \"relevant\": \"y\" or \"n\"")
@@ -279,6 +307,254 @@ def _write_sheet(goldens, sheet):
                          f"+{r['dur']:.0f}s — **{r['title'][:46]}** — {r['caption'][:96]}")
         lines.append("")
     (OUT / "SHEET.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _still_dir():
+    d = OUT / "stills"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _sample_time(row) -> float:
+    """WHERE in the candidate's range to look — just past its anchor, not the middle.
+
+    The middle seemed obvious and is wrong: on a 12s archive range it landed past a cut, on an
+    intertitle card, while the caption that retrieved the shot described the jewelry at the range's
+    start. Both tiers now anchor at a cut boundary (the frame tier's keyframe, the segment tier's
+    snap), so sampling just after it judges the pixels the retrieval actually matched — and does so
+    by the same rule for both channels, which is the property that matters here.
+    """
+    return float(row["start"]) + min(1.0, max(0.3, float(row["dur"]) / 2.0))
+
+
+def _still_path(row) -> Path:
+    """One still per candidate, named from (url, sampled time) so a re-run reuses what it grabbed.
+
+    Keyed on the SAMPLED time, not the range start: change the sampling rule and the old stills
+    stop being served silently under the new one.
+    """
+    import hashlib
+    h = hashlib.sha1(f"{row['url']}|{_sample_time(row):.2f}".encode()).hexdigest()[:16]
+    return _still_dir() / f"{h}.jpg"
+
+
+def _grab_stills(rows, workers: int = 5) -> int:
+    """A still from each candidate's range (see `_sample_time`), grabbed the SAME way for every channel.
+
+    Not the frame store's stored thumbnails, even though frame-tier candidates already have one:
+    reusing them would judge the frame channel on its own artefacts and the segment channel on
+    freshly-extracted pixels, which is the asymmetry this whole judging pass exists to avoid.
+
+    Grouped BY VIDEO — one URL resolve (a yt_dlp round-trip) plus N cheap input-seeks, instead of
+    one resolve per candidate.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from nolan import clipper
+    by_url = {}
+    for r in rows:
+        if not _still_path(r).exists():
+            by_url.setdefault(r["url"], []).append(r)
+    if not by_url:
+        return 0
+    print(f"grabbing stills for {sum(len(v) for v in by_url.values())} candidates "
+          f"across {len(by_url)} videos ({workers} at a time)")
+    got = [0]
+
+    def _one(url, group):
+        import shutil
+        import tempfile
+        tmp = Path(tempfile.mkdtemp(prefix="evalstill_"))
+        try:
+            times = [_sample_time(r) for r in group]
+            try:
+                clipper.preview_frames(url, times, tmp, kind=clipper.kind_of(url))
+            except Exception as e:
+                print(f"  ! {url[-28:]}: {type(e).__name__}: {e}")
+                return
+            for i, (r, t) in enumerate(zip(group, times)):
+                src = tmp / f"f_{i:02d}_{int(t * 1000)}.jpg"     # preview_frames' naming contract
+                if src.exists() and src.stat().st_size > 500:
+                    shutil.copyfile(src, _still_path(r))
+                    got[0] += 1
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        list(ex.map(lambda kv: _one(*kv), by_url.items()))
+    print(f"  {got[0]} stills grabbed")
+    return got[0]
+
+
+_JUDGE_PROMPT = (
+    'A video editor needs a shot for this beat: "{query}"\n\n'
+    "Would a competent editor cut THIS shot into that beat?\n"
+    "- Judge the SHOT you can see, not the film it came from.\n"
+    "- An era mismatch is a NO even when the subject is right (1990s footage for a 1940s beat).\n"
+    "- A similar-but-different object or place is a NO.\n"
+    "- For an evocative or metaphorical beat, a shot that plausibly EVOKES the idea is a yes.\n"
+    'Reply ONLY JSON: {{"usable": true or false, "reason": "<8 words max>"}}'
+)
+
+
+def _judge_one(prov, row, query):
+    """One still, one beat, one verdict. The candidate's CAPTION IS NEVER SENT.
+
+    That withholding is the point of the whole pass: the frame channel retrieves by BGE similarity
+    over the gemma caption, so a judge reading that caption would score the frame channel with the
+    frame channel's own scoring function and hand back a number that looks like evidence.
+
+    An error returns None, never False — an unreachable API must not become a label, in either
+    direction (a silent `n` would flatter whichever channel proposed fewer candidates).
+    """
+    import asyncio
+
+    from nolan.acquire.shared import downscale_for_vision, parse_vision_json
+    send, tmp = downscale_for_vision(_still_path(row))
+    try:
+        d = parse_vision_json(asyncio.run(prov.describe_image(str(send), _JUDGE_PROMPT.format(query=query))))
+        if d and "usable" in d:
+            return bool(d["usable"]), str(d.get("reason") or "")[:60]
+    except Exception:
+        pass
+    finally:
+        if tmp:
+            tmp.unlink(missing_ok=True)
+    return None
+
+
+def cmd_judge(args) -> int:
+    """Label the pool with a VLM judging PIXELS, then hand back a sample to calibrate it against.
+
+    Stated bias, because it does not disappear by being mentioned: this judge is the same model
+    family that already runs the pipeline's usability cull, so it is not a fully independent
+    referee. It is also weakest exactly where we care most — a VLM can read era from a still but
+    cannot assert "this is THE Kimberley mine" (identity is catalog-derived here, never
+    model-asserted). Treat the named-slice numbers as provisional and the look slice as sound.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    from nolan.config import load_config
+    from nolan.evoke_broll import _vision_config
+    from nolan.vision import create_vision_provider
+
+    gf, lf = OUT / "goldens.json", OUT / "labels.jsonl"
+    if not (gf.exists() and lf.exists()):
+        print("No sheet yet — run `extract` first.")
+        return 1
+    goldens = {g["gid"]: g for g in json.loads(gf.read_text(encoding="utf-8"))}
+    rows = [json.loads(l) for l in lf.read_text(encoding="utf-8").splitlines() if l.strip()]
+
+    todo = [r for r in rows if args.redo or not r.get("judge")]
+    print(f"{len(todo)} of {len(rows)} candidates to judge")
+    _grab_stills(todo, workers=args.still_workers)
+    todo = [r for r in todo if _still_path(r).exists()]
+    print(f"{len(todo)} have a still to judge ({args.workers} vision calls at a time)")
+
+    cfg = load_config()
+    prov = create_vision_provider(_vision_config(cfg))
+    done = [0]
+
+    def _run(r):
+        v = _judge_one(prov, r, goldens[r["gid"]]["query"])
+        done[0] += 1
+        if done[0] % 25 == 0:
+            print(f"  {done[0]}/{len(todo)}", flush=True)
+        if v is None:
+            return
+        r["judge"], r["judge_relevant"], r["judge_reason"] = True, ("y" if v[0] else "n"), v[1]
+
+    with ThreadPoolExecutor(max_workers=args.workers) as ex:
+        list(ex.map(_run, todo))
+
+    # The judge NEVER overwrites a label that was already asserted — the auto-labelled negative
+    # controls stay `n`, and any hand label stays whatever the hand said. Disagreements are
+    # reported instead of silently resolved: that is how we find out a "negative" control the
+    # library actually serves (there is a real penguin in The Galapagos Finches).
+    filled = clash = 0
+    for r in rows:
+        jr = r.get("judge_relevant")
+        if not jr:
+            continue
+        if str(r.get("relevant") or "").strip():
+            if str(r["relevant"]).lower()[:1] != jr:
+                clash += 1
+                r["label_clash"] = True
+            continue
+        r["relevant"], filled = jr, filled + 1
+    judged = [r for r in rows if r.get("judge")]
+    with lf.open("w", encoding="utf-8") as fh:
+        for r in rows:
+            fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+    print(f"\njudged {len(judged)}/{len(rows)} · filled {filled} empty labels · "
+          f"{clash} disagreed with an existing label")
+    if clash:
+        print("  (disagreements are KEPT as `label_clash` — the existing label wins, "
+              "and a clash on a negative control means the control is wrong, not the judge)")
+        for r in rows:
+            if r.get("label_clash"):
+                print(f"   ! {r['gid']}  {r['title'][:40]} @{r['start']:.0f}s — "
+                      f"judge says {r['judge_relevant']}: {r.get('judge_reason', '')}")
+    _write_calibration(goldens, judged, args.calibrate)
+    return 0
+
+
+def _write_calibration(goldens, judged, n: int):
+    """A blind sample for a human to check the judge against — the gate the judge sits behind.
+
+    Deterministic stride rather than a random sample: `Math.random`-style nondeterminism would make
+    a re-run un-comparable, and the stride spreads the sample across projects and slices for free.
+    """
+    if n <= 0 or not judged:
+        return
+    step = max(1, len(judged) // n)
+    sample = judged[::step][:n]
+    lines = ["# Calibration sample — do you agree with the judge?", "",
+             f"{len(sample)} of {len(judged)} judged candidates, taken at a fixed stride so a re-run",
+             "compares like with like. Open each still, decide `y`/`n` yourself, and write it in the",
+             "`you:` slot. The judge's own verdict is deliberately NOT shown — seeing it first would",
+             "anchor you, and agreement measured that way means nothing.", "",
+             "Then: `python -X utf8 scripts/eval_video_retrieval.py calibrate`", ""]
+    rows = []
+    for r in sample:
+        g = goldens[r["gid"]]
+        lines += [f"## {g['query']}",
+                  f"`{_still_path(r).name}` — {r['title'][:52]} @{r['start']:.0f}s +{r['dur']:.0f}s",
+                  f"- still: `{_still_path(r)}`", "- you: ", ""]
+        rows.append({"gid": r["gid"], "url": r["url"], "start": r["start"],
+                     "still": str(_still_path(r)), "you": ""})
+    (OUT / "CALIBRATION.md").write_text("\n".join(lines), encoding="utf-8")
+    with (OUT / "calibration.jsonl").open("w", encoding="utf-8") as fh:
+        for r in rows:
+            fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+    print(f"  calibration sample: {OUT / 'CALIBRATION.md'} ({len(sample)} rows)")
+
+
+def cmd_calibrate(args) -> int:
+    """Agreement between the human sample and the judge — the number that says whether to trust it."""
+    cf, lf = OUT / "calibration.jsonl", OUT / "labels.jsonl"
+    if not cf.exists():
+        print("No calibration sample — run `judge` first.")
+        return 1
+    cal = [json.loads(l) for l in cf.read_text(encoding="utf-8").splitlines() if l.strip()]
+    rows = {(r["url"], round(float(r["start"]), 1)): r
+            for r in (json.loads(l) for l in lf.read_text(encoding="utf-8").splitlines() if l.strip())}
+    done = [c for c in cal if str(c.get("you") or "").lower().startswith(("y", "n"))]
+    if not done:
+        print(f"0 of {len(cal)} calibration rows filled in — nothing to compare yet.")
+        return 1
+    agree = both_y = 0
+    for c in done:
+        r = rows.get((c["url"], round(float(c["start"]), 1))) or {}
+        j, h = str(r.get("judge_relevant") or "")[:1], str(c["you"]).lower()[:1]
+        if not j:
+            continue
+        agree += (j == h)
+        both_y += (h == "y")
+    print(f"judge-vs-human agreement: {100 * agree / len(done):.0f}% on {len(done)} rows "
+          f"({both_y} of them judged usable by you)")
+    print("Below ~80% the judged numbers are indicative only and the named slice should be "
+          "re-labelled by hand.")
+    return 0
 
 
 def cmd_score(args) -> int:
@@ -384,6 +660,14 @@ def main(argv=None) -> int:
     e.add_argument("--per-project", type=int, default=8)
     e.add_argument("--per-channel", type=int, default=5)
     e.set_defaults(fn=cmd_extract)
+    j = sub.add_parser("judge", help="VLM-label the pool on PIXELS (captions withheld)")
+    j.add_argument("--workers", type=int, default=10, help="concurrent vision calls")
+    j.add_argument("--still-workers", type=int, default=5, help="concurrent videos being seeked")
+    j.add_argument("--calibrate", type=int, default=25, help="rows to sample for a human check")
+    j.add_argument("--redo", action="store_true", help="re-judge rows already judged")
+    j.set_defaults(fn=cmd_judge)
+    c = sub.add_parser("calibrate", help="agreement between your sample and the judge")
+    c.set_defaults(fn=cmd_calibrate)
     s = sub.add_parser("score", help="score the labelled sheet")
     s.add_argument("--k", default="1,3,5")
     s.set_defaults(fn=cmd_score)

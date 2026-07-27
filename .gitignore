@@ -152,3 +152,6 @@ render-service/_lab_hyperframes/videos/*/capture/_temporal/
 themes/_samples/
 # per-theme theme books (regenerate: python themes/scripts/gen_theme_books.py)
 themes/_books/
+
+# eval stills are derived from the library on demand (regenerate: eval_video_retrieval.py judge)
+eval/video_retrieval/stills/

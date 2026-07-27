@@ -413,16 +413,8 @@ Leave blank to skip — the scorer reports how much was labelled.
 - [ ] `the-rise-and-fall-of-al-capo` @138s +4s — **The Rise And Fall Of Al Capone – Chicago’s Mos** — A close-up shot shows a person's hands guiding a piece of blue fabric through a sewing machine n
 - [ ] `einstein-and-eddington-2008` @232s +12s — **Einstein and Eddington (2008)** — A close-up shot shows a person's hands interacting with a small, colorful book or booklet.
 
-## _control:neg:volcano — lava flowing from an erupting volcano at night
-*control · video · concrete · look · 8 candidates*
+## _control:neg:sumo — a sumo wrestler entering the dohyo arena
+*control · video · concrete · look · 0 candidates*
 
 > NEGATIVE CONTROL — the library cannot serve this beat, so every row below is pre-labelled `n` and needs no work. An empty list is the CORRECT answer; anything listed is a channel failing to abstain. Flip a row to `y` only if the corpus genuinely holds it.
 
-- [ ] `0691_Yellowstone_National_Pa` @270s +12s — **Yellowstone National Park** — It is a periodically erupting spring the water runs in the from melting snow or rain and when it
-- [ ] `0575_Copper_Mining_and_Smelt` @457s +12s — **Copper: Mining and Smelting** — it by for the first time it becomes hot enough to melt these bonuses reach almost twenty eight h
-- [ ] `watch?v=SXX3MMSpgTs` @0s +5s — **Volcano No Copyright video  | Free volcano Vid** — Volcano No Copyright video  | Free volcano Videos | No copyright video | volcano Stock Footage
-- [ ] `0691_Yellowstone_National_Pa` @304s +10s — **Yellowstone National Park** — The narrator explains the geological process of a periodically erupting spring, such as Emerald 
-- [ ] `255-AD-15` @184s +9s — **Launch of the Saturn 5, 255-AD-15** — A rocket launches from a pad against a dark twilight sky, with bright flames erupting from its b
-- [ ] `0691_Yellowstone_National_Pa` @292s +12s — **Yellowstone National Park** — A black and white view of Emerald Pool, a periodically erupting spring where water meets molten 
-- [ ] `200734_New_York_Worlds_Fair_` @3261s +12s — **New York World's Fair (Part 5)** — A fountain is illuminated with pink and white light against a dark night background, captured on
-- [ ] `0002_Flying_the_Lindbergh_Tr` @804s +12s — **Flying the Lindbergh Trail** — Napoleon became empress of crime. In nineteen to a tragedy stunned the world not feeling we are 

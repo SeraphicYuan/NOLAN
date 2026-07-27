@@ -577,11 +577,11 @@
     "named_hint": false
   },
   {
-    "gid": "_control:neg:volcano",
+    "gid": "_control:neg:sumo",
     "project": "_control",
-    "query": "lava flowing from an erupting volcano at night",
+    "query": "a sumo wrestler entering the dohyo arena",
     "queries": [
-      "lava flowing from an erupting volcano at night"
+      "a sumo wrestler entering the dohyo arena"
     ],
     "origin": "negative",
     "entity_kind": null,
