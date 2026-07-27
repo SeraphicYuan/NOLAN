@@ -304,6 +304,22 @@ cause was the probe harness, whose mount div omitted the `data-composition-id` p
 runtime never scoped the sub-composition's CSS. Reproduce a render the way production assembles it, or
 the render lies to you. (`tests/test_ground_parity.py` keeps the lesson.)
 
+### Found by the v3 end-to-end (the whole essay, 815s, all gates)
+
+24 camera decisions: 19 move, 5 hold, and every hold names a source that really is too small (640x480
+at 3.30x total, 700x494 at 3.07x). The temporal gate flagged 5 static holds and **none of them was a
+camera hold** — they are ungrounded scenes with no ground to move, which is the `relieve`/auto-ground
+job. That is pitfall #7's fix holding under a real run: a deliberate hold is distinguishable from a
+frozen clip.
+
+One defect, in the reporting rather than the pixels: **6 of the 7 pushes carried a "clamped" line
+describing a move working exactly as designed.** Two causes. The note was computed on BOTH keyframes,
+and the opening keyframe of a push sits at ~1.01 where the overscan is half a percent of the frame and
+NO target can be centred — arriving is the entire point of a push. And the threshold was `> 0.5px`, so
+a 2px shortfall counted as a clamp. It now reports the RESTING framing only, and only a miss above
+`MISS_VISIBLE` (2% of the frame). "No silent caps" has a second half: a note that always fires is a
+note nobody reads, the same way a gate that always fails becomes one people skip.
+
 ### Not yet built (named so nobody assumes otherwise)
 
 - `read-along` and `scan-column` resolve their region through the VLM box lane, but nothing yet maps a

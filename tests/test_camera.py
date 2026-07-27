@@ -94,6 +94,27 @@ def test_an_unreachable_target_is_clamped_AND_reported():
     assert any("unreachable" in n or "clamped" in n for n in p["notes"])
 
 
+def test_a_push_that_ARRIVES_reports_nothing():
+    """The other half of "no silent caps": a note that always fires is a note nobody reads.
+
+    On the v3 end-to-end, 6 of 7 pushes carried a clamp line — every one of them describing a move
+    working exactly as designed. Two causes, both fixed: the note was computed on BOTH keyframes, and
+    the opening keyframe of a push sits at ~1.01 where the overscan is half a percent of the frame and
+    no target can be centred (arriving is the whole point of a push); and a `> 0.5px` threshold called
+    a 2px shortfall a clamp. It now reports the RESTING framing, and only a miss the eye could catch.
+    """
+    # the common case: a contrast centroid lands near centre, and the push reaches it
+    for t in ((0.5, 0.5), (0.54, 0.48), (0.47, 0.52), (0.52, 0.53)):
+        assert not camera.plan("push-in", dur=9.0, target=t)["notes"], t
+    # a target the scale genuinely cannot reach still says so
+    assert camera.plan("push-in", dur=9.0, target=(0.62, 0.40))["notes"]
+    # a pull-out RESTS wide, which is where it can least reach — that end is the one that reports
+    assert not camera.plan("pull-out", dur=9.0, target=(0.51, 0.48))["notes"]
+    assert camera.plan("pull-out", dur=9.0, target=(0.05, 0.95))["notes"]
+    # and the scale cap is a different note, never suppressed
+    assert any("cap" in n for n in camera.plan("push-in", dur=90.0, amount=0.9)["notes"])
+
+
 def test_the_box_sets_the_scale_not_the_amplitude_law():
     """A small logo must be pushed into much harder than a half-frame face — that is what a box buys."""
     small = camera.plan("push-to-detail", dur=8.0, box=(0.42, 0.42, 0.08, 0.08))

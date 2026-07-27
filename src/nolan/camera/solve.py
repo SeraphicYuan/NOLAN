@@ -28,6 +28,7 @@ SCALE_CAP = 1.35            # beyond this a 1080p source visibly softens
 MIN_SCALE = 1.01          # never exactly 1.0: at 1.0 a sub-pixel rounding seam can show
 TALL_RATIO = 1.35           # img_h/img_w vs canvas_h/canvas_w beyond which long-axis is the honest pan
 LONG_AXIS_BLEED = 1.01      # a hair wider than the canvas on a long-axis pan — sub-pixel seams only
+MISS_VISIBLE = 0.02         # a framing miss under 2% of the frame is not a miss anyone can see
 
 
 def scale_amplitude(dur: float, lo: float = 0.05, hi: float = 0.16) -> float:
@@ -70,7 +71,7 @@ def solve_push(*, dur: float, target=None, scale_from: float = MIN_SCALE, amount
     if reverse:
         s0, s1 = s1, s0
 
-    def _kf(s):
+    def _kf(s, report: bool):
         # translate so `target` sits at frame centre at scale s, then clamp into the overscan
         tx, ty = (0.5, 0.5) if target is None else (float(target[0]), float(target[1]))
         ox, oy = _overscan(s, w, h)
@@ -78,7 +79,8 @@ def solve_push(*, dur: float, target=None, scale_from: float = MIN_SCALE, amount
         want_y = (0.5 - ty) * h * s
         gx = min(max(want_x, -ox), ox)
         gy = min(max(want_y, -oy), oy)
-        if abs(gx - want_x) > 0.5 or abs(gy - want_y) > 0.5:
+        miss = max(abs(gx - want_x), abs(gy - want_y))
+        if report and miss > MISS_VISIBLE * w:
             # Not a failure: at scale 1.10 the overscan is 5% of the frame, so a target at 0.33 cannot
             # be CENTRED by any amount of translation — the framing is biased as far toward it as the
             # scale affords. Said plainly, because this line lands in every run log.
@@ -87,7 +89,14 @@ def solve_push(*, dur: float, target=None, scale_from: float = MIN_SCALE, amount
                            f"scale {s:.3f} — framing biased toward it, not centred on it")
         return {"scale": round(s, 4), "x": round(gx, 1), "y": round(gy, 1)}
 
-    return {"mode": "cover", "from": _kf(s0), "to": _kf(s1), "clamped": sorted(set(clamped))}
+    # Only the RESTING keyframe reports, and only a miss the eye could catch. Two separate sources of
+    # noise, both seen on the v3 end-to-end, where 6 of 7 pushes carried a clamp line describing a move
+    # working exactly as designed: the other end of a push sits at ~1.01, where the overscan is half a
+    # percent of the frame and NO target can be centred (the point of a push is that it ARRIVES), and a
+    # sub-pixel `> 0.5` threshold called a 2px shortfall a clamp. A note that always fires is how a log
+    # becomes one nobody reads — the same way a gate that always fails becomes one people skip.
+    return {"mode": "cover", "from": _kf(s0, reverse), "to": _kf(s1, not reverse),
+            "clamped": sorted(set(clamped))}
 
 
 def solve_pan(*, dur: float, direction: str = "right", amount: Optional[float] = None,
