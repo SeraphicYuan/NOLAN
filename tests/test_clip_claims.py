@@ -69,7 +69,8 @@ def test_transcript_lib_reads_claims_lazily_not_at_context_build(tmp_path, monke
 
     from nolan.acquire import context as ctx_mod
     src = inspect.getsource(ctx_mod.build_context)
-    body = src[src.index("if want_transcript_lib or want_transcript_frames:"):]
+    # prefix, not the whole line — the gate grows a term each time a tier is added
+    body = src[src.index("if want_transcript_lib or want_transcript_frames"):]
     # BOTH transcript tiers claim ranges, so both must read the ledger per-need. The SHOWN tier
     # (transcript_frames) shares the ledger with the segment tier and the hero pool — a snapshot there
     # would reintroduce the same bug through the new door.

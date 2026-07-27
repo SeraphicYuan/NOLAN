@@ -116,6 +116,7 @@ def gen_style_for(theme: str) -> str:
 
 def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True,
                   want_clips_library=True, want_transcript_lib=True, want_transcript_frames=True,
+                  want_transcript_lexical=False, lexical_min_cover=0.6,
                   clip_lib_max=4, clip_lib_min_sim=0.55,
                   gen_style="Cinematic", clean_transcript_clips=True, project_dir=None) -> Context:
     ctx = Context()
@@ -361,7 +362,7 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
     # materialised by DOWNLOADING JUST ITS RANGE from the source URL (the feedback-2 mechanism) and MARKED
     # with its copyright status (copyright-free stock/PD vs a copyrighted documentary reference) so the pool
     # records provenance. Chains onto search_clips/download (dispatch by c.source), no engine slot needed.
-    if want_transcript_lib or want_transcript_frames:
+    if want_transcript_lib or want_transcript_frames or want_transcript_lexical:
         _tdb = _resolve_clips_db(cfg)
         if _tdb and _tdb.exists():
             try:
@@ -544,10 +545,89 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                                   "similarity": round(float(r.get("score") or 0), 3)}))
                     return out
 
+                def _search_transcript_lexical(need, n):
+                    """The LEXICAL tier: BM25 over segment text + frame captions + the film TITLE.
+
+                    The one retrieval neither dense index can do. Both of those embed prose, so
+                    nothing penalises zero term overlap — which is how "De Beers v. United States
+                    (2004)" retrieved WATERGATE at 0.713, above a genuine diamond hit at 0.704 on
+                    the same run. A named entity is an exact string: `Kimberley` either occurs or it
+                    does not, and the title column (invisible to both dense indexes — one embeds
+                    segment text, the other frame captions) says whether a film is ABOUT it rather
+                    than mentioning it once.
+
+                    It also abstains, which is the part no similarity floor can do. When one
+                    document cannot cover enough of the query's IDF-weighted information, this
+                    returns [] and says so instead of handing back k rows for a beat the library
+                    cannot serve.
+                    """
+                    from nolan import transcript_fts as _fts
+                    queries = [q for q in (need.get("queries") or [need.get("query", "")]) if q][:4]
+                    if not queries:
+                        return []
+                    claims = load_claims(project_dir) if project_dir else []
+                    best, unsupported = {}, []
+                    for q in queries:
+                        sup = _fts.support(q)
+                        if sup["cover"] < lexical_min_cover:
+                            unsupported.append((q, sup))
+                            continue
+                        for rank, r in enumerate(_fts.search(q, k=max(6, n))):
+                            vid = str(r.get("video_id") or "")
+                            url = (r.get("url") or (_tcat.get(vid) or {}).get("url") or "").strip()
+                            if not url.startswith(("http://", "https://")):
+                                continue
+                            key = (vid, round(float(r.get("start") or 0), 1))
+                            if key not in best or rank < best[key][0]:
+                                best[key] = (rank, r, url)
+                    if unsupported and not best:
+                        # no silent caps — an abstain must SAY it abstained, and why
+                        q, sup = unsupported[0]
+                        miss = ", ".join(sup["missing"]) or "no single document covers the query"
+                        print(f"  [acquire] lexical: abstained on {len(unsupported)} quer"
+                              f"{'y' if len(unsupported) == 1 else 'ies'} — cover {sup['cover']:.2f} "
+                              f"< {lexical_min_cover} ({miss})", flush=True)
+                    ranked = sorted(best.values(), key=lambda t: t[0])
+                    out, per_video = [], {}
+                    for i, (rank, r, url) in enumerate(ranked):
+                        if len(out) >= clip_lib_max:
+                            break
+                        vid = str(r.get("video_id") or "")
+                        if per_video.get(vid, 0) >= 2:      # never let one film fill a beat
+                            continue
+                        start = float(r.get("start") or 0)
+                        snap = _tfr.shot_bounds(vid, start)
+                        if snap:
+                            start, dur = snap
+                        else:
+                            start, dur = _clip_window(start, float(r.get("end") or 0), clip_seconds)
+                        if range_is_claimed(claims, url, start, dur):
+                            continue
+                        per_video[vid] = per_video.get(vid, 0) + 1
+                        cfree, kind, channel = _copyright_of(url)
+                        lic = ("public-domain / CC — copyright-free" if cfree
+                               else f"copyrighted — YouTube ({channel})" if channel
+                               else "copyrighted — YouTube")
+                        out.append(Candidate(
+                            ref=f"{url}#{start:.1f}", source="transcript_lexical", modality="video",
+                            path=None,
+                            # bm25 is not on the cosine scale the other tiers report, and mixing the
+                            # two into one sorted list would be meaningless. Rank-derived instead —
+                            # honest about being an ORDER, not a similarity. (Not load-bearing
+                            # either way: the engine recomputes relevance with CLIP on the pixels.)
+                            relevance=round(1.0 / (1.0 + i), 4),
+                            meta={"source": f"transcript_lexical ({kind})", "license": lic,
+                                  "copyright_free": cfree, "kind": kind, "channel": channel,
+                                  "description": str(r.get("text") or "")[:300],
+                                  "matched_title": r.get("title") or "", "lex_tier": r.get("kind"),
+                                  "source_url": str(url), "clip_start": start, "clip_dur": dur,
+                                  "shot_snapped": bool(snap), "bm25": round(float(r.get("score") or 0), 2)}))
+                    return out
+
                 _ts_prev = ctx.search_clips
 
                 def _search_transcript_all(need, n, _p=_ts_prev):
-                    """Segment hits and frame hits INTERLEAVED, not concatenated.
+                    """Every enabled transcript tier, INTERLEAVED, not concatenated.
 
                     Their scores are on different scales (measured on two diamond-v2 beats: frames
                     0.62-0.71, segments 0.67-0.74), so a single sorted list would be meaningless — and
@@ -558,9 +638,12 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                     the engine RECOMPUTES relevance with CLIP on the downloaded frames.)"""
                     prev = (_p(need, n) if _p else [])
                     frames = _search_transcript_frames(need, n) if want_transcript_frames else []
-                    if not frames:
-                        return prev
+                    # NB: this used to `return prev` when the frame tier came back empty, which
+                    # silently took the segment tier down with it — and an empty frame tier is
+                    # exactly the beat where the other tiers are most needed (74 of 253 rows are
+                    # uncaptioned and therefore invisible to frames entirely).
                     segs = _search_transcript_lib(need, n) if want_transcript_lib else []
+                    lex = _search_transcript_lexical(need, n) if want_transcript_lexical else []
                     # CROSS-TIER RANGE DEDUP. Two indexes over one corpus find the same shot from both
                     # sides, and neither tier can see the other's picks: each dedups only within itself,
                     # and the claim ledger is read at SEARCH time but written at DOWNLOAD time (which the
@@ -572,36 +655,39 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                     # two ranges are usually IDENTICAL rather than merely overlapping, so this collapses
                     # exactly; the interval test remains for the uncaptioned videos that have no grid
                     # and therefore still carry `_clip_window`'s flat guess.
-                    fr_ranges = [(str(c.meta.get("source_url") or ""), float(c.meta.get("clip_start", 0)),
-                                  float(c.meta.get("clip_dur", 0))) for c in frames]
-
-                    def _overlaps_a_frame(c):
-                        u = str(c.meta.get("source_url") or "")
-                        s = float(c.meta.get("clip_start", 0))
-                        e = s + float(c.meta.get("clip_dur", 0))
-                        return any(fu == u and s < fs + fd and fs < e for fu, fs, fd in fr_ranges)
-
-                    kept_segs, dropped = [], 0
-                    for c in segs:
-                        if _overlaps_a_frame(c):
-                            dropped += 1
-                            continue
-                        kept_segs.append(c)
+                    # DEDUP by descending authority over the range, which is NOT the weave order
+                    # below: frames go first here because a keyframe's range IS the shot, so when
+                    # two tiers land on one cut the frame's boundaries are the ones to keep.
+                    kept, accepted, dropped = {}, [], 0
+                    for name, cands in (("frames", frames), ("segments", segs), ("lexical", lex)):
+                        keep = []
+                        for c in cands:
+                            u = str(c.meta.get("source_url") or "")
+                            s = float(c.meta.get("clip_start", 0))
+                            e = s + float(c.meta.get("clip_dur", 0))
+                            if any(au == u and s < ae and a_s < e for au, a_s, ae in accepted):
+                                dropped += 1
+                                continue
+                            accepted.append((u, s, e))
+                            keep.append(c)
+                        kept[name] = keep
                     if dropped:                      # no silent cap: say what the dedup removed
-                        print(f"  [acquire] {dropped} segment hit(s) dropped — the frame tier already "
-                              f"holds that shot with its true boundaries", flush=True)
-                    woven, i = [], 0
-                    while i < max(len(kept_segs), len(frames)):
-                        if i < len(kept_segs):
-                            woven.append(kept_segs[i])
-                        if i < len(frames):
-                            woven.append(frames[i])
-                        i += 1
+                        print(f"  [acquire] {dropped} hit(s) dropped — another tier already holds "
+                              f"that shot with its true boundaries", flush=True)
+                    # WEAVE in the shipped order (segments, frames, lexical): each list is already
+                    # ranked internally and their scores are on different scales, so a single sorted
+                    # list would be meaningless and plain concatenation would systematically demote
+                    # whichever tier came second (`c.rank` is assigned by position and feeds the
+                    # score). Round-robin preserves each order and gives no tier a positional edge.
+                    lists = [kept[n] for n in ("segments", "frames", "lexical") if kept.get(n)]
+                    woven = []
+                    for i in range(max((len(l) for l in lists), default=0)):
+                        for l in lists:
+                            if i < len(l):
+                                woven.append(l[i])
                     return prev + woven
 
-                ctx.search_clips = (_search_transcript_all if want_transcript_frames else
-                                    (lambda need, n, _p=_ts_prev:
-                                     (_p(need, n) if _p else []) + _search_transcript_lib(need, n)))
+                ctx.search_clips = _search_transcript_all      # handles any combination of tiers
 
                 # materialise: download JUST the range from the source URL (archive → high-def h.264 derivative
                 # + ffmpeg range; youtube → yt_dlp range). The feedback-2 download-the-range, headless.

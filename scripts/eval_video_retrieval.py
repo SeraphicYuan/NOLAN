@@ -14,10 +14,13 @@ shared judgement. Same labels, no channel advantaged by who proposed the candida
 
   needs     REAL authored needs from `capture/needs.json` across three projects (not paraphrases
             written by the retrieval author — this is the one bias the image eval could not avoid)
-  channels  segments-only · frames-only · both (the shipped interleave), each run through the
-            SHIPPED `build_context(...).search_clips` path, never a re-implementation of it
-  metric    success@k — did ANY usable shot appear in the top k? That is the real question for a
-            beat (you need one good clip, not all of them), and it is robust to a partial pool.
+  channels  segments-only · frames-only · lexical-only (BM25) · both (the shipped interleave) ·
+            all3, each run through the SHIPPED `build_context(...).search_clips` path, never a
+            re-implementation of it
+  metrics   success@k    did ANY usable shot appear in the top k? The right question for a beat
+                         (you need one good clip, not all of them) and robust to a partial pool.
+            precision@1  was the FIRST pick usable? The one that matches what we actually ship.
+            abstain      on beats the library cannot serve, did the channel return NOTHING?
 
 Honest about its own bias (read before quoting numbers):
   * Labels judge only what the channels PROPOSED. A shot no channel retrieved is invisible here, so
@@ -55,11 +58,15 @@ OUT = REPO / "eval" / "video_retrieval"
 #   openai    — contemporary tech, a subject the library barely holds (the ABSTAIN case)
 PROJECTS = ("the-diamond-illusion-v2", "homer-hf", "the-openai-debate")
 
-CHANNELS = {                      # name -> (want_transcript_lib, want_transcript_frames)
-    "segments": (True, False),
-    "frames": (False, True),
-    "both": (True, True),
+CHANNELS = {                      # name -> the build_context tier switches it turns on
+    "segments": {"want_transcript_lib": True},
+    "frames": {"want_transcript_frames": True},
+    "lexical": {"want_transcript_lexical": True},
+    "both": {"want_transcript_lib": True, "want_transcript_frames": True},   # today's shipped path
+    "all3": {"want_transcript_lib": True, "want_transcript_frames": True,
+             "want_transcript_lexical": True},
 }
+_TIERS = ("want_transcript_lib", "want_transcript_frames", "want_transcript_lexical")
 
 # NEGATIVE CONTROLS — beats this library cannot possibly serve.
 #
@@ -178,10 +185,10 @@ def cmd_extract(args) -> int:
           f"({100 * captioned / max(1, len(cat)):.0f}% reachable by the frame tier)")
 
     ctxs = {}
-    for name, (seg, frm) in CHANNELS.items():
+    for name, tiers in CHANNELS.items():
         ctxs[name] = build_context(cfg, want_stock=False, want_library=False, want_clip=False,
                                    want_gen=False, want_clips_library=False,
-                                   want_transcript_lib=seg, want_transcript_frames=frm)
+                                   **{t: tiers.get(t, False) for t in _TIERS})
 
     goldens, sheet = [], []
     for project in PROJECTS:
@@ -299,8 +306,8 @@ def cmd_score(args) -> int:
               "  key assets": lambda g: g.get("origin") == "key_asset",
               "evocative": lambda g: g["evocative"] and g.get("origin") != "negative",
               "concrete": lambda g: not g["evocative"] and g.get("origin") != "negative"}
-    print(f"\n{'slice':<12}{'n':>4}  " + "  ".join(f"{c:>22}" for c in CHANNELS))
-    print(f"{'':16}  " + "  ".join(f"{'  '.join(f's@{k}' for k in ks):>22}" for _ in CHANNELS))
+    print(f"\n{'slice':<12}{'n':>4}  " + " ".join(f"{c:>17}" for c in CHANNELS))
+    print(f"{'':16}  " + " ".join(f"{'  '.join(f's@{k}' for k in ks):>17}" for _ in CHANNELS))
     for sname, keep in slices.items():
         gids = [g for g in done_gids if keep(goldens[g])]
         if not gids:
@@ -315,8 +322,8 @@ def cmd_score(args) -> int:
                 for k in ks:
                     if any(int(r["ranks"][cname]) < k for r in rel):
                         hits[k] += 1
-            cells.append("  ".join(f"{100 * hits[k] / len(gids):5.1f}" for k in ks))
-        print(f"{sname:<12}{len(gids):>4}  " + "  ".join(f"{c:>22}" for c in cells))
+            cells.append(" ".join(f"{100 * hits[k] / len(gids):4.0f}" for k in ks))
+        print(f"{sname:<12}{len(gids):>4}  " + " ".join(f"{c:>17}" for c in cells))
     print("\nsuccess@k = % of needs where at least one USABLE shot appeared in that channel's top k")
 
     # ---- precision@1 -------------------------------------------------------------------------
@@ -324,7 +331,7 @@ def cmd_score(args) -> int:
     # is blind to what we actually ship: the FIRST pick. A channel that puts junk at rank 0 and a
     # hit at rank 4 scores identically at k=5 to one that gets it right first time. p@1 is the
     # metric this program optimises, because a wrong pick becomes a shot in the video.
-    print(f"\n{'slice':<12}{'n':>4}  " + "  ".join(f"{c + ' p@1':>14}" for c in CHANNELS))
+    print(f"\n{'slice':<12}{'n':>4}  " + " ".join(f"{c + ' p@1':>13}" for c in CHANNELS))
     for sname, keep in slices.items():
         gids = [g for g in done_gids if keep(goldens[g])]
         if not gids:
@@ -340,8 +347,8 @@ def cmd_score(args) -> int:
                 top += 1
                 if str(first[0]["relevant"]).lower().startswith("y"):
                     hit += 1
-            cells.append(f"{100 * hit / top:5.1f} (n={top})" if top else "     — (n=0)")
-        print(f"{sname:<12}{len(gids):>4}  " + "  ".join(f"{c:>14}" for c in cells))
+            cells.append(f"{100 * hit / top:4.0f} (n={top})" if top else "   — (n=0)")
+        print(f"{sname:<12}{len(gids):>4}  " + " ".join(f"{c:>13}" for c in cells))
     print("p@1 = % of needs whose TOP pick was usable; n = needs where that channel picked at all")
 
     # ---- abstain on the negative controls ----------------------------------------------------
@@ -349,7 +356,7 @@ def cmd_score(args) -> int:
         by_gid = {}
         for r in rows:
             by_gid.setdefault(r["gid"], []).append(r)
-        print(f"\n{'ABSTAIN':<12}{len(neg_gids):>4}  " + "  ".join(f"{c:>14}" for c in CHANNELS))
+        print(f"\n{'ABSTAIN':<12}{len(neg_gids):>4}  " + " ".join(f"{c:>13}" for c in CHANNELS))
         cells, mean = [], []
         for cname in CHANNELS:
             quiet, total = 0, 0
@@ -360,8 +367,8 @@ def cmd_score(args) -> int:
                     quiet += 1
             cells.append(f"{100 * quiet / len(neg_gids):5.1f}%")
             mean.append(f"{total / len(neg_gids):5.2f}")
-        print(f"{'  silent':<12}{'':>4}  " + "  ".join(f"{c:>14}" for c in cells))
-        print(f"{'  junk/need':<12}{'':>4}  " + "  ".join(f"{c:>14}" for c in mean))
+        print(f"{'  silent':<12}{'':>4}  " + " ".join(f"{c:>13}" for c in cells))
+        print(f"{'  junk/need':<12}{'':>4}  " + " ".join(f"{c:>13}" for c in mean))
         print("silent = % of impossible beats the channel correctly returned NOTHING for.\n"
               "junk/need = mean candidates returned for a beat with no true answer (each one is a\n"
               "download we would pay for). Both are the numbers that expire as the library grows.")

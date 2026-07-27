@@ -206,3 +206,77 @@ def test_the_two_tiers_do_not_pull_the_same_shot_twice(monkeypatch, tmp_path):
         f"the same shot was pulled twice: {by_src}"
     # …and a NON-overlapping segment from the same film is untouched (this is a dedup, not a tier kill)
     assert any(s == "transcript_lib" and t < 200 for s, t in by_src), f"over-culled: {by_src}"
+
+
+# --- the LEXICAL tier ---------------------------------------------------------------------------
+
+def _wire3(monkeypatch, tmp_path, *, seg_hits=(), frame_hits=(), grid=None, cat=None,
+           lex_rows=(), lex_cover=1.0, **kw):
+    """build_context with any combination of the three transcript tiers, all stubbed."""
+    from nolan.acquire import context as C
+    from nolan import transcript_frames as tfr
+    from nolan import transcript_fts as fts
+    from nolan import transcript_lib as tl
+    import nolan.indexer as _ix, nolan.vector_search as _vsm
+    db = tmp_path / "c.db"; db.write_bytes(b"")
+    monkeypatch.setattr(C, "_resolve_clips_db", lambda cfg: db)
+    monkeypatch.setattr(_ix, "VideoIndex", lambda p: type("I", (), {"footage_video_ids": lambda s: set()})())
+    monkeypatch.setattr(_vsm, "VectorSearch",
+                        lambda **k: type("V", (), {"search": lambda s, **kw2: list(seg_hits)})())
+    monkeypatch.setattr(tl, "load_catalog", lambda *a, **k: cat or {})
+    monkeypatch.setattr(tl, "copyright_free_ids", lambda *a, **k: set())
+    monkeypatch.setattr(tfr, "visual_search", lambda q, n=24, **k: list(frame_hits))
+    monkeypatch.setattr(tfr, "shot_grid", lambda base_dir=None: grid or {})
+    monkeypatch.setattr(fts, "search", lambda q, k=12, **kw2: list(lex_rows))
+    monkeypatch.setattr(fts, "support", lambda q, **kw2: {
+        "cover": lex_cover, "corpus_cover": lex_cover, "missing": [] if lex_cover >= 1 else ["kimberley"],
+        "df": {}, "tokens": ["q"], "best": None})
+    return C.build_context(type("Cfg", (), {"clip_seconds": 30})(), want_stock=False, want_library=False,
+                           want_clip=False, want_gen=False, want_clips_library=False, **kw)
+
+
+_URL = "https://www.youtube.com/watch?v=v1"
+_CAT = {"v1": {"url": _URL, "kind": "youtube", "channel": "c", "frames": 3, "title": "T"}}
+_LEX = [{"kind": "frame", "video_id": "v1", "url": _URL, "start": 42.0, "end": 42.0,
+         "title": "The Real Reason We Buy Diamonds", "text": "a portrait of Cecil Rhodes",
+         "score": 25.5}]
+
+
+def test_the_lexical_tier_reaches_the_pool(monkeypatch, tmp_path):
+    """The retrieval neither dense index can do: a named entity is an exact string, and the film
+    TITLE (invisible to both — one embeds segment text, the other frame captions) says whether a
+    film is ABOUT it. Measured on the real library, 'Cecil Rhodes' returns the frame that IS the
+    portrait; keyassets Tier B, which asks the dense index, has delivered zero heroes in its life."""
+    ctx = _wire3(monkeypatch, tmp_path, cat=_CAT, lex_rows=_LEX,
+                 grid={"v1": [42.0, 50.0]}, want_transcript_lib=False,
+                 want_transcript_frames=False, want_transcript_lexical=True)
+    out = ctx.search_clips({"query": "Cecil Rhodes", "queries": ["Cecil Rhodes"]}, 4)
+    assert [c.source for c in out] == ["transcript_lexical"]
+    assert out[0].meta["clip_start"] == 42.0 and out[0].meta["clip_dur"] == 8.0   # snapped to the shot
+
+
+def test_the_lexical_tier_abstains_when_the_corpus_cannot_cover_the_query(monkeypatch, tmp_path):
+    """THE property no similarity floor can provide. A k-nearest index returns k rows for any query
+    however wrong — the shipped path answers an impossible beat with a mean of 4.75 candidates and
+    never once abstains. Low IDF-weighted cover means nothing to find, so spend nothing."""
+    ctx = _wire3(monkeypatch, tmp_path, cat=_CAT, lex_rows=_LEX, lex_cover=0.3,
+                 grid={"v1": [42.0, 50.0]}, want_transcript_lib=False,
+                 want_transcript_frames=False, want_transcript_lexical=True)
+    assert ctx.search_clips({"query": "Lightbox Jewelry", "queries": ["Lightbox Jewelry"]}, 4) == []
+
+
+def test_an_empty_frame_tier_does_not_take_the_other_tiers_down_with_it(monkeypatch, tmp_path):
+    """REGRESSION. `_search_transcript_all` returned early when the frame tier came back empty,
+    which silently dropped the segment tier too — and an empty frame tier is exactly the beat where
+    the others are most needed (74 of 253 library rows are uncaptioned, so frames cannot see them
+    at all)."""
+    class _Hit:
+        def __init__(self):
+            self.video_id, self.video_path, self.score = 7, _URL, 0.7
+            self.timestamp_start, self.timestamp_end = 100.0, 140.0
+            self.description = self.transcript = "said something"
+    ctx = _wire3(monkeypatch, tmp_path, cat=_CAT, seg_hits=[_Hit()], frame_hits=[], grid={},
+                 want_transcript_lib=True, want_transcript_frames=True,
+                 want_transcript_lexical=False, clip_lib_min_sim=0.55)
+    out = ctx.search_clips({"query": "q", "queries": ["q"]}, 4)
+    assert [c.source for c in out] == ["transcript_lib"], f"the segment tier was lost: {out}"

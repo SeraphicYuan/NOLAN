@@ -4,6 +4,74 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The video retrieval program — a lexical channel, a shot grid, and an abstain rate (2026-07-27)
+
+Wiring the transcript library into acquisition opened two doors at once: rich searchable
+descriptions of what a video SAYS and what each shot SHOWS (material no stock API sells and no
+keyword query reaches), and a k-nearest index that returns k rows for ANY query however wrong.
+This program keeps the first and contains the second. Plan, measurements and the rejected options
+in `docs/VIDEO_RETRIEVAL_PROGRAM.md`.
+
+The finding that shapes everything: **wrong answers outrank right ones across queries.** Re-run
+against today's 253-row library, "1975/2004 US Court Proceedings" retrieves Watergate at 0.713 —
+above a genuine diamond-machinery hit at 0.704 on the same run. No threshold separates those, so
+no threshold is the fix. keyassets Tier B, which is built on that retrieval, has delivered **0**
+heroes across 22 entities / 63 resolved files.
+
+**P0 — the eval can now ask the only question that matters.** Four beats the library cannot serve
+(sushi, penguins, knitting, volcano) are a permanent fixture; they need no labels, because the
+ground truth is that nothing is relevant. Plus precision@1, which success@k is blind to: a channel
+that puts junk at rank 0 and a hit at rank 4 scores identically at k=5 to one that gets it right
+first time, and rank 0 is what we ship.
+
+**P1 — the lexical channel** (`transcript_fts.py`, `nolan sync-lexical` / `lexical-search`). A
+derived FTS5 index over BOTH tiers in one schema — 20,496 rows (3,512 segments + 16,984 frame
+captions) across all 253 videos, nothing dropped. Title is its own weighted column: the identity
+signal NEITHER dense index sees, since one embeds segment text and the other frame captions.
+"Cecil Rhodes" now returns the frame at 42s that IS the portrait of Cecil Rhodes.
+
+The abstain signal took two corrections, both found by running it. "Zero rows" is too weak — OR
+semantics means one common token matches, so "sushi preparation in a Tokyo restaurant" returned
+three confident rows off `restaurant` and `preparation` in a 1940s hotel-staffing film. Corpus-wide
+term coverage is also too weak and worse because it looks right: "hands knitting a wool scarf"
+scored 1.000 against a library holding no knitting, because knit/wool/scarf each appear in three
+unrelated films. So support is measured PER DOCUMENT and weighted by IDF. Spread on the real
+corpus: named 0.35-1.00, look 0.59-1.00, negatives 0.29-0.62. The two entities Tier B was built for
+and fails on now report as absent BEFORE a byte is spent — "Lightbox Jewelry" 0.35 (missing:
+lightbox), "GE Diamond Synthesis" 0.42. Unlike a similarity floor this does not expire as the
+library grows: it asks whether terms occur, not how large a cosine got.
+
+**P2 — both tiers now speak in SHOTS.** The frame tier trimmed a real shot (keyframe -> next cut)
+while the segment tier took a flat 5s from an arbitrary point in a window that can run 45s — which
+is why they downloaded the same shot twice and why fusing their scores was never well-defined.
+`transcript_frames.shot_bounds` is now shared and applied to segment hits too (grid: 178 videos /
+16,984 keyframes, median 44 per video). It declines rather than guessing in two cases — before the
+first cut (snapping would TELEPORT a hit elsewhere in the film) and on the 74 uncaptioned rows —
+and the caller reports how many kept the guess.
+
+**Measured, on the negative controls** (the baseline every later phase must beat):
+
+| channel | silent on an impossible beat | candidates returned |
+|---|---|---|
+| segments | 25% | 2.00 |
+| frames | 0% | 3.75 |
+| **lexical** | **75%** | **1.00** |
+| both (shipped) | 0% | 4.75 |
+| all three | 0% | 4.75 |
+
+The lexical tier is the first channel that can say nothing. Note the last row: adding it to the
+weave does NOT fix the shipped path, because the other tiers still fire — an abstain has to be a
+GATE, not one voice in a round-robin. That is the routing phase, and it is now an eval question
+rather than an argument.
+
+Also fixed, found while generalising the weave: `_search_transcript_all` returned early when the
+frame tier came back empty, silently taking the segment tier down with it — and an empty frame
+tier is exactly the beat where the other tiers are most needed.
+
+Next: judge the pooled candidates on PIXELS with captions withheld (the frame channel retrieves by
+BGE-over-caption, so a caption-reading judge would score it with its own scoring function), then
+the pairwise rerank rung, routing, and the Tier B rework.
+
 ## Visual Lib gets its own page — and a bounded crawl that tried to unbound itself (2026-07-26)
 
 The not-held tier had a CLI and a `held=0` column and no surface. It now has `/visual-lib`
