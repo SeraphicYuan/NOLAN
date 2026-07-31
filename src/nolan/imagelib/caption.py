@@ -266,6 +266,24 @@ def spanning_sample(assets, n: int = 12) -> List[Any]:
     return out
 
 
+def _terms(value: str) -> List[str]:
+    """Split a comma list into terms, dropping the conjunction an LLM writes before the last one.
+
+    Observed live: asked for a palette, the model answered "slate blue, charcoal, ochre, and pale
+    cream", and a plain comma split stored a term literally called **"and pale cream"** — which
+    then inherited to every un-captioned row in the collection through `effective_description`.
+    """
+    out = []
+    for part in (value or "").split(","):
+        t = part.strip().lower()
+        for lead in ("and ", "or ", "& "):
+            if t.startswith(lead):
+                t = t[len(lead):].strip()
+        if t:
+            out.append(t)
+    return out
+
+
 def consensus(caps: List[Dict[str, Any]], *, top: int = 6) -> Dict[str, Any]:
     """Fold a spanning sample of captions into a collection's VISUAL DIALECT.
 
@@ -288,12 +306,10 @@ def consensus(caps: List[Dict[str, Any]], *, top: int = 6) -> Dict[str, Any]:
             continue
         for s in c.get("subjects") or []:
             subj[s.strip().lower()] += 1
-        for m in (c.get("mood") or "").split(","):
-            if m.strip():
-                moods[m.strip().lower()] += 1
-        for p in (c.get("palette_words") or "").split(","):
-            if p.strip():
-                palette[p.strip().lower()] += 1
+        for m in _terms(c.get("mood") or ""):
+            moods[m] += 1
+        for p in _terms(c.get("palette_words") or ""):
+            palette[p] += 1
         kinds[c.get("human_presence") or "none"] += 1
     return {
         "n": len([c for c in caps if c]),

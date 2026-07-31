@@ -815,6 +815,89 @@ def test_a_row_already_at_this_schema_is_not_recaptioned(lib):
 
 # --- collection dialect + read-time inheritance -----------------------------------------------
 
+def test_dialect_terms_drop_the_conjunction():
+    """REGRESSION, observed live. Asked for a palette the model wrote "slate blue, charcoal,
+    ochre, and pale cream", and a plain comma split stored a term called "and pale cream" — which
+    then inherited to every un-captioned row in the collection."""
+    from nolan.imagelib.caption import consensus, dialect_text
+    caps = [{"palette_words": "slate blue, charcoal, ochre, and pale cream",
+             "mood": "quiet, still, and austere", "subjects": []}] * 2
+    d = consensus(caps)
+    assert "pale cream" in d["palette_words"]
+    assert not any(t.startswith("and ") for t in d["palette_words"]), d["palette_words"]
+    assert not any(t.startswith("and ") for t in d["mood"]), d["mood"]
+    assert "and " not in dialect_text(d).replace("; ", "|")[:0] + ""
+
+
+# --- batched identity indexing ---------------------------------------------------------------
+
+def test_batching_is_invisible_to_a_reader(lib):
+    """A write-side optimisation must not change what a read sees: a row indexed a moment ago has
+    to be findable now, whether during a 56k crawl or a single add."""
+    lib.add_discovery(source_ref="artic:1", thumb_url="https://e/1.jpg", source="artic",
+                      title="A Stone Bridge at Dusk", creator="Someone", license="CC0",
+                      pixels=False)
+    assert lib._ident_buf, "the single add should have BUFFERED, not written"
+    hits = lib.search_discovery("stone bridge", k=5)
+    assert any(h.asset.source_ref == "artic:1" for h in hits), "read did not flush the buffer"
+    assert not lib._ident_buf
+
+
+def test_flush_is_batched_not_per_row(lib, monkeypatch):
+    """The whole point: one BGE forward pass per batch instead of one per row."""
+    calls = []
+    real = lib._disc_ident_coll
+
+    class _Spy:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def upsert(self, ids, documents, metadatas):
+            calls.append(len(ids))
+            return self.inner.upsert(ids=ids, documents=documents, metadatas=metadatas)
+
+        def __getattr__(self, k):
+            return getattr(self.inner, k)
+
+    monkeypatch.setattr(lib, "_disc_ident_coll", lambda: _Spy(real()))
+    for i in range(10):
+        lib.add_discovery(source_ref=f"artic:{i}", thumb_url=f"https://e/{i}.jpg",
+                          source="artic", title=f"row {i}", license="CC0", pixels=False)
+    assert calls == [], "ten adds should not have written ten times"
+    n = lib.flush_index()
+    assert n == 10 and calls == [10], f"expected ONE upsert of 10, got {calls}"
+
+
+def test_reindex_repairs_a_row_missing_from_the_index(lib):
+    """Batching makes a gap possible (a hard kill between the SQLite write and the flush), and a
+    re-crawl cannot close it — a refresh with unchanged identity skips re-embedding by design."""
+    lib.add_discovery(source_ref="artic:1", thumb_url="https://e/1.jpg", source="artic",
+                      title="Indexed Properly", license="CC0", pixels=False)
+    lib.flush_index()
+    # simulate the crash: the row is in SQLite, its embedding never made it out of memory
+    lib.add_discovery(source_ref="artic:2", thumb_url="https://e/2.jpg", source="artic",
+                      title="Lost In The Buffer", license="CC0", pixels=False)
+    lib._ident_buf.clear()
+
+    res = lib.reindex_identity()
+    assert res["missing"] == 1 and res["indexed"] == 1, res
+    hits = lib.search_discovery("Lost In The Buffer", k=5)
+    assert any(h.asset.source_ref == "artic:2" for h in hits)
+
+    assert lib.reindex_identity()["missing"] == 0, "a second run must find nothing to repair"
+
+
+def test_the_crawl_cursor_never_runs_ahead_of_the_index():
+    """If the cursor advanced past buffered rows, a resume would never revisit them AND a refresh
+    would never re-embed them — a permanent hole in identity search."""
+    from nolan.imagelib.harvest import harvest
+    src = inspect_source(harvest)
+    body = src[src.index("def _persist_cursor"):]
+    flush = body.index("flush_index")
+    upsert = body.index("upsert_collection")
+    assert flush < upsert, "flush_index() must run BEFORE the cursor is persisted"
+
+
 def test_spanning_sample_covers_kinds_not_the_corpus_skew():
     """A proportional sample of a 60%-painting corpus says almost nothing about the coins,
     textiles and object photography that carry every hard case."""

@@ -909,6 +909,12 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
             report.note(f"ignoring unreadable cursor {collection.cursor!r}")
 
     def _persist_cursor() -> None:
+        # FLUSH FIRST, ALWAYS. The identity index is batched, so rows can be in SQLite while
+        # their embeddings are still buffered. Advancing the cursor past them would mean a resume
+        # never revisits them AND a refresh never re-embeds them (unchanged identity skips the
+        # work by design) — a permanent hole in identity search. Flushing here makes the cursor
+        # unable to run ahead of the index.
+        lib.flush_index()
         if report.cursor is None or not adapter.resumable:
             return
         lib.upsert_collection(Collection(
@@ -976,6 +982,7 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
             report.note(f"upstream count unavailable: {type(e).__name__}: {e}")
     report.upstream_count = upstream
 
+    lib.flush_index()                       # nothing may be left buffered when a crawl returns
     indexed = lib.catalog.count("active", held=0, collection_id=collection.id)
     if upstream:
         report.note(f"coverage: {indexed} of {upstream} upstream "
@@ -1060,6 +1067,7 @@ def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int]
         done += 1
         if progress:
             progress(done, limit)
+    library.flush_index()
     return done
 
 

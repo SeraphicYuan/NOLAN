@@ -114,6 +114,43 @@ GOLDEN = [
     ("Self-Portrait",
      "a bearded man in a straw hat staring out of the frame in short jabbed strokes",
      "Van Gogh Self-Portrait"),
+
+    # --- ADDED 2026-07-31, after the full crawl showed what the corpus actually IS ---------
+    #
+    # The set above was written against an 841-row sample and is almost entirely European and
+    # American PAINTING. The completed harvest is 56,724 rows and **42.9% prints** (largely
+    # Japanese ukiyo-e — Hiroshige alone has 1,509 works) against **7.5% paintings**. The old
+    # skew was an artifact of the depth-capped `search` endpoint relevance-ranking toward famous
+    # pictures; the uncapped bulk listing shows the real distribution.
+    #
+    # So the instrument was measuring one corner of the library. These needs cover the kinds that
+    # actually dominate it. Every title below was verified present in the live corpus before
+    # being added — a golden entry that is merely plausible measures nothing.
+    ("Under the Wave off Kanagawa",
+     "a towering breaking wave with claw-like foam curling over small boats, snow-capped peak "
+     "far behind",
+     "Hokusai Under the Wave off Kanagawa Great Wave"),
+    ("Sudden Shower over Shin Ohashi Bridge",
+     "figures hurrying across a wooden bridge under slanting lines of rain",
+     "Hiroshige Sudden Shower over Shin-Ohashi Bridge and Atake"),
+    ("Mitsuke",
+     "travellers poling flat ferries across a wide shallow river in mist",
+     "Hiroshige Mitsuke Ferries Crossing the Tenryu River"),
+    ("Melencolia I",
+     "a brooding winged figure seated among scattered geometric instruments and a sleeping dog",
+     "Durer Melencolia I"),
+    ("Knight, Death, and the Devil",
+     "an armoured rider on horseback passing a skeletal figure in a dark ravine",
+     "Durer Knight Death and the Devil"),
+    ("Courthouse Steps",
+     "a quilt built from concentric strips of fabric forming square blocks",
+     "Log Cabin Quilt Courthouse Steps Variation"),
+    ("Plum Vase",
+     "a pale celadon vase inlaid with flying cranes among clouds",
+     "Plum Vase Maebyeong with Clouds Cranes and Children"),
+    ("Reliquary Monstrance in the form of a Church",
+     "a gilded shrine built like a miniature gothic church with spires",
+     "Reliquary Monstrance in the form of a Church"),
 ]
 
 
