@@ -4,6 +4,31 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## cleanup gets a matte detector, and the watermark check gets a backstop (2026-07-31)
+
+`hyperframes/cleanup.detect_matte` — the dead-margin detector that did not exist. `detect_logo`
+hunts a persistent corner blob and `detect_captions` hunts a text band; a studio sweep, a paper
+mat or a scanned page edge is neither, so **"A Diamond Is Forever" — a photograph of a 1947 page
+with 7.7% black one side and 11.8% the other, panned across the source's own border — had no
+detector at all.** Measured over the live picture corpus, 22% of rows carry ≥5% dead margin and
+museum coin photography runs 29–32%: not an edge case.
+
+It delegates to `nolan/pixels.py` rather than measuring again, so the crop planner, the gate's
+resolution floor and the discovery crawl all read one implementation. A matte folds into
+`plan_crop`'s existing edge accumulators as just another exclusion, keeping one crop rect and one
+zoom. Stills only — a video's first frame is a poor witness for the whole clip. Full-bleed
+pictures are left alone (a crop for nothing is a zoom for nothing).
+
+`asset_gate.watermark_risk` is the other half of the watermark answer. The synthetic pass scored
+23/24 with zero false positives, but the miss was a white tile at **27% opacity on a pale
+fresco** — nearly invisible at 512px, and a faint watermark is still a RIGHTS signal even when it
+is not a pixel problem. So provenance now speaks: an institution serving its own open-access
+derivative is `trusted` (absence of detection is meaningful), anything scraped or unknown is
+`suspect` and a file that got no vision check is FLAGGED rather than passing silently. A flag,
+not a refusal — this is a caveat, not a verdict.
+
+Full suite: 2,281 passed, 5 skipped, 0 failed.
+
 ## On-demand pixels — and the embed, not the network, is the floor (2026-07-31)
 
 `search_discovery(warm=True)` fetches pixels for the rows on the page a human is about to look

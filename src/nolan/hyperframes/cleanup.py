@@ -210,12 +210,55 @@ def detect_trim(gray, fps: float, total: int, idxs: List[int], auto_max: float =
     return round(t_in, 3), round(t_out, 3), cands
 
 
+# ------------------------------------------------------------------ dead margin (mount / letterbox)
+
+# Below this on every side, the margin is not worth a crop — trimming 1% costs a zoom and buys
+# nothing. Above it, a camera move will visibly travel across the source's own edge.
+_MATTE_MIN = 0.02
+
+
+def detect_matte(path) -> Optional[Dict[str, float]]:
+    """The picture's own dead margin — studio sweep, paper mat, letterbox, scanned page edge.
+
+    THE DEFECT THIS EXISTS FOR: "A Diamond Is Forever" was a photograph of a 1947 page carrying
+    7.7% black on one side and 11.8% on the other, and a long-axis pan travelled across the
+    source's own border. Nothing here detected it, because `detect_logo` hunts a persistent
+    corner blob and `detect_captions` hunts a text band — a mount is neither.
+
+    Measured over the live 1,091-row picture corpus: **22% of rows carry >=5% dead margin on some
+    side**, and museum coin photography runs 29-32%. This is not an edge case.
+
+    Delegates to `nolan.pixels`, which is the ONE implementation of this measurement (the gate's
+    resolution floor and the discovery crawl read the same numbers). Returns the content rect in
+    FRACTIONS, or None when the picture fills its frame.
+    """
+    try:
+        from nolan.pixels import measure
+    except Exception:
+        return None
+    facts = measure(path)
+    if facts is None:
+        return None
+    m = facts.margin
+    if max(m.values()) < _MATTE_MIN:
+        return None
+    return {"left": m["left"], "top": m["top"], "right": m["right"], "bottom": m["bottom"],
+            "content_fraction": facts.content_fraction,
+            "object_on_sweep": facts.object_on_sweep}
+
+
 # ------------------------------------------------------------------ crop planner (keep W×H + aspect)
 
 def plan_crop(ow: int, oh: int, logos: List[Dict], caption: Optional[Dict],
-              margin: float = 0.012) -> Optional[Dict[str, int]]:
+              margin: float = 0.012,
+              matte: Optional[Dict[str, float]] = None) -> Optional[Dict[str, int]]:
     """One same-aspect crop rect (pixels) that CLEARS every exclusion, centred in the cleared area and
-    scaled back to ow×oh by the executor. None when nothing to clear."""
+    scaled back to ow×oh by the executor. None when nothing to clear.
+
+    A `matte` is an exclusion like any other — dead margin on a side is a region the frame must
+    not include — so it folds into the same edge accumulators rather than getting its own code
+    path. That keeps ONE crop rect and one zoom, which is what the executor can express.
+    """
     top = bottom = left = right = 0.0
     for b in logos:                                        # clear each corner logo via its cheaper edge
         cx, cy = b["x"] + b["w"] / 2, b["y"] + b["h"] / 2
@@ -229,6 +272,11 @@ def plan_crop(ow: int, oh: int, logos: List[Dict], caption: Optional[Dict],
             right = max(right, 1 - b["x"]) if cx >= 0.5 else right
     if caption:
         bottom = max(bottom, 1 - caption["top"])
+    if matte:
+        left = max(left, matte.get("left", 0.0))
+        right = max(right, matte.get("right", 0.0))
+        top = max(top, matte.get("top", 0.0))
+        bottom = max(bottom, matte.get("bottom", 0.0))
     if top + bottom + left + right < 1e-6:
         return None
     left, top = left + margin, top + margin
@@ -276,10 +324,13 @@ def analyze(path, confirm: Optional[Callable[[str, Dict], bool]] = None) -> Dict
                     t_out = min(t_out, c["t"])
             else:
                 open_cands.append(c)
-    crop = plan_crop(ow, oh, logos, caption)
+    # Dead margin is measured, never guessed, and only for stills: a video's first frame is a
+    # poor witness for the whole clip, and the letterbox case there is already the encoder's.
+    matte = detect_matte(path) if is_img else None
+    crop = plan_crop(ow, oh, logos, caption, matte=matte)
     zoom = round(ow / crop["w"], 3) if crop else 1.0
     return {"kind": "image" if is_img else "video", "ow": ow, "oh": oh, "fps": round(fps, 3),
-            "dur": round(dur, 3), "logos": logos, "caption": caption,
+            "dur": round(dur, 3), "logos": logos, "caption": caption, "matte": matte,
             "trim_in": round(t_in, 3), "trim_out": round(t_out, 3), "trim_candidates": open_cands,
             "crop": crop, "zoom": zoom,
             "changed": bool(crop) or t_in > 0 or (not is_img and t_out < dur - 1e-3)}

@@ -398,8 +398,31 @@ def content_dims(path) -> Optional[Tuple[int, int]]:
     return facts.effective_dims
 
 
+def watermark_risk(source: Optional[str]) -> str:
+    """How much a WATERMARK claim from this source's own pixels should be trusted.
+
+    The backstop for a measured weakness. A synthetic-watermark pass over 6 images x 3 styles
+    (diagonal tile, corner credit bar, centre stamp) scored 23/24 with zero false positives on
+    clean images — but the single miss was a white tile at 27% opacity on a pale fresco, nearly
+    invisible at 512px. A faint watermark is still a RIGHTS signal even when it is not a pixel
+    problem, so detection alone cannot be the whole answer.
+
+    Provenance is the other half, and it is free:
+
+      'trusted' — an institution serving its own open-access derivative cannot be serving an
+                  agency watermark. Absence of detection is meaningful here.
+      'suspect' — a scraped or unknown source. Absence of detection means only that we did not
+                  see one at thumbnail size; treat it as unproven, not as clean.
+    """
+    src = (source or "").strip().lower()
+    if src in OPEN_ACCESS_SOURCES or src in LICENSED_STOCK_SOURCES:
+        return "trusted"
+    return "suspect"
+
+
 def check_file(path, tier: str = "stock",
-               vision: Optional[Callable[[Path], Optional[bool]]] = None) -> GateVerdict:
+               vision: Optional[Callable[[Path], Optional[bool]]] = None,
+               source: Optional[str] = None) -> GateVerdict:
     """Gate a downloaded image file. Resolution floor → banner heuristic →
     optional vision watermark check (``vision(path) -> True/False/None``;
     None = unavailable, treated as unchecked, flagged).
@@ -437,6 +460,11 @@ def check_file(path, tier: str = "stock",
             v.reasons.append("vision: watermark/logo overlay detected")
         elif verdict is None:
             v.flags.append("watermark-vision-unavailable")
+    elif watermark_risk(source) == "suspect":
+        # No vision check ran and provenance does not vouch for this file. Say so rather than
+        # letting a silent pass read as a clean bill of health — the measured detector miss was a
+        # 27%-opacity tile on a pale fresco, which is exactly the case pixels alone lose.
+        v.flags.append("watermark-unverified-source")
     return v
 
 

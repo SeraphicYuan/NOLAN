@@ -261,6 +261,64 @@ def test_gate_falls_back_to_file_dims_when_measurement_fails(tmp_path):
     assert v.ok is True                              # no size known -> other checks still apply
 
 
+def test_cleanup_detects_the_dead_margin_nothing_else_could(tmp_path):
+    """The "A Diamond Is Forever" defect: a photograph of a 1947 page with 7.7% black on one
+    side and 11.8% on the other, panned across the source's own border. `detect_logo` hunts a
+    corner blob and `detect_captions` hunts a text band — a mount is neither, so there was no
+    detector at all."""
+    import numpy as np
+    from PIL import Image
+    from nolan.hyperframes import cleanup
+
+    W, H = 800, 600
+    canvas = np.zeros((H, W, 3), dtype=np.uint8)          # black page surround
+    canvas[:, 62:800 - 94] = _noise_rgb(800 - 94 - 62, H, seed=41)
+    Image.fromarray(canvas).save(p := tmp_path / "page.png")
+
+    m = cleanup.detect_matte(p)
+    assert m is not None
+    assert m["left"] == pytest.approx(0.077, abs=0.02)
+    assert m["right"] == pytest.approx(0.118, abs=0.02)
+
+    crop = cleanup.plan_crop(W, H, logos=[], caption=None, matte=m)
+    assert crop is not None, "a measured matte must produce a crop"
+    assert crop["x"] > 0 and crop["w"] < W
+
+
+def test_cleanup_leaves_a_full_bleed_picture_alone(tmp_path):
+    """Precision is a shipping requirement for a gate (checklist #11) — cropping a picture that
+    fills its frame would be a zoom for nothing."""
+    from PIL import Image
+    from nolan.hyperframes import cleanup
+    Image.fromarray(_noise_rgb(800, 600, seed=43)).save(p := tmp_path / "full.png")
+    assert cleanup.detect_matte(p) is None
+    assert cleanup.plan_crop(800, 600, logos=[], caption=None, matte=None) is None
+
+
+def test_watermark_backstop_flags_an_unvouched_source():
+    """The detector missed a 27%-opacity tile on a pale fresco. A faint watermark is still a
+    RIGHTS signal, so provenance is the other half of the answer."""
+    from nolan import asset_gate
+    assert asset_gate.watermark_risk("artic") == "trusted"
+    assert asset_gate.watermark_risk("met") == "trusted"
+    assert asset_gate.watermark_risk("pexels") == "trusted"
+    assert asset_gate.watermark_risk("some-scraper") == "suspect"
+    assert asset_gate.watermark_risk(None) == "suspect"
+
+
+def test_an_unvouched_file_with_no_vision_check_is_flagged(tmp_path):
+    from PIL import Image
+    from nolan import asset_gate
+    Image.fromarray(_noise_rgb(1000, 1000, seed=47)).save(p := tmp_path / "x.png")
+
+    v = asset_gate.check_file(p, tier="archival", source="artic")
+    assert v.ok and "watermark-unverified-source" not in v.flags
+
+    v = asset_gate.check_file(p, tier="archival", source="some-scraper")
+    assert v.ok, "a flag is not a refusal — this is a caveat, not a verdict"
+    assert "watermark-unverified-source" in v.flags
+
+
 def test_effective_dims_scales_declared_full_size(tmp_path):
     """The discovery tier's exact case: measure the LOCAL 512px thumbnail, but answer in the
     full image's pixels, which only the catalog knows."""
