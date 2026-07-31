@@ -190,6 +190,7 @@ wasteful, it is the hallucination surface.
 |---|---|---|
 | **catalog record** | free with the crawl | title, creator, date, `medium`, `place`, `classification`, `department`, `culture`, QID, rights |
 | **collection** | free, once | description, rights, era, topics — inherited down |
+| **artist** (`imagelib/artists.py`) | one LLM call **per person**, cached | movement, period, style, typical subjects, palette words |
 | **deterministic CV** (`nolan/pixels.py`) | free, no model | every NUMBER: content box, dead margin, aspect, shape, edge contact, luminance, contrast, saturation, quiet cells |
 | **VLM caption** | one call per row, on demand | what is actually DEPICTED — and nothing else |
 
@@ -198,6 +199,18 @@ style/period/school (artist knowledge) · rights/license (collection, sticky) ·
 origin (catalog) · **any number** (CV) · **any policy** like "is this usable as a backdrop"
 (computed at read time — baking a policy into a caption means changing your mind costs a
 re-caption over 60k rows).
+
+**Artist knowledge is the cheapest win on the list** (`nolan images artists`). Movement and style
+are facts about a PERSON, so asking a vision model per artwork pays N times for one answer.
+Measured on the live corpus: 462 distinct creators over 1,005 attributed rows, and the **top 50
+cover 48% of them — 20.1x**. Monet has 33 works and needs one call. Enrichment is ordered by
+`creator_histogram` (commonest first) so a bounded budget covers the most rows, bounded by CALLS
+not rows, and it never pays twice — including for a **miss**, since "not recognised" is a real
+cacheable answer and re-asking is how a budget gets eaten by the same forty obscure names.
+Nulls stay NULL (a model writing "unknown" into the column destroys the distinction between
+"we asked and it didn't know" and "it knows this is unknown"), and none of it may touch
+`identity_source` — an artist's movement is context about the maker, not a claim about which
+artwork this is.
 
 `image_kind` is **derived**, not asked: `taxonomy.image_kind()` buckets the institution's own
 `classification`/`medium` into a closed vocabulary (painting, print, drawing, photograph,

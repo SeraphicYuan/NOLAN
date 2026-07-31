@@ -31,7 +31,7 @@ import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS assets (
@@ -54,6 +54,33 @@ CREATE TABLE IF NOT EXISTS assets (
 );
 CREATE INDEX IF NOT EXISTS idx_assets_status  ON assets(status);
 CREATE INDEX IF NOT EXISTS idx_assets_source  ON assets(source);
+
+-- ARTIST KNOWLEDGE — the third knowledge source, and the best value on the list.
+--
+-- Movement, period, style and typical palette are facts about a PERSON, not about a picture, so
+-- asking a vision model for them is both wasteful and wrong: it pays per artwork for something
+-- that is true of the artist's whole output, and it invites a confident guess where world
+-- knowledge already has an answer. Monet has ~50 works in a mid-sized harvest and needs ONE
+-- call, not fifty — the saving is the corpus's works-per-artist ratio, and it compounds as the
+-- library grows.
+--
+-- Keyed by a normalised name because that is what catalogs agree on; `wikidata_qid` rides along
+-- when a source hands it over free (the Met dump publishes Artist Wikidata URL on 35% of its
+-- public-domain rows).
+CREATE TABLE IF NOT EXISTS artists (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name_key    TEXT UNIQUE NOT NULL,
+    name        TEXT NOT NULL,
+    wikidata_qid TEXT,
+    movement    TEXT,
+    period      TEXT,
+    style       TEXT,
+    subjects    TEXT,
+    palette     TEXT,
+    note        TEXT,
+    source      TEXT,
+    added_at    TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS collections (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -196,6 +223,62 @@ class Asset:
         discovery row, and the retrieval channel CLIP provably cannot serve for named works."""
         parts = [self.title, self.creator, self.date_text, self.institution, self.description]
         return " | ".join(p.strip() for p in parts if (p or "").strip())
+
+
+def artist_key(name: Optional[str]) -> str:
+    """Normalise a creator string into a join key.
+
+    Catalogs write the same person several ways — "Claude Monet", "Monet, Claude", "Claude Monet
+    (French, 1840-1926)". Without a key the amortisation this table exists for silently fails:
+    fifty works by one painter become fifty artists and fifty LLM calls, which is the exact cost
+    the design was avoiding.
+    """
+    import re as _re
+    s = (name or "").strip()
+    if not s:
+        return ""
+    s = _re.sub(r"\((?:[^()]*)\)", " ", s)          # drop "(French, 1840-1926)"
+    s = _re.sub(r"\b\d{3,4}\s*[-–]\s*\d{0,4}\b", " ", s)   # drop bare life dates
+    if "," in s and s.count(",") == 1:              # "Monet, Claude" -> "Claude Monet"
+        last, first = (p.strip() for p in s.split(","))
+        if last and first and " " not in first.strip().rstrip("."):
+            s = f"{first} {last}"
+    s = _re.sub(r"[^\w\s]", " ", s, flags=_re.UNICODE)
+    s = _re.sub(r"\s+", " ", s).strip().casefold()
+    return s
+
+
+@dataclass
+class Artist:
+    """What is true of a PERSON's whole output — fetched once, spent across every work."""
+    name: str
+    name_key: Optional[str] = None
+    wikidata_qid: Optional[str] = None
+    movement: Optional[str] = None
+    period: Optional[str] = None
+    style: Optional[str] = None
+    subjects: Optional[str] = None
+    palette: Optional[str] = None
+    note: Optional[str] = None
+    source: Optional[str] = None            # the model that asserted it — provenance, always
+    added_at: Optional[str] = None
+    id: Optional[int] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    def context_line(self) -> str:
+        """One sentence a caption pass can be handed as context. Empty when we know nothing —
+        an empty string is honest, a confident-sounding placeholder is not."""
+        bits = [b for b in (self.movement, self.period, self.style) if b]
+        line = f"{self.name}"
+        if bits:
+            line += f" — {'; '.join(bits)}"
+        if self.subjects:
+            line += f". Typical subjects: {self.subjects}"
+        if self.palette:
+            line += f". Palette: {self.palette}"
+        return line if (bits or self.subjects or self.palette) else ""
 
 
 @dataclass
@@ -447,6 +530,84 @@ class AssetCatalog:
             sql += " AND collection_id=?"; params.append(int(collection_id))
         with self._lock:
             return self._conn.execute(sql, params).fetchone()["c"]
+
+    # ------------------------------------------------------------------ artists
+    def upsert_artist(self, a: Artist) -> Artist:
+        """Insert or update by normalised name. Only asserted (non-None) fields overwrite —
+        the same stickiness rule collections have, for the same reason: a later pass that knows
+        less must not erase what an earlier one established."""
+        key = a.name_key or artist_key(a.name)
+        if not key:
+            raise ValueError("upsert_artist needs a name")
+        a.name_key = key
+        prev = self.get_artist(key)
+        now = datetime.now(timezone.utc).isoformat()
+        if prev is None:
+            with self._lock:
+                cur = self._conn.execute(
+                    """INSERT INTO artists (name_key, name, wikidata_qid, movement, period,
+                                            style, subjects, palette, note, source, added_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                    (key, a.name, a.wikidata_qid, a.movement, a.period, a.style,
+                     a.subjects, a.palette, a.note, a.source, a.added_at or now))
+                self._conn.commit()
+            a.id = cur.lastrowid
+            a.added_at = a.added_at or now
+            return a
+        fields = {k: getattr(a, k) for k in
+                  ("name", "wikidata_qid", "movement", "period", "style", "subjects",
+                   "palette", "note", "source")
+                  if getattr(a, k) is not None}
+        if fields:
+            sets = ", ".join(f"{k}=?" for k in fields)
+            with self._lock:
+                self._conn.execute(f"UPDATE artists SET {sets} WHERE name_key=?",
+                                   [*fields.values(), key])
+                self._conn.commit()
+        return self.get_artist(key)
+
+    def get_artist(self, name_or_key: str) -> Optional[Artist]:
+        key = artist_key(name_or_key) or (name_or_key or "").strip()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM artists WHERE name_key=?", (key,)).fetchone()
+        return Artist(**{k: row[k] for k in row.keys()}) if row else None
+
+    def list_artists(self, limit: int = 1000) -> List[Artist]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM artists ORDER BY name LIMIT ?", (limit,)).fetchall()
+        return [Artist(**{k: r[k] for k in r.keys()}) for r in rows]
+
+    def creator_histogram(self, *, held: Optional[int] = 0,
+                          collection_id: Optional[int] = None) -> List[Tuple[str, str, int]]:
+        """(name_key, a display name, work count) for every creator in the tier, commonest first.
+
+        The ordering IS the budget: enriching the top 200 creators of a 60k-row corpus covers far
+        more rows than 200 arbitrary ones, and the histogram is what makes that visible instead
+        of guessed.
+        """
+        sql = ["SELECT creator, COUNT(*) n FROM assets",
+               "WHERE status='active' AND creator IS NOT NULL AND TRIM(creator) <> ''"]
+        args: List[Any] = []
+        if held is not None:
+            sql.append("AND held=?")
+            args.append(int(held))
+        if collection_id is not None:
+            sql.append("AND collection_id=?")
+            args.append(collection_id)
+        sql.append("GROUP BY creator")
+        with self._lock:
+            rows = self._conn.execute(" ".join(sql), args).fetchall()
+        agg: Dict[str, Tuple[str, int]] = {}
+        for r in rows:
+            k = artist_key(r["creator"])
+            if not k:
+                continue
+            name, n = agg.get(k, (r["creator"], 0))
+            agg[k] = (name, n + int(r["n"]))
+        return sorted(((k, v[0], v[1]) for k, v in agg.items()),
+                      key=lambda t: -t[2])
 
     # ------------------------------------------------------------- collections
     def upsert_collection(self, c: Collection) -> Collection:

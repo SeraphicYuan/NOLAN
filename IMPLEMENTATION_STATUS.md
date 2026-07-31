@@ -4,6 +4,32 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## Artist knowledge — one call per person, not per picture (2026-07-31)
+
+Movement, period and style are facts about a PERSON's whole output, so asking a vision model for
+them per artwork pays N times for one answer *and* invites a confident guess where world
+knowledge has a real one. `nolan images artists` spends one LLM call per creator and caches it.
+
+**The leverage is measured, not assumed:** 462 distinct creators over 1,005 attributed rows in the
+live corpus, with the **top 50 covering 48% — 20.1x**. Monet has 33 works and needs one call.
+Enrichment is therefore ordered by `creator_histogram` (commonest first) and bounded by CALLS
+rather than rows, so a small budget covers the most ground. A live run of 4 calls learned 2
+artists covering 87 rows — **43.5 rows per call**.
+
+Three details that are the difference between a cache and a leak. `artist_key` folds the ways a
+catalog writes one name ("Monet, Claude", "Claude Monet (French, 1840-1926)"), because without it
+fifty works become fifty artists and fifty calls — the exact cost being avoided. A **miss is
+cached**: "not recognised" is a real answer, and re-asking every run is how a bounded budget gets
+eaten by the same forty obscure names (the live run refused two anonymous attributions —
+"Ancient Greek", "French (Burgundian?) Painter" — correctly, rather than inventing a movement).
+And nullish answers stay NULL: a model writing "unknown" into the column destroys the distinction
+between "we asked and it didn't know" and "it knows this is unknown".
+
+None of it touches `identity_source`. An artist's movement is context about the maker, never a
+claim about which artwork this is — the same invariant that stops a caption becoming an identity.
+
+Full suite: 2,262 passed, 5 skipped, 0 failed.
+
 ## The catalog tier stops being prose — and image_kind is derived, not asked (2026-07-31)
 
 Every discovery row carried its catalog facts as one comma-joined sentence: *"Oil on canvas,

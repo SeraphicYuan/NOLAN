@@ -280,6 +280,53 @@ def images_fetch(asset_id, scope, project, tier):
                f"({asset.width}x{asset.height}) -> {asset.path}")
 
 
+@images.command('artists')
+@click.option('--limit', '-n', type=int, default=25, help='How many LLM CALLS to spend.')
+@click.option('--min-works', type=int, default=1, help='Skip creators with fewer works than this.')
+@click.option('--collection', '-c', type=int, default=None)
+@click.option('--show', is_flag=True, help='Just list what we already know, spend nothing.')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_artists(limit, min_works, collection, show, scope, project):
+    """Learn movement/period/style per ARTIST — one call each, spent across all their works.
+
+    Bounded by CALLS, not rows: that is the whole point. Creators are enriched commonest-first,
+    so a small budget covers the most rows. Style and movement are never asked of the vision
+    model — they are facts about a person, not about a picture.
+    """
+    import asyncio
+
+    lib = _open_library(scope, project)
+    if show:
+        known = lib.catalog.list_artists()
+        hist = dict((k, n) for k, _, n in lib.catalog.creator_histogram(held=0))
+        if not known:
+            click.echo("nothing learned yet — run without --show")
+            return
+        for a in known:
+            works = hist.get(a.name_key, 0)
+            line = a.context_line() or "(not recognised)"
+            click.echo(f"  {works:>4} works  {line}")
+        click.echo(f"{len(known)} artists known")
+        return
+
+    from nolan.config import load_config
+    from nolan.imagelib.artists import enrich_artists
+    from nolan.llm import create_text_llm
+
+    cfg = load_config()
+    llm = create_text_llm(cfg)
+    model = getattr(llm, "model", "llm")
+    res = asyncio.run(enrich_artists(lib, limit=limit, llm=llm, model=model,
+                                     collection_id=collection, min_works=min_works))
+    for a in res["artists"][:20]:
+        click.echo(f"  {a['works']:>4} works  {a['name']} — "
+                   f"{a['movement'] or '?'} / {a['period'] or '?'}")
+    click.echo(f"{res['called']} calls: {res['learned']} learned, "
+               f"{res['unrecognised']} unrecognised, {res['failed']} failed")
+    click.echo(f"covering {res['rows_covered']} rows — {res['leverage']} rows per call")
+
+
 @images.command('rederive')
 @click.option('--collection', '-c', type=int, default=None, help='Restrict to one collection id.')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')

@@ -524,6 +524,136 @@ def test_backfill_retires_a_row_whose_pixels_fail_the_content_floor(lib, tmp_pat
     assert lib.catalog.get_by_ref("artic:8").status == "rejected"
 
 
+# --- artist world-knowledge: one call per PERSON ---------------------------------------------
+
+def test_artist_key_folds_the_ways_a_catalog_writes_one_name():
+    """Without this the amortisation silently fails: fifty works by one painter become fifty
+    artists and fifty LLM calls, which is the exact cost the table exists to avoid."""
+    from nolan.imagelib.catalog import artist_key
+    k = artist_key("Claude Monet")
+    assert artist_key("Monet, Claude") == k
+    assert artist_key("Claude Monet (French, 1840-1926)") == k
+    assert artist_key("  claude   monet ") == k
+    assert artist_key("Édouard Manet") != k
+    assert artist_key("") == "" and artist_key(None) == ""
+
+
+def test_creator_histogram_orders_by_rows_covered(lib):
+    """The ordering IS the budget — commonest first means a bounded number of calls covers the
+    most rows instead of an arbitrary slice."""
+    for i in range(3):
+        lib.add_discovery(source_ref=f"a:{i}", thumb_url="https://e/x.jpg", source="artic",
+                          title=f"m{i}", creator="Claude Monet", license="CC0", pixels=False)
+    lib.add_discovery(source_ref="a:9", thumb_url="https://e/y.jpg", source="artic",
+                      title="d", creator="Monet, Claude", license="CC0", pixels=False)
+    lib.add_discovery(source_ref="a:8", thumb_url="https://e/z.jpg", source="artic",
+                      title="v", creator="Vincent van Gogh", license="CC0", pixels=False)
+    hist = lib.catalog.creator_histogram(held=0)
+    assert hist[0][2] == 4, "the four Monet spellings must fold into one creator"
+    assert hist[0][0] == artist_key_of("Claude Monet")
+    assert hist[1][2] == 1
+
+
+def artist_key_of(name):
+    from nolan.imagelib.catalog import artist_key
+    return artist_key(name)
+
+
+class _FakeLLM:
+    """Records calls so the test can prove one-per-artist, not one-per-artwork."""
+    model = "fake"
+
+    def __init__(self, reply):
+        self.reply = reply
+        self.prompts = []
+
+    async def generate(self, prompt, system_prompt=None):
+        self.prompts.append(prompt)
+        return self.reply
+
+
+def test_enrichment_costs_one_call_per_artist_not_per_artwork(lib):
+    import asyncio
+    from nolan.imagelib.artists import enrich_artists
+
+    for i in range(5):
+        lib.add_discovery(source_ref=f"a:{i}", thumb_url="https://e/x.jpg", source="artic",
+                          title=f"m{i}", creator="Claude Monet", license="CC0", pixels=False)
+    llm = _FakeLLM('{"recognised": true, "movement": "Impressionism", '
+                   '"period": "late 19th century", "style": "broken colour, plein air", '
+                   '"subjects": "gardens, water, haystacks", "palette": "lilac and green"}')
+    res = asyncio.run(enrich_artists(lib, limit=10, llm=llm, model="fake"))
+
+    assert len(llm.prompts) == 1, "five works by one painter must cost ONE call"
+    assert res["learned"] == 1 and res["rows_covered"] == 5
+    assert res["leverage"] == 5.0
+    a = lib.catalog.get_artist("Claude Monet")
+    assert a.movement == "Impressionism" and a.source == "fake"
+    assert "Impressionism" in a.context_line()
+
+
+def test_enrichment_never_pays_twice_for_the_same_artist(lib):
+    import asyncio
+    from nolan.imagelib.artists import enrich_artists
+
+    lib.add_discovery(source_ref="a:1", thumb_url="https://e/x.jpg", source="artic",
+                      title="m", creator="Claude Monet", license="CC0", pixels=False)
+    llm = _FakeLLM('{"recognised": true, "movement": "Impressionism"}')
+    asyncio.run(enrich_artists(lib, limit=10, llm=llm, model="fake"))
+    asyncio.run(enrich_artists(lib, limit=10, llm=llm, model="fake"))
+    assert len(llm.prompts) == 1, "a known artist must never be re-asked"
+
+
+def test_an_unrecognised_artist_is_cached_as_a_miss(lib):
+    """An unrecognised name is a real, cacheable answer. Re-asking every run is how a bounded
+    budget gets eaten by the same forty obscure names."""
+    import asyncio
+    from nolan.imagelib.artists import enrich_artists
+
+    lib.add_discovery(source_ref="a:1", thumb_url="https://e/x.jpg", source="artic",
+                      title="x", creator="Zorblatt the Unknown", license="CC0", pixels=False)
+    llm = _FakeLLM('{"recognised": false, "movement": null, "period": null, '
+                   '"style": null, "subjects": null, "palette": null}')
+    r1 = asyncio.run(enrich_artists(lib, limit=10, llm=llm, model="fake"))
+    r2 = asyncio.run(enrich_artists(lib, limit=10, llm=llm, model="fake"))
+    assert r1["unrecognised"] == 1 and r2["called"] == 0
+    a = lib.catalog.get_artist("Zorblatt the Unknown")
+    assert a.movement is None and a.note == "not recognised"
+    assert a.context_line() == "", "we know nothing, so the context line must be empty"
+
+
+def test_hedged_and_nullish_answers_stay_null(lib):
+    """A model that writes "unknown" into a text column has made the column useless — you can no
+    longer tell "we asked and it did not know" from "it knows this is unknown"."""
+    import asyncio
+    from nolan.imagelib.artists import enrich_artists
+
+    lib.add_discovery(source_ref="a:1", thumb_url="https://e/x.jpg", source="artic",
+                      title="x", creator="Someone", license="CC0", pixels=False)
+    llm = _FakeLLM('```json\n{"recognised": true, "movement": "unknown", "period": "N/A", '
+                   '"style": "  ", "subjects": "portraits", "palette": "none"}\n```')
+    asyncio.run(enrich_artists(lib, limit=5, llm=llm, model="fake"))
+    a = lib.catalog.get_artist("Someone")
+    assert a.movement is None and a.period is None and a.style is None and a.palette is None
+    assert a.subjects == "portraits", "a real answer still lands"
+
+
+def test_artist_knowledge_never_touches_row_identity(lib):
+    """An artist's movement is context ABOUT the maker, not a claim about WHICH artwork this is.
+    Same invariant that stops a caption becoming an identity."""
+    import asyncio
+    from nolan.imagelib.artists import enrich_artists
+
+    asset, _ = lib.add_discovery(source_ref="a:1", thumb_url="https://e/x.jpg", source="artic",
+                                 title="Water Lilies", creator="Claude Monet", license="CC0",
+                                 pixels=False)
+    before = (asset.identity_source, asset.identity_text())
+    llm = _FakeLLM('{"recognised": true, "movement": "Impressionism", "style": "plein air"}')
+    asyncio.run(enrich_artists(lib, limit=5, llm=llm, model="fake"))
+    after = lib.catalog.get_by_ref("a:1")
+    assert (after.identity_source, after.identity_text()) == before
+
+
 # --- the catalog tier: fields, not prose -----------------------------------------------------
 
 def test_image_kind_is_derived_from_the_sources_own_words():
