@@ -402,16 +402,14 @@ class ImageLibrary:
         # pass. Rows whose source publishes no pixel dimensions (the Met, which publishes
         # physical size) are unaffected — there is nothing to scale.
         if width and height:
+            from nolan.asset_gate import clears_floor
             from nolan.pixels import effective_dims
-            from nolan.asset_gate import FLOORS
             eff = effective_dims(dest, declared=(int(width), int(height)))
-            if eff:
-                min_dim, min_px = FLOORS.get(tier, FLOORS["stock"])
-                if min(eff) < min_dim or eff[0] * eff[1] < min_px:
-                    dest.unlink(missing_ok=True)
-                    raise ValueError(
-                        f"discovery refused (content {eff[0]}x{eff[1]} below the {tier} floor; "
-                        f"declared {width}x{height} is mostly dead margin): {source_ref}")
+            if eff and not clears_floor(eff[0], eff[1], tier):
+                dest.unlink(missing_ok=True)
+                raise ValueError(
+                    f"discovery refused (content {eff[0]}x{eff[1]} below the {tier} floor; "
+                    f"declared {width}x{height} is mostly dead margin): {source_ref}")
 
         rel = str(dest.relative_to(self.base)).replace("\\", "/")
         return self._write_discovery_row(
@@ -603,7 +601,7 @@ class ImageLibrary:
         One implementation for both the batch backfill and the on-demand warm path — the same
         picture must not be admitted by one door and refused by the other.
         """
-        from nolan.asset_gate import FLOORS, OPEN_ACCESS_SOURCES, banner_suspect
+        from nolan.asset_gate import OPEN_ACCESS_SOURCES, banner_suspect, clears_floor
         from nolan.pixels import effective_dims
 
         if asset.source not in OPEN_ACCESS_SOURCES and banner_suspect(dest):
@@ -611,11 +609,9 @@ class ImageLibrary:
             return "watermark banner strip"
         if asset.width and asset.height:
             eff = effective_dims(dest, declared=(int(asset.width), int(asset.height)))
-            if eff:
-                min_dim, min_px = FLOORS.get(tier, FLOORS["stock"])
-                if min(eff) < min_dim or eff[0] * eff[1] < min_px:
-                    dest.unlink(missing_ok=True)
-                    return f"content {eff[0]}x{eff[1]} below the {tier} floor"
+            if eff and not clears_floor(eff[0], eff[1], tier):
+                dest.unlink(missing_ok=True)
+                return f"content {eff[0]}x{eff[1]} below the {tier} floor"
         return None
 
     def backfill_pixels(self, *, limit: int = 200, collection_id: Optional[int] = None,

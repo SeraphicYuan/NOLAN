@@ -295,6 +295,50 @@ def test_cleanup_leaves_a_full_bleed_picture_alone(tmp_path):
     assert cleanup.plan_crop(800, 600, logos=[], caption=None, matte=None) is None
 
 
+def test_high_aspect_content_is_judged_on_pixels_not_short_side():
+    """The short-side rule assumes roughly rectangular content, and a museum corpus is full of
+    things that are legitimately long and thin. Measured on a 500-row backfill: 5 of 6 refusals
+    carried >600k content pixels and failed on the short side alone."""
+    from nolan.asset_gate import clears_floor
+    # real measured content dims from the backfill — all now admitted
+    assert clears_floor(632, 2034, "archival"), "halberd, 1.29M px"
+    assert clears_floor(608, 2250, "archival"), "corsesca, 1.37M px"
+    assert clears_floor(539, 2127, "archival"), "state halberd, 1.15M px"
+    assert clears_floor(2395, 410, "archival"), "basting spoon, 0.98M px"
+
+
+def test_the_waiver_does_not_admit_a_sliver():
+    """A 220px-wide strip is unusable at any length. The short side keeps an absolute floor."""
+    from nolan.asset_gate import clears_floor
+    assert not clears_floor(220, 2118, "archival"), "partisan: 220px short side"
+    assert not clears_floor(100, 9000, "archival"), "0.9M px but 100px wide"
+    assert not clears_floor(350, 900, "archival"), "high aspect but only 0.32M px"
+
+
+def test_the_waiver_only_applies_to_elongated_content():
+    """A near-square image that misses the floor is still refused — the waiver is for shape, not
+    a general loosening."""
+    from nolan.asset_gate import clears_floor
+    assert not clears_floor(659, 1089, "archival"), "aspect 1.65 — not elongated"
+    assert not clears_floor(690, 900, "archival"), "aspect 1.3, misses short side by 10px"
+    assert clears_floor(700, 900, "archival"), "clears on its own merits"
+
+
+def test_one_floor_implementation_for_every_door():
+    """A picture must not be admitted by one door and refused by another (checklist class 4)."""
+    import re
+    from pathlib import Path
+    src_root = Path(__file__).resolve().parents[1] / "src" / "nolan"
+    offenders = []
+    for p in src_root.rglob("*.py"):
+        body = p.read_text(encoding="utf-8", errors="replace")
+        for line in body.splitlines():
+            if re.search(r"min\(\s*\w+\s*,\s*\w+\s*\)\s*<\s*min_dim", line):
+                offenders.append(f"{p.name}: {line.strip()}")
+    assert not offenders, ("the resolution floor is re-implemented outside clears_floor(): "
+                           + "; ".join(offenders))
+
+
 def test_loc_is_no_longer_trusted_wholesale():
     """THE TRAP. `loc` sat in OPEN_ACCESS_SOURCES, so the gate waved through anything from the
     Library of Congress on the strength of the institution's name — but the LoC's rights

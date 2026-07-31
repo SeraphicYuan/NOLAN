@@ -4,6 +4,45 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The library is 91.4% harvested — and the first real eval says "not yet" (2026-07-31)
+
+**Phase A ran to completion.** 132,630 records walked (artic's entire catalog), `exhausted: true`,
+**0 errors**. 55,883 added → **56,724 of 62,035 upstream = 91.4%**, from 1.4%. The arithmetic
+closes: the missing 8.6% is 2,999 public-domain items with no image plus 2,308 gate refusals.
+51.8% of records were not public domain, matching the 48–52% probe the adapter rewrite was based
+on. ~1.4 h at 11.7 rows/sec.
+
+**What the bigger corpus revealed:** the collection is nothing like the 841-row sample suggested.
+It is **42.9% prints** (largely Japanese ukiyo-e — Hiroshige alone has 1,509 works) against **7.5%
+paintings**. The old skew toward famous European paintings was an artifact of the depth-capped
+`search` endpoint relevance-ranking toward them.
+
+**Artist leverage scales with the corpus, as designed:** 20 calls covered **5,509 rows — 344 rows
+per call**, up from 43.5 on the small library.
+
+**The eval, and why it is not yet readable.** Named held: **95.0 / 100 / 100** across a 67× corpus,
+still beating the museum's own keyword search (90/95/95). That is the real result — identity
+retrieval scales. Look dropped to 25.0/40.0/65.0 from 63.2/100/100 — **but only 2.8% of rows have
+pixels**, so the CLIP channel can see 1,576 of 56,959 rows. "clip only = 40/75/85" is not CLIP
+succeeding at scale; it is CLIP searching a 1,576-row corpus, because rows without thumbnails are
+not in that index at all. Reading the look column as "the router is broken" would be the same
+error as the "11 of 12" docstring: a confident conclusion a measurement cannot support. Backfill
+substantially, then re-measure.
+
+**The resolution floor got a high-aspect waiver.** The short-side rule assumes roughly rectangular
+content, and a museum corpus is full of things that are legitimately long and thin. Of six
+inspected content-floor refusals, **five carried >600k content pixels and failed on the short side
+alone** — a halberd at 632x2034 (1.29M px), a corsesca at 608x2250 (1.37M px), a basting spoon.
+Now: when content is elongated (aspect ≥ 2.2) total pixels decide, with the short side keeping an
+absolute floor at half the tier minimum, so a 220px-wide partisan sliver stays refused.
+Characterised both directions — and the interesting finding is that it changes **nothing** at the
+declared-dimensions door (0 of 31 refusals in a 339-row live sample, because a halberd's *file* is
+734x2250 and passes anyway). Its entire effect is at the CONTENT floor, which is exactly where the
+problem was observed. `clears_floor()` is now the one implementation, with a test that fails if
+any module re-implements it.
+
+Full suite: 2,300 passed, 5 skipped, 0 failed.
+
 ## The regions column finally has a producer — and it is a detector (2026-07-31)
 
 `nolan/regions.py` + `ImageLibrary.locate_subjects`. `regions` shipped unpopulated, sat

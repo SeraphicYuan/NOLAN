@@ -145,6 +145,36 @@ FLOORS = {
     "stock": (480, 300_000),
 }
 
+# HIGH-ASPECT WAIVER. The short-side rule assumes roughly rectangular content, and a museum
+# corpus is full of things that are legitimately long and thin — a halberd, a partisan, a basting
+# spoon, a pillar print. Those can NEVER clear a minimum-dimension test however good the
+# photograph, and the test was refusing them while they carried twice the required pixels:
+# measured on a 500-row backfill, 5 of 6 refusals had >600k content pixels and failed on the
+# short side alone (a halberd at 632x2034 = 1.29M px, a corsesca at 608x2250 = 1.37M px).
+#
+# So when content is genuinely elongated, total pixels decide. The short side still has an
+# absolute floor — half the tier's minimum — because a 220px-wide sliver is unusable at any
+# length, and that one (a partisan at 220x2118) stays refused.
+_HIGH_ASPECT = 2.2
+_HIGH_ASPECT_SHORT = 0.5
+
+
+def clears_floor(w: int, h: int, tier: str = "stock") -> bool:
+    """Does this content clear the tier's resolution floor?
+
+    ONE implementation, called by both `check_candidate` (declared dimensions) and `check_file`
+    (measured content) — a picture must not be admitted by one door and refused by the other.
+    """
+    min_dim, min_px = FLOORS.get(tier, FLOORS["stock"])
+    if not w or not h:
+        return True                      # unknown size is not a refusal; other checks still run
+    if w * h < min_px:
+        return False
+    short, long_ = min(w, h), max(w, h)
+    if short >= min_dim:
+        return True
+    return (long_ / short) >= _HIGH_ASPECT and short >= min_dim * _HIGH_ASPECT_SHORT
+
 # --------------------------------------------------------------------------
 # The doors manifest — every acquisition point that must call this gate.
 # tests/test_asset_gate.py greps each named function/module for the calls.
@@ -341,11 +371,9 @@ def check_candidate(result, tier: str = "stock") -> GateVerdict:
 
     w = getattr(result, "width", None) or 0
     h = getattr(result, "height", None) or 0
-    if w and h:
-        min_dim, min_px = FLOORS.get(tier, FLOORS["stock"])
-        if min(w, h) < min_dim or w * h < min_px:
-            v.ok = False
-            v.reasons.append(f"below resolution floor ({w}x{h}, tier={tier})")
+    if w and h and not clears_floor(w, h, tier):
+        v.ok = False
+        v.reasons.append(f"below resolution floor ({w}x{h}, tier={tier})")
     return v
 
 
@@ -481,8 +509,7 @@ def check_file(path, tier: str = "stock",
     size = content_dims(p)
     if size:
         w, h = size
-        min_dim, min_px = FLOORS.get(tier, FLOORS["stock"])
-        if min(w, h) < min_dim or w * h < min_px:
+        if not clears_floor(w, h, tier):
             v.ok = False
             file_size = _probe(p)
             detail = ""
