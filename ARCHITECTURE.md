@@ -121,6 +121,27 @@ for look), and identity fields are catalog-derived, never model-asserted
 doors. Skill: `lab.visual-library`; eval:
 `scripts/eval_visuallib_recall.py`.
 
+**Adapters are crawlers** (`SourceAdapter`): each declares its `enumeration`
+strategy (registry `ENUMERATION` — `bulk-listing` / `search-ranked`, which is
+DEPTH-CAPPED / `bulk-dump` / `per-object` / `curated-collection`), an
+`upstream_count` so coverage is a share and not a bare count, `resumable`
+(cursor on the `collections` row, advanced per ITEM so a crawl may re-walk but
+never skip), `publishes_pixel_dims` and `rights_model`. Shipped: `artic`,
+`met` (bulk CSV → rights filtered offline), `cleveland`. The crawl is
+PHASE-SPLIT — `pixels=False` indexes records at 87 ms/row, `backfill_pixels` /
+`warm_pixels` fetch thumbnails at 470 ms/row concurrently, and
+`discovery_stats` reports `pixels_pct` so a records-only collection cannot
+read as complete.
+
+**Four knowledge sources, and only one is a model** — catalog record
+(`medium`/`classification`/`department`/`culture`/`place`, plus `image_kind`
+derived by `imagelib/taxonomy.py`), collection (rights, era, and a sampled
+visual `dialect_json` inherited at read time), artist (`imagelib/artists.py`,
+ONE LLM call per person), and the VLM caption (`imagelib/caption.py`,
+`caption_json` + versioned `caption_schema`) which may only say what is
+DEPICTED. Every NUMBER comes from `nolan/pixels.py`; every LOCATION from
+`nolan/regions.py`. **The model names, a detector localises.**
+
 ## Motif layer (stateful infographics)
 
 `nolan/motion/motifs.py` — the reference-video "home base" device: ONE
@@ -150,6 +171,15 @@ source/license; metadata resolution floor) and `check_file` post-download
 manifest-listed in `ASSET_GATE_DOORS`, grep-enforced by
 `tests/test_asset_gate.py` (WIRING_CHECKLIST pitfall #8). Rejections are
 loud (logs + `rejected` payloads + CREDITS "WATERMARK SUSPECTS" scan).
+The resolution floor judges **content, not the file** (`nolan/pixels.py` —
+museum object photography is an object on a sweep, so 22% of rows carry ≥5%
+dead margin and coins run 29–32%); it refuses rather than flags, because
+cropping cannot create pixels. `watermark_risk` adds provenance as the
+backstop the detector needs (a 27%-opacity tile on a pale fresco is invisible
+at 512px but is still a rights signal). **Not-uniformly-open institutions are
+not trusted wholesale**: `loc` is out of `OPEN_ACCESS_SOURCES`, and
+`PER_COLLECTION_RIGHTS` / `collection_is_open()` assert rights per curated
+collection, with `None` a real third answer meaning unknown.
 NOTE: clip-search `project_id` scopes the index and must be an id the index
 knows — omit for global search; the project imagelib is discovered from
 `project_path` independently.
