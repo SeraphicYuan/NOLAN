@@ -54,9 +54,27 @@ region at any size on demand — the image is a view, not a file).
 - **T1 shallow item** — what a harvest writes: the source's OWN catalog record (title, creator,
   date, medium, place) + thumbnail + stable id. No model calls. 90% of items live here forever.
 - **T2 captioned item** — `harvest.describe_discovery`, **demand-driven and bounded**. Captioning
-  132k items is not a plan; caption what retrieval or a human surfaced. The collection blurb is
-  passed as context (the same trick that makes video-frame captions entity-aware by feeding them
-  the transcript window).
+  132k items is not a plan; caption what retrieval or a human surfaced. Collection blurb, artist
+  knowledge and classification are passed as context — but never the TITLE, because handing the
+  model the answer makes it describe the title instead of the picture.
+
+  The caption is **structured** (`imagelib/caption.py`, `caption_json` + `caption_schema`), and
+  v1 is what survived measurement: `summary` · `subjects` · `action` · `human_presence` ·
+  `panel_count` · `text_in_image` · `condition` · `mood` · `palette_words` · `uncertain[]`.
+  **Half of v0 died on a 50-row validation** and must not creep back (a test enforces it):
+  `focal_zone` was the centre cell 50/50; `has_border` agreed with pixel measurement 16/50,
+  *worse than chance*; `open_zones` was one of two templates 38 times; `named_content` never
+  once fired; `weather`/`vantage`/`time_of_day` were 78–82% constant. **The model NAMES, a
+  detector LOCALISES, and nothing numeric is ever asked of a model.**
+
+  Two rules on content: **observations, never policies** (no `usable_as` — re-captioning 60k rows
+  is the expensive operation, so a policy baked into a caption costs a re-caption to change), and
+  **a caption is never an identity** (`identity_source` untouched). `description` keeps holding
+  the readable sentence so the BGE channel the eval measured stays unchanged.
+
+  Verified live on real museum thumbnails: a coin came back `panel_count: pair` (the two-faces
+  case v0 missed entirely) with its inscribed Latin correctly `text_in_image: depicted` rather
+  than a watermark, and Van Gogh's *Bedroom* was described without being named.
 
 Knowledge inherits DOWNWARD: an item with no caption still carries its collection's rights, era
 and topic, and that inherited context is what makes a T1 row retrievable at all.

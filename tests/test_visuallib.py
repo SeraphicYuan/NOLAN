@@ -524,6 +524,158 @@ def test_backfill_retires_a_row_whose_pixels_fail_the_content_floor(lib, tmp_pat
     assert lib.catalog.get_by_ref("artic:8").status == "rejected"
 
 
+# --- the structured caption (v1) -------------------------------------------------------------
+
+def test_caption_schema_registry_names_a_consumer_for_every_field():
+    """An authored field with no consumer is this repo's most-repeated bug, so the consumer sits
+    beside the field rather than in a doc that can drift away from it."""
+    from nolan.imagelib.caption import CAPTION_FIELDS
+    for name, spec in CAPTION_FIELDS.items():
+        assert spec.get("consumer"), f"{name}: no consumer"
+        assert spec.get("purpose"), f"{name}: no purpose"
+
+
+def test_the_fields_measurement_killed_are_gone():
+    """v0 had 20 fields; half died on a 50-row validation. They must not creep back:
+    focal_zone was constant 50/50, has_border agreed with pixels 16/50 (worse than chance),
+    open_zones was a template, named_content never once fired."""
+    from nolan.imagelib.caption import CAPTION_FIELDS, PROMPT
+    dead = ("focal_zone", "has_border", "open_zones", "named_content",
+            "weather", "vantage", "time_of_day", "frame_or_mount", "subject_bleed")
+    for f in dead:
+        assert f not in CAPTION_FIELDS, f"{f} was measured and cut — it must not return"
+        assert f not in PROMPT, f"{f} still appears in the prompt"
+
+
+def test_caption_asks_for_no_numbers_and_no_identity():
+    """The model NAMES, a detector LOCALISES. And a caption is never an identity."""
+    from nolan.imagelib.caption import PROMPT
+    low = PROMPT.lower()
+    for banned in ("percent", "pixel", "bounding box", "coordinates", "hex"):
+        assert banned not in low, f"the caption prompt asks for {banned!r} — CV owns numbers"
+    assert "do not name the artwork" in low
+
+
+def test_parse_normalises_enums_to_closed_vocabularies():
+    """A value outside the vocabulary must be coerced, not written through to a consumer that
+    will silently never match it (checklist class 3)."""
+    from nolan.imagelib.caption import parse_caption
+    cap = parse_caption('{"summary": "a bowl", "human_presence": "MANY", '
+                        '"panel_count": "diptych", "text_in_image": "sig", '
+                        '"condition": "mint", "subjects": "a, b, c"}')
+    assert cap["human_presence"] == "none"        # 'MANY' is not in the vocabulary
+    assert cap["panel_count"] == "single"
+    assert cap["text_in_image"] == "none"
+    assert cap["condition"] == "clean"
+    assert cap["subjects"] == ["a", "b", "c"]     # a comma string is accepted as a list
+    assert cap["schema"] == 1
+
+
+def test_free_text_fields_accept_a_string_or_a_list():
+    """REGRESSION, found by looking at live output. Asked for "2-3 adjectives" the same model
+    returned "quiet, rustic, simple" for one image and ["historical", "austere"] for the next;
+    str() would have written the literal ['historical', 'austere'] — brackets and all — into
+    `description`, which is the text BGE embeds."""
+    from nolan.imagelib.caption import caption_text, parse_caption
+    cap = parse_caption('{"summary": "a coin", "mood": ["historical", "austere"], '
+                        '"palette_words": ["silver", "grey"]}')
+    assert cap["mood"] == "historical, austere"
+    assert cap["palette_words"] == "silver, grey"
+    assert "[" not in caption_text(cap) and "'" not in caption_text(cap)
+
+
+def test_parse_survives_code_fences_and_refuses_a_summaryless_caption():
+    from nolan.imagelib.caption import parse_caption
+    assert parse_caption('```json\n{"summary": "a ship"}\n```')["summary"] == "a ship"
+    assert parse_caption('{"subjects": ["x"]}') is None, "no summary means no caption"
+    assert parse_caption("not json at all") is None
+    assert parse_caption("") is None
+
+
+def test_text_in_image_separates_a_signature_from_a_watermark():
+    """The v0 taxonomy scored a coin's inscribed Latin the same as a caption strip. Split, it
+    called van Dyck's signature 'depicted' and a Getty bar 'overlay-watermark'."""
+    from nolan.imagelib.caption import is_watermarked, parse_caption
+    sig = parse_caption('{"summary": "a portrait", "text_in_image": "depicted"}')
+    mark = parse_caption('{"summary": "a portrait", "text_in_image": "overlay-watermark"}')
+    assert is_watermarked(sig) is False
+    assert is_watermarked(mark) is True
+
+
+def test_caption_context_withholds_the_title():
+    """Hand the model the answer and it describes the title instead of the picture."""
+    from nolan.imagelib.caption import build_context
+    ctx = build_context(collection="Art Institute open-access", artist="Claude Monet",
+                        kind="painting")
+    assert "Monet" in ctx and "Art Institute" in ctx and "painting" in ctx
+    assert build_context() == ""
+
+
+def test_caption_lands_beside_identity_never_inside_it(lib, monkeypatch):
+    """The whole tier rests on this: a caption is a reading of the picture, an identity is a
+    claim about WHICH picture it is, and only one may ever be a model's guess."""
+    from PIL import Image
+    import numpy as np
+    from nolan.imagelib.harvest import describe_discovery
+
+    thumb_dir = lib.base / "thumbs" / "aa"
+    thumb_dir.mkdir(parents=True, exist_ok=True)
+    p = thumb_dir / "x.jpg"
+    Image.fromarray(np.random.default_rng(1).integers(
+        0, 255, size=(64, 64, 3), dtype="uint8")).save(p)
+
+    a = lib.catalog.add(Asset(content_hash="ref:x", path="thumbs/aa/x.jpg", held=0,
+                              source_ref="artic:5", title="A Bridge", creator="Someone",
+                              identity_source="catalog", thumb_path="thumbs/aa/x.jpg",
+                              source="artic", status="active"))
+    before = (a.title, a.creator, a.identity_source)
+
+    def fake_describer(path, prompt=None):
+        return ('{"summary": "a stone bridge over a river at dusk", '
+                '"subjects": ["bridge", "river"], "action": "static", '
+                '"human_presence": "none", "panel_count": "single", '
+                '"text_in_image": "none", "condition": "clean", "mood": "calm", '
+                '"palette_words": "slate and umber", "uncertain": []}')
+
+    n = describe_discovery(lib, limit=5, describer=fake_describer, model="fake-vlm")
+    assert n == 1
+    row = lib.catalog.get(a.id)
+    assert (row.title, row.creator, row.identity_source) == before, "identity untouched"
+    assert row.description_source == "fake-vlm"
+    assert row.caption_schema == 1
+    cap = row.caption()
+    assert cap["subjects"] == ["bridge", "river"]
+    assert "stone bridge" in row.description
+
+
+def test_a_row_already_at_this_schema_is_not_recaptioned(lib):
+    """Never pay twice — but an OLDER schema version is a re-caption candidate, which is the
+    entire reason the version integer exists."""
+    from nolan.imagelib.harvest import describe_discovery
+    from PIL import Image
+    import numpy as np
+
+    thumb_dir = lib.base / "thumbs" / "bb"
+    thumb_dir.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(np.random.default_rng(2).integers(
+        0, 255, size=(64, 64, 3), dtype="uint8")).save(thumb_dir / "y.jpg")
+    a = lib.catalog.add(Asset(content_hash="ref:y", path="thumbs/bb/y.jpg", held=0,
+                              source_ref="artic:6", title="T", source="artic",
+                              thumb_path="thumbs/bb/y.jpg", status="active",
+                              description_source="old-vlm", caption_schema=1))
+    calls = []
+
+    def fake(path, prompt=None):
+        calls.append(1)
+        return '{"summary": "x"}'
+
+    assert describe_discovery(lib, limit=5, describer=fake, model="v") == 0
+    assert calls == []
+
+    lib.catalog.update(a.id, caption_schema=0)          # pretend it was captioned at v0
+    assert describe_discovery(lib, limit=5, describer=fake, model="v") == 1
+
+
 # --- artist world-knowledge: one call per PERSON ---------------------------------------------
 
 def test_artist_key_folds_the_ways_a_catalog_writes_one_name():

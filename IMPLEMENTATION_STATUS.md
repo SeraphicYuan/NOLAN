@@ -4,6 +4,40 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The structured caption, v1 — what survived being measured (2026-07-31)
+
+`imagelib/caption.py`, plus `caption_json` and `caption_schema` columns. The one thing a vision
+model is allowed to produce is **what the picture depicts** — justified: 93.2% of caption tokens
+appear nowhere in the catalog record. The catalog says "Trumpet Player, hard-paste porcelain";
+the caption says *a small porcelain figurine of a monkey playing a golden trumpet*.
+
+**v1 is what was left after a 50-row validation killed half of v0**, and a test now stops the dead
+fields creeping back: `focal_zone` returned the centre cell 50/50; `has_border` agreed with pixel
+measurement 16/50, *worse than chance*; `open_zones` was one of two templates 38 times;
+`named_content` never fired once (row 01 *is* Frederick Douglass and it said "Black man" —
+correctly refusing to name, which means the field can never fire); `weather`/`vantage`/
+`time_of_day` were 78–82% constant. Survivors: summary · subjects · action · human_presence ·
+**panel_count** (new) · **text_in_image** (4-way) · condition · mood · palette_words · uncertain[].
+
+Two rules the module enforces. **Observations, never policies** — no `usable_as`, because
+re-captioning 60k rows is the expensive operation and a policy baked into a caption costs a
+re-caption to change; derive it at read time and it is free. **A caption is never an identity** —
+it lands in `caption_json`/`description` and `identity_source` is untouched.
+
+Verified live against real museum thumbnails, and both v1 additions earned their place on the
+first try: a denarius came back `panel_count: pair` (every coin in the validation sample was TWO
+coins, obverse and reverse — 5/50 that v0 could not express at all) and its inscribed Latin was
+`text_in_image: depicted`, NOT a watermark, which is the taxonomy split working. Van Gogh's
+*Bedroom* was described without being named.
+
+One defect found by looking at the output rather than reasoning about it: asked for "2-3
+adjectives", the same model returned `"quiet, rustic, simple"` for one image and `["historical",
+"austere"]` for the next. `str()` would have written the literal `['historical', 'austere']` —
+brackets, quotes and all — into `description`, the text BGE embeds. Now coerced, with a
+regression test.
+
+Full suite: 2,272 passed, 5 skipped, 0 failed.
+
 ## Artist knowledge — one call per person, not per picture (2026-07-31)
 
 Movement, period and style are facts about a PERSON's whole output, so asking a vision model for

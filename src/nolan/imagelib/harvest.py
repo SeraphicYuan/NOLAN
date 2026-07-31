@@ -35,6 +35,7 @@ CLI:  python -X utf8 -m nolan.imagelib.harvest artic --limit 500 [--query "..."]
 """
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -836,6 +837,10 @@ def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int]
     A caption NEVER becomes an identity: `identity_source` is untouched, and the generated text
     lands in `description` only. Returns the number described.
     """
+    from nolan.imagelib.artists import artist_context
+    from nolan.imagelib.caption import (CAPTION_SCHEMA, PROMPT, build_context,
+                                        caption_text, parse_caption)
+
     describer = describer or library.describer
     if describer is None:
         raise ValueError("no describer provided")
@@ -850,25 +855,50 @@ def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int]
                                   limit=max(limit * 8, 200)):
         if done >= limit:
             break
-        if (a.description_source or "catalog") != "catalog":
-            continue                                  # already captioned — never pay for it twice
+        # Never pay twice. A row already carrying THIS schema version is done; one carrying an
+        # older version is a re-caption candidate, which is the whole reason the version exists.
+        if (a.description_source or "catalog") != "catalog" and \
+                (a.caption_schema or 0) >= CAPTION_SCHEMA:
+            continue
         thumb = (library.base / (a.thumb_path or "")).resolve()
         if not a.thumb_path or not thumb.exists():
-            continue
+            continue                       # a Phase-A row has no pixels yet — backfill first
+
+        # Context, from the three FREE knowledge sources. Deliberately excludes the title: hand
+        # the model the answer and it describes the title instead of the picture.
+        ctx = build_context(collection=blurb or None,
+                            artist=artist_context(library, a.creator) or a.creator,
+                            kind=a.classification or a.image_kind)
+        prompt = PROMPT.format(context=ctx)
         try:
-            desc = describer(thumb, context=blurb) if _takes_context(describer) else describer(thumb)
+            raw = (describer(thumb, prompt=prompt) if _takes_prompt(describer)
+                   else describer(thumb, context=ctx) if _takes_context(describer)
+                   else describer(thumb))
         except Exception:
             continue
-        if not desc:
+        cap = parse_caption(raw or "")
+        if not cap:
             continue
-        merged = " | ".join(x for x in [(a.description or "").strip(), desc.strip()] if x)
-        library.catalog.set_description(a.id, merged)
-        library.catalog.update(a.id, description_source=model)
+        text = caption_text(cap)
+        if not text:
+            continue
+        library.catalog.set_description(a.id, text)
+        library.catalog.update(a.id, description_source=model,
+                               caption_json=json.dumps(cap, ensure_ascii=False),
+                               caption_schema=CAPTION_SCHEMA)
         library._index_discovery(library.catalog.get(a.id), thumb)
         done += 1
         if progress:
             progress(done, limit)
     return done
+
+
+def _takes_prompt(fn) -> bool:
+    import inspect
+    try:
+        return "prompt" in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False
 
 
 def _takes_context(fn) -> bool:

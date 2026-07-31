@@ -22,11 +22,16 @@ DESCRIBE_PROMPT = (
 
 
 def make_describer(config, *, provider: Optional[str] = None,
-                   prompt: str = DESCRIBE_PROMPT) -> Callable[[Path], str]:
-    """Build a sync ``describe(path) -> str`` from a NOLAN config.
+                   prompt: str = DESCRIBE_PROMPT) -> Callable[..., str]:
+    """Build a sync ``describe(path, prompt=None) -> str`` from a NOLAN config.
 
     The vision provider is created once and reused across calls. Returns "" on
     any failure so ingestion never breaks on a bad image / offline model.
+
+    The per-call ``prompt`` override is what lets the structured caption pass
+    (``nolan.imagelib.caption``) ask for its JSON schema through the same
+    provider the free-text describer uses, instead of forking a second vision
+    client that would drift from this one's config.
     """
     from nolan.vision import create_vision_provider
     from nolan.webui.operations import _select_vision
@@ -35,10 +40,10 @@ def make_describer(config, *, provider: Optional[str] = None,
     vcfg = _select_vision(config, prov_name, None, None, None)
     vprovider = create_vision_provider(vcfg)
 
-    def describe(path) -> str:
+    def describe(path, prompt: Optional[str] = None) -> str:
         from nolan.segment.render import _run_async
         try:
-            text = _run_async(vprovider.describe_image(Path(path), prompt))
+            text = _run_async(vprovider.describe_image(Path(path), prompt or DESCRIBE_PROMPT))
         except Exception:
             return ""
         return (text or "").strip()

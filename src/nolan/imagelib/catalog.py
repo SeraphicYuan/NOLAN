@@ -145,6 +145,15 @@ _ASSET_MIGRATIONS = {
     # filtered in SQL; derived by a pure function so the vocabulary can change without a
     # re-crawl — `nolan images rederive` recomputes it from columns already on disk.
     "image_kind": "TEXT",
+    # THE STRUCTURED CAPTION (nolan.imagelib.caption) — the one thing a vision model may produce:
+    # what is DEPICTED. `description` still holds the human-readable sentence, so the BGE channel
+    # the retrieval eval was measured through keeps working unchanged; this is the filterable and
+    # re-processable form beside it.
+    "caption_json": "TEXT",
+    # The schema VERSION, and not decoration: it is what lets a v2 re-caption target only stale
+    # rows across a corpus too large to redo wholesale. Half of v0's fields died on measurement,
+    # so a v2 is a question of when.
+    "caption_schema": "INTEGER",
     # Reserved for the labelled-region pass (subject/face/text/watermark/negative_space boxes).
     # DELIBERATELY UNPOPULATED: the executor (a focal point in compose's media_ground) does not
     # exist yet, and an authored field with no consumer is the repo's most-repeated bug. The column
@@ -208,6 +217,20 @@ class Asset:
     culture: Optional[str] = None
     place: Optional[str] = None
     image_kind: Optional[str] = None
+    caption_json: Optional[str] = None
+    caption_schema: Optional[int] = None
+
+    def caption(self) -> Optional[dict]:
+        """The structured caption, or None. Never raises on a malformed blob — a caption that
+        cannot be read is absent, not fatal."""
+        if not self.caption_json:
+            return None
+        try:
+            import json as _json
+            obj = _json.loads(self.caption_json)
+            return obj if isinstance(obj, dict) else None
+        except Exception:
+            return None
 
     @property
     def has_pixels(self) -> bool:
@@ -379,9 +402,10 @@ class AssetCatalog:
                     held, source_ref, wikidata_qid, creator, date_text, institution,
                     identity_source, description_source, thumb_path, thumb_url,
                     collection_id, regions,
-                    medium, classification, department, culture, place, image_kind)
+                    medium, classification, department, culture, place, image_kind,
+                    caption_json, caption_schema)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-                           ?,?,?,?,?,?)""",
+                           ?,?,?,?,?,?,?,?)""",
                 (asset.content_hash, asset.path, asset.url, asset.source,
                  asset.source_url, asset.license, asset.title, asset.description,
                  asset.width, asset.height, asset.bytes, asset.tags, asset.query,
@@ -391,7 +415,7 @@ class AssetCatalog:
                  asset.description_source, asset.thumb_path, asset.thumb_url,
                  asset.collection_id, asset.regions,
                  asset.medium, asset.classification, asset.department, asset.culture,
-                 asset.place, asset.image_kind),
+                 asset.place, asset.image_kind, asset.caption_json, asset.caption_schema),
             )
             self._conn.commit()
         asset.id = cur.lastrowid
@@ -404,7 +428,8 @@ class AssetCatalog:
         "width", "height", "bytes", "tags", "query", "held", "source_ref", "wikidata_qid",
         "creator", "date_text", "institution", "identity_source", "description_source",
         "thumb_path", "thumb_url", "collection_id", "regions",
-        "medium", "classification", "department", "culture", "place", "image_kind"})
+        "medium", "classification", "department", "culture", "place", "image_kind",
+        "caption_json", "caption_schema"})
 
     def update(self, asset_id: int, **fields) -> None:
         """Patch named columns on one row. Unknown column names raise (a typo'd field that
