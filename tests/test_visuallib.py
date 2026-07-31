@@ -272,8 +272,8 @@ def test_every_adapter_yields_a_namespaced_source_ref():
     a stable id is unshippable."""
     from nolan.imagelib.harvest import SOURCES
     for name, adapter in SOURCES.items():
-        assert callable(adapter["items"]) and callable(adapter["collection"])
-        col = adapter["collection"]()
+        assert callable(adapter.items) and callable(adapter.collection)
+        col = adapter.collection()
         assert col.slug and col.source == name and col.rights, f"{name}: collection needs rights"
 
 
@@ -302,7 +302,7 @@ def test_limit_means_rows_indexed_in_every_adapter():
     rows for a request of 12."""
     from nolan.imagelib import harvest as H
     for name in H.SOURCES:
-        src = inspect_source(H.SOURCES[name]["items"])
+        src = inspect_source(H.SOURCES[name].items)
         assert "yielded" in src, f"{name}: limit must count rows INDEXED, not records fetched"
 
 
@@ -319,3 +319,129 @@ def test_harvest_report_counts_what_it_dropped():
     rep.note("refused: watermark")
     d = json.loads(json.dumps(rep.to_dict()))
     assert d["skipped_rights"] == 1 and d["refused_gate"] == 1 and d["reasons"]
+
+
+# --- the crawler contract: strategy, cursor, denominator ------------------------------------
+
+def test_every_adapter_declares_a_known_enumeration_strategy():
+    """HOW a source can be walked is per-source knowledge with real consequences (is it capped?
+    can it resume?), and it had nowhere to live but a docstring — where it was also wrong."""
+    from nolan.imagelib.harvest import ENUMERATION, SOURCES
+    for name, a in SOURCES.items():
+        assert a.enumeration in ENUMERATION, f"{name}: unknown strategy {a.enumeration!r}"
+        assert a.id == name, f"{name}: adapter id disagrees with its registry key"
+    for key, spec in ENUMERATION.items():
+        assert {"purpose", "when_to_use", "constraint"} <= set(spec), f"{key}: incomplete entry"
+
+
+def test_an_unknown_enumeration_strategy_is_refused_at_construction():
+    """A typo'd strategy must fail loudly at import, not silently mean nothing."""
+    from nolan.imagelib.harvest import SourceAdapter, artic_collection, artic_items
+    with pytest.raises(ValueError, match="unknown enumeration"):
+        SourceAdapter(id="x", collection=artic_collection, items=artic_items,
+                      enumeration="vibes")
+
+
+def test_a_resumable_adapter_accepts_a_cursor():
+    """`resumable=True` is a claim about the signature, so check the signature."""
+    import inspect
+    from nolan.imagelib.harvest import SOURCES
+    for name, a in SOURCES.items():
+        if not a.resumable:
+            continue
+        params = inspect.signature(a.items).parameters
+        assert "cursor" in params, f"{name}: declares resumable but items() takes no cursor"
+
+
+def test_cursor_advances_within_a_page_not_only_between_pages():
+    """REGRESSION, caught by a live smoke run. A page-granular cursor never advances at all when
+    `limit` is satisfied inside the first page, so repeated small harvests re-walk page 1 forever
+    and coverage never grows: four runs of limit=4 produced four rows and no progress."""
+    from nolan.imagelib.harvest import SOURCES
+    src = inspect_source(SOURCES["artic"].items)
+    assert '"offset": idx + 1' in src, "artic cursor must record its position WITHIN the page"
+
+
+def test_the_cursor_advances_only_after_a_row_is_consumed():
+    """Re-walking a row is free (source_ref dedup turns it into a refresh); SKIPPING one loses it
+    silently, which is the failure this tier exists to prevent. So the cursor update must sit
+    after the yield, never before it."""
+    from nolan.imagelib.harvest import SOURCES
+    for name in ("artic", "met"):
+        src = inspect_source(SOURCES[name].items)
+        body = src[src.index("yield HarvestItem"):]
+        assert "report.cursor" in body, (
+            f"{name}: cursor must advance AFTER the yield, or a crash mid-index skips a row")
+
+
+def test_collection_carries_a_denominator_and_reports_unknown_honestly():
+    """`item_count` alone reads as complete. 841 of 62,035 is 1.4%, and a collection that cannot
+    be asked how big it is must report unknown rather than full."""
+    from nolan.imagelib.catalog import Collection
+    c = Collection(slug="s", source="artic", title="t", item_count=841, upstream_count=62035)
+    assert c.coverage == pytest.approx(0.01356, abs=1e-4)
+    assert Collection(slug="s", source="x", title="t", item_count=841).coverage is None
+    # a stale denominator smaller than what we hold must not read as >100%
+    assert Collection(slug="s", source="x", title="t",
+                      item_count=99, upstream_count=10).coverage == 1.0
+
+
+def test_every_adapter_that_can_be_asked_declares_an_upstream_count(tmp_path):
+    from nolan.imagelib.harvest import SOURCES
+    for name, a in SOURCES.items():
+        assert a.upstream_count is not None and callable(a.upstream_count), (
+            f"{name}: no way to ask how much exists — coverage would be unmeasurable")
+
+
+def test_collection_migrations_are_applied_to_an_existing_db(tmp_path):
+    """The columns land by ALTER TABLE on open, so an existing catalog.db upgrades in place."""
+    import sqlite3
+    from nolan.imagelib.catalog import AssetCatalog, _COLLECTION_MIGRATIONS
+    db = tmp_path / "catalog.db"
+    # a pre-migration collections table, exactly as the first release created it
+    con = sqlite3.connect(str(db))
+    con.execute("CREATE TABLE collections (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "slug TEXT UNIQUE NOT NULL, source TEXT NOT NULL, title TEXT NOT NULL, "
+                "description TEXT, rights TEXT, copyright_free INTEGER, era TEXT, topics TEXT, "
+                "url TEXT, item_count INTEGER, added_at TEXT NOT NULL, last_crawled TEXT)")
+    con.commit()
+    con.close()
+
+    cat = AssetCatalog(db)
+    cols = {r["name"] for r in cat._conn.execute("PRAGMA table_info(collections)")}
+    for name in _COLLECTION_MIGRATIONS:
+        assert name in cols, f"{name} was not migrated onto an existing collections table"
+
+
+def test_met_csv_rows_filters_public_domain_offline(tmp_path, monkeypatch):
+    """THE reason the dump exists: the rights filter runs offline, so a request is never spent
+    discovering that an object is in copyright."""
+    import csv as _csv
+    from nolan.imagelib import harvest as H
+
+    path = tmp_path / "MetObjects.csv"
+    # utf-8-SIG on purpose: the real dump carries a BOM, and without it the first column name
+    # reads as '﻿Object Number' and every lookup of it silently misses.
+    with open(path, "w", encoding="utf-8-sig", newline="") as f:
+        w = _csv.DictWriter(f, fieldnames=["Object Number", "Is Public Domain", "Object ID",
+                                           "Department", "Title"])
+        w.writeheader()
+        w.writerow({"Object Number": "1", "Is Public Domain": "True", "Object ID": "11",
+                    "Department": "European Paintings", "Title": "a"})
+        w.writerow({"Object Number": "2", "Is Public Domain": "False", "Object ID": "22",
+                    "Department": "European Paintings", "Title": "b"})
+        w.writerow({"Object Number": "3", "Is Public Domain": "True", "Object ID": "33",
+                    "Department": "Photographs", "Title": "c"})
+    monkeypatch.setattr(H, "_met_csv_path", lambda: path)
+
+    assert H.met_public_domain_ids() == [11, 33]
+    assert H.met_public_domain_ids(dept="European Paintings") == [11]
+    assert H.met_public_domain_ids(dept="Photographs") == [33]
+
+
+def test_met_csv_absent_fails_loudly(tmp_path, monkeypatch):
+    """No silent fallback to an empty id list — that would read as "this department is empty"."""
+    from nolan.imagelib import harvest as H
+    monkeypatch.setattr(H, "_met_csv_path", lambda: tmp_path / "nope.csv")
+    with pytest.raises(FileNotFoundError, match="not downloaded yet"):
+        H.met_public_domain_ids()

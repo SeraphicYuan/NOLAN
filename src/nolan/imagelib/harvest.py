@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional
 
 from nolan.imagelib.catalog import Collection
@@ -76,6 +77,13 @@ class HarvestReport:
     refused_gate: int = 0
     errors: int = 0
     reasons: List[str] = field(default_factory=list)
+    # Where the next run should start. An adapter advances this as it walks; `harvest` persists
+    # it onto the collection row. Shape is the adapter's business — see ENUMERATION.
+    cursor: Optional[Dict[str, Any]] = None
+    # What the source says EXISTS, when it can be asked. The denominator for coverage.
+    upstream_count: Optional[int] = None
+    # True when the adapter walked to the end of the enumeration rather than stopping on `limit`.
+    exhausted: bool = False
 
     def note(self, reason: str) -> None:
         if len(self.reasons) < 12:
@@ -83,6 +91,85 @@ class HarvestReport:
 
     def to_dict(self) -> Dict[str, Any]:
         return {k: v for k, v in self.__dict__.items()}
+
+
+# --------------------------------------------------------------------- enumeration strategies
+#
+# HOW a source can be walked is the per-source knowledge worth saving, and it has consequences a
+# caller must be able to see BEFORE starting a job measured in hours. Each strategy is a registry
+# entry (purpose + when_to_use + its constraint), and every adapter declares one.
+ENUMERATION = {
+    "bulk-listing": {
+        "purpose": "Walk the institution's own paginated listing of everything it holds.",
+        "when_to_use": "The listing returns full records and has no depth cap.",
+        "constraint": "Usually unfiltered, so rights are decided per row and some pages are "
+                      "mostly refusals. Cheap per record and resumable by page.",
+    },
+    "search-ranked": {
+        "purpose": "Walk a relevance-ranked search endpoint for a themed slice.",
+        "when_to_use": "The caller asked for a subject rather than the whole collection.",
+        "constraint": "DEPTH-CAPPED — this is the trap. The Art Institute's search 403s past "
+                      "1,000 records ('You have requested too many results'), which is why an "
+                      "841-row harvest looked like a budget choice and was a ceiling. Never use "
+                      "for full enumeration.",
+    },
+    "bulk-dump": {
+        "purpose": "Download the institution's published data dump, select offline, then fetch "
+                   "only the selected records.",
+        "when_to_use": "Per-record fetches are expensive AND a dump exists.",
+        "constraint": "One large download up front, cached. Turns a 500k-request walk into a "
+                      "filter plus N requests, and usually hands over the denominator for free.",
+    },
+    "per-object": {
+        "purpose": "Fetch each object by id, because the listing returns ids only.",
+        "when_to_use": "No dump and no listing with metadata.",
+        "constraint": "One HTTP request PER ROW. Resumable only by remembering how far into the "
+                      "id list we got — without that, a re-crawl pays a request per already-"
+                      "indexed object just to rediscover it is a duplicate.",
+    },
+    "curated-collection": {
+        "purpose": "Walk named, hand-picked collections rather than the whole institution.",
+        "when_to_use": "RIGHTS ARE NOT UNIFORM across the institution.",
+        "constraint": "The Library of Congress trap: `asset_gate.OPEN_ACCESS_SOURCES` already "
+                      "trusts `loc` wholesale, but LoC is not uniformly public domain. An "
+                      "adapter like this must assert rights per collection, and that table has "
+                      "to be written before the adapter exists.",
+    },
+}
+
+
+@dataclass(frozen=True)
+class SourceAdapter:
+    """One institution, and everything a crawl needs to know about it.
+
+    This used to be `{"collection": fn, "items": fn}` — two functions and no room for the part
+    that actually differs between museums. The Art Institute wants bulk-listing pagination, the
+    Met wants dump-then-fetch, the Library of Congress will want per-curated-collection, and
+    that choice had nowhere to live, so it survived only as prose in a docstring (where it was
+    also WRONG: the docstring claimed the unfiltered listing wasted 11 of every 12 records; the
+    measured figure is 52.2% usable, so it bought ~1.9x and paid a 1,000-row ceiling for it).
+    """
+    id: str
+    collection: Callable[..., Collection]
+    items: Callable[..., Iterator[HarvestItem]]
+    enumeration: str
+    # Ask the source how much exists. Returns None when it cannot be asked — a guessed
+    # denominator is worse than an absent one, because it makes coverage look measured.
+    upstream_count: Optional[Callable[..., Optional[int]]] = None
+    resumable: bool = False
+    # Does the catalog publish PIXEL dimensions? Decides whether the gate's resolution floor can
+    # run at index time or must wait for promotion. (The Met publishes physical size.)
+    publishes_pixel_dims: bool = False
+    # 'per-item'      — the record carries its own rights flag (artic, met)
+    # 'per-collection'— rights must be asserted for a curated set (LoC)
+    rights_model: str = "per-item"
+    notes: str = ""
+
+    def __post_init__(self):
+        if self.enumeration not in ENUMERATION:
+            raise ValueError(
+                f"{self.id}: unknown enumeration {self.enumeration!r} "
+                f"(known: {sorted(ENUMERATION)})")
 
 
 # ---------------------------------------------------------------- Art Institute of Chicago
@@ -116,31 +203,75 @@ def artic_collection(dept: Optional[str] = None, query: Optional[str] = None) ->
         topics="art, painting, print, drawing, photography, historical object")
 
 
-def artic_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[str] = None,
-                page_size: int = 100, report: Optional[HarvestReport] = None
-                ) -> Iterator[HarvestItem]:
-    """Walk the Art Institute catalog. Keyless, paginated, ~100 records per request.
+def artic_upstream_count(dept: Optional[str] = None, query: Optional[str] = None) -> Optional[int]:
+    """How many public-domain artworks the Art Institute actually holds — the denominator.
 
-    Filtered SERVER-SIDE to `is_public_domain` (61,568 of the 132,018 artworks). Measured: the
-    unfiltered listing spent 11 of every 12 records on items we must refuse on rights, so this is
-    a 12x saving on a keyless API's goodwill, not a nicety. `query` additionally biases the
-    ranking toward a theme. The API refuses offsets past 10,000, so a bounded harvest is the only
-    kind — `limit` counts ROWS INDEXED (the shared contract, see `harvest`) and the report says
-    what was skipped.
+    Measured live at 61,568 against 132,018 total, which is what makes "841 indexed" legible as
+    1.4% rather than as a finished job.
+    """
+    import httpx
+    try:
+        with httpx.Client(headers={"User-Agent": _UA}, timeout=30.0) as c:
+            params: Dict[str, Any] = {"query[term][is_public_domain]": "true", "limit": 1}
+            if query:
+                params["q"] = query
+            r = c.get(ARTIC_SEARCH, params=params)
+            r.raise_for_status()
+            return int((r.json().get("pagination") or {}).get("total") or 0) or None
+    except Exception:
+        return None                      # unknown is an honest answer; a guess is not
+
+
+def artic_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[str] = None,
+                page_size: int = 100, report: Optional[HarvestReport] = None,
+                cursor: Optional[Dict[str, Any]] = None) -> Iterator[HarvestItem]:
+    """Walk the Art Institute catalog. Keyless, ~100 records per request, RESUMABLE by page.
+
+    TWO ENUMERATIONS, and picking the wrong one costs a ceiling:
+
+    * **No query → the bulk `/artworks` listing.** Unfiltered, so rights are decided per row, but
+      it has NO DEPTH CAP: probed live to page 1,320 (132,018 records in) still returning 200.
+      This is the only way to enumerate the whole collection.
+    * **A query → `/artworks/search`.** Relevance-ranked and server-side filtered, but it HARD-
+      STOPS at 1,000 records (403, "You have requested too many results"). Fine for a themed
+      slice; useless for full coverage, and the report says so rather than stopping quietly.
+
+    The listing used to be rejected on a docstring claim that it "spent 11 of every 12 records on
+    items we must refuse on rights → a 12x saving". That does not reproduce. Measured twice over
+    pages spread across the whole catalog: **52.2% usable** over 1,500 rows, and **48.1%** over a
+    fresh 800-row probe (385 usable, 409 not public domain, 6 public domain without an image).
+    So the filter bought ~1.9x and cost a 1,000-row ceiling — the trade was backwards. Per-page
+    variance is enormous (probed pages ran 0%, 0%, 32%, 52%, 66%, 67%, 69%, 99% — public-domain-
+    ness clusters hard by id), which is how a small contiguous sample produced "11 of 12".
+
+    The listing also carries `thumbnail.width/height`, verified live, so the gate's resolution
+    floor still runs at INDEX time here rather than being deferred to promotion.
+
+    `limit` counts ROWS INDEXED (the shared contract, see `harvest`).
     """
     import httpx
 
     yielded = 0
-    page = 1
+    page = int((cursor or {}).get("page") or 1)
+    skip_in_page = int((cursor or {}).get("offset") or 0)
+    endpoint = ARTIC_SEARCH if query else ARTIC_API
+    if report is not None:
+        if query:
+            report.note("themed slice via search: capped at 1,000 records upstream — "
+                        "not a full enumeration")
+        if page > 1 or skip_in_page:
+            report.note(f"resuming at page {page}, offset {skip_in_page}")
     with httpx.Client(headers={"User-Agent": _UA}, timeout=45.0) as c:
         while yielded < limit:
             n = page_size
-            params = {"query[term][is_public_domain]": "true", "limit": n, "page": page,
-                      "fields": ARTIC_FIELDS}
+            params: Dict[str, Any] = {"limit": n, "page": page, "fields": ARTIC_FIELDS}
             if query:
+                # The search endpoint can filter server-side; the bulk listing cannot, so there
+                # `is_public_domain` is enforced per row in the loop below.
+                params["query[term][is_public_domain]"] = "true"
                 params["q"] = query
             try:
-                r = c.get(ARTIC_SEARCH, params=params)
+                r = c.get(endpoint, params=params)
                 r.raise_for_status()
                 data = r.json().get("data") or []
             except Exception as e:
@@ -149,8 +280,12 @@ def artic_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional
                     report.note(f"page {page}: {type(e).__name__}: {e}")
                 return
             if not data:
+                if report:
+                    report.exhausted = True
                 return
-            for a in data:
+            for idx, a in enumerate(data):
+                if idx < skip_in_page:            # resuming into the middle of a page
+                    continue
                 if yielded >= limit:
                     return
                 img = a.get("image_id")
@@ -181,7 +316,20 @@ def artic_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional
                     width=thumb.get("width"), height=thumb.get("height"),
                     tags=a.get("classification_title") or a.get("artwork_type_title"))
                 yielded += 1
+                # Advance the cursor to just past the row the CONSUMER has finished with. This
+                # line runs when the generator is resumed, i.e. after the caller indexed the
+                # yielded item, so a crash can only ever re-walk a row, never skip one.
+                #
+                # It must be WITHIN-PAGE, not per-page: a page-granular cursor never advances at
+                # all when `limit` is satisfied inside the first page, so repeated small harvests
+                # re-walk page 1 forever and coverage never grows. The smoke test caught exactly
+                # that — four runs of limit=4 produced four rows and no progress.
+                if report is not None:
+                    report.cursor = {"page": page, "offset": idx + 1}
             page += 1
+            skip_in_page = 0
+            if report is not None:
+                report.cursor = {"page": page, "offset": 0}
             time.sleep(0.2)                                   # be a good citizen on a keyless API
 
 
@@ -246,18 +394,121 @@ def _met_qid(url: Optional[str]) -> Optional[str]:
     return m.group(1) if m else None
 
 
-def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[str] = None,
-              report: Optional[HarvestReport] = None, **_ignored) -> Iterator[HarvestItem]:
-    """Walk the Met catalog. Keyless. Unlike artic there is no bulk listing WITH metadata: the
-    search/objects endpoints return ids only, so this costs one request per object. That is the
-    honest price of the Met's richer record (explicit `isPublicDomain`, Wikidata ids) and the
-    reason `limit` is a hard bound rather than a suggestion.
-    """
+# ---------------------------------------------------------------- the Met's bulk dump
+#
+# The Met publishes its whole catalog as one CSV, and it changes what a Met crawl can be.
+# Verified live: 317,650,992 bytes, 54 columns, carrying `Is Public Domain`, `Object ID`,
+# `Department`, `Object Wikidata URL`, `Tags Wikidata URL` — and, past what this enumerator
+# strictly needs, `Artist Wikidata URL`, `Artist Display Bio`, `Classification`, `Culture` and
+# `Medium`, which is the artist- and catalog-knowledge the caption design deliberately refuses to
+# spend a vision call on.
+#
+# WHAT IT ACTUALLY BUYS, measured over the real dump (484,956 rows parsed in 3.5s):
+#
+#   * 248,472 of 484,956 objects are public domain — **51.2%**. So enumerating blind spends
+#     about TWO requests per usable row; the dump makes it one. That is a 2.0x saving, not an
+#     order of magnitude, and saying so matters: the artic adapter carried an unreproducible
+#     "11 of every 12" claim for months and it is what sent that crawl into a 1,000-row ceiling.
+#   * THE DENOMINATOR, per department, exactly — 65,413 public-domain rows in Drawings and
+#     Prints, 5,286 Paintings. Coverage stops being a guess.
+#   * A department slice WITHOUT a request. The live listing cannot filter by rights at all.
+#   * Free identity extras on the public-domain subset: Tags Wikidata URL on 56%, **Artist
+#     Wikidata URL on 35% (85,944 rows)** — the artist-knowledge key that would otherwise cost a
+#     lookup per artist — and Object Wikidata URL on 19%.
+#
+# The saving is modest; the denominator and the offline rights filter are the reasons to do it.
+MET_CSV_URL = ("https://media.githubusercontent.com/media/metmuseum/openaccess/master/"
+               "MetObjects.csv")
+# The dump is SOURCE data, not library data: one copy serves every scope and project, so it is
+# cached beside the global library rather than inside whichever scope asked for it.
+_DUMPS_DIR = Path(__file__).resolve().parents[3] / "_library" / "images" / "_dumps"
+
+
+def _met_csv_path() -> Path:
+    return _DUMPS_DIR / "MetObjects.csv"
+
+
+def met_download_csv(*, force: bool = False, progress=None) -> Path:
+    """Fetch (once) the Met's bulk CSV. Streamed to a temp file and renamed only on success, so
+    an interrupted download can never be mistaken for a complete one."""
     import httpx
 
+    dest = _met_csv_path()
+    if dest.exists() and not force:
+        return dest
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(".part")
+    got = 0
+    with httpx.Client(headers={"User-Agent": _UA}, timeout=120.0,
+                      follow_redirects=True) as c:
+        with c.stream("GET", MET_CSV_URL) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("content-length") or 0)
+            with open(tmp, "wb") as f:
+                for chunk in r.iter_bytes(1 << 20):
+                    f.write(chunk)
+                    got += len(chunk)
+                    if progress:
+                        progress(got, total)
+    tmp.replace(dest)
+    return dest
+
+
+def met_csv_rows(dept: Optional[str] = None, *, public_domain_only: bool = True
+                 ) -> Iterator[Dict[str, str]]:
+    """Stream the dump, yielding the rows worth fetching. Never loads 317 MB into memory.
+
+    `utf-8-sig` is not decoration: the file carries a BOM, and without it the first column name
+    reads as '\\ufeffObject Number' and every lookup of it silently misses.
+    """
+    import csv as _csv
+
+    path = _met_csv_path()
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Met bulk CSV not downloaded yet ({path}). Run met_download_csv() first, or "
+            f"`nolan images dump met`.")
     did = _met_dept_id(dept)
-    with httpx.Client(headers={"User-Agent": _UA}, timeout=45.0) as c:
+    want_dept = MET_DEPARTMENTS.get(did) if did else None
+    with open(path, "r", encoding="utf-8-sig", newline="") as f:
+        for row in _csv.DictReader(f):
+            if public_domain_only and (row.get("Is Public Domain") or "").strip() != "True":
+                continue
+            if want_dept and (row.get("Department") or "").strip() != want_dept:
+                continue
+            yield row
+
+
+def met_public_domain_ids(dept: Optional[str] = None) -> List[int]:
+    """The object ids worth spending a request on — the whole point of the dump."""
+    out = []
+    for row in met_csv_rows(dept):
         try:
+            out.append(int((row.get("Object ID") or "").strip()))
+        except ValueError:
+            continue
+    return out
+
+
+def met_upstream_count(dept: Optional[str] = None, query: Optional[str] = None) -> Optional[int]:
+    """How many objects the listing offers for this slice — the denominator.
+
+    Honest about what it counts: the Met's `/objects` listing is UNFILTERED, so this is objects
+    in the department, not public-domain objects with images. The public-domain subset is only
+    knowable from the bulk CSV (see `met_public_domain_ids`), which is exactly why that
+    enumeration exists. When the CSV is already cached we use it and get the real number.
+    """
+    import httpx
+    did = _met_dept_id(dept)
+    cached = _met_csv_path()
+    if cached.exists() and not query:
+        try:
+            ids = met_public_domain_ids(dept=dept)
+            return len(ids) or None
+        except Exception:
+            pass
+    try:
+        with httpx.Client(headers={"User-Agent": _UA}, timeout=30.0) as c:
             if query:
                 params: Dict[str, Any] = {"q": query, "hasImages": "true",
                                           "isPublicDomain": "true"}
@@ -267,22 +518,74 @@ def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[s
             else:
                 params = {"departmentIds": did} if did else {}
                 ids = c.get(f"{MET_API}/objects", params=params).json().get("objectIDs") or []
+            return len(ids) or None
+    except Exception:
+        return None
+
+
+def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[str] = None,
+              report: Optional[HarvestReport] = None,
+              cursor: Optional[Dict[str, Any]] = None, **_ignored) -> Iterator[HarvestItem]:
+    """Walk the Met catalog. Keyless, one request PER OBJECT, RESUMABLE by offset into the id list.
+
+    The Met's endpoints return ids only, so the record costs a request. Which ids we spend those
+    requests on is the whole game, and there are two answers:
+
+    * **The bulk dump, when it is cached** (`met_download_csv`). `Is Public Domain` is a column,
+      so the ~half of the catalog we must refuse on rights is filtered OFFLINE and never costs a
+      request. This is the difference between walking 500k ids blind and fetching only rows we
+      want — and it supplies the coverage denominator for free.
+    * **The live listing, otherwise.** Unfiltered, so most of the scan is spent discovering that
+      an object is not public domain or has no image.
+
+    The search endpoint cannot substitute for either: `departmentId` combined with
+    `isPublicDomain`/`hasImages` returns 0 for whole departments (probed live — dept 19 → 0 for
+    every query form, dept 11 → 22).
+
+    `limit` counts ROWS INDEXED, not ids fetched (the shared contract — see `harvest`). It
+    mattered: as "ids fetched", a request for 12 Met rows silently delivered 2.
+    """
+    import httpx
+
+    did = _met_dept_id(dept)
+    start = int((cursor or {}).get("offset") or 0)
+    from_dump = False
+    with httpx.Client(headers={"User-Agent": _UA}, timeout=45.0) as c:
+        try:
+            if query:
+                params: Dict[str, Any] = {"q": query, "hasImages": "true",
+                                          "isPublicDomain": "true"}
+                if did:
+                    params["departmentId"] = did
+                ids = c.get(f"{MET_API}/search", params=params).json().get("objectIDs") or []
+            elif _met_csv_path().exists():
+                ids = met_public_domain_ids(dept=dept)
+                from_dump = True
+            else:
+                params = {"departmentIds": did} if did else {}
+                ids = c.get(f"{MET_API}/objects", params=params).json().get("objectIDs") or []
         except Exception as e:
             if report:
                 report.errors += 1
                 report.note(f"met listing: {type(e).__name__}: {e}")
             return
-        if report and len(ids) > limit:
-            # NO SILENT CAPS: say how much of the department this bounded harvest is leaving.
-            report.note(f"listing returned {len(ids)} ids; indexing up to {limit}")
-        # `limit` counts ROWS INDEXED, not ids fetched (the shared contract — see `harvest`). The
-        # Met's listing is unfiltered and its search endpoint cannot substitute: departmentId
-        # combined with isPublicDomain/hasImages returns 0 for whole departments (probed live:
-        # dept 19 → 0 results for every query form, dept 11 → 22). So we scan until `limit` rows
-        # are indexed, with a cap so a barren department cannot walk 40k ids in silence.
+        if report is not None:
+            report.upstream_count = len(ids) or None
+            report.note(
+                f"enumerated {len(ids)} ids from "
+                + ("the bulk dump (public-domain filtered offline)" if from_dump
+                   else "the live listing (unfiltered — most scans will be refusals)"))
+            if start:
+                report.note(f"resuming at offset {start} of {len(ids)}")
+            if len(ids) - start > limit:
+                # NO SILENT CAPS: say how much of the collection this bounded harvest leaves.
+                report.note(f"indexing up to {limit} of {len(ids) - start} remaining")
+        # A scan cap so a barren department cannot walk 40k ids in silence. Unnecessary when the
+        # ids came from the dump (every one of them is already known public domain), so it is
+        # raised out of the way there rather than throttling a pre-filtered walk.
         scanned = yielded = 0
-        scan_cap = max(limit * 20, 200)
-        for oid in ids:
+        scan_cap = len(ids) if from_dump else max(limit * 20, 200)
+        for pos, oid in enumerate(ids[start:], start=start):
             if yielded >= limit or scanned >= scan_cap:
                 break
             scanned += 1
@@ -293,13 +596,17 @@ def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[s
                     report.errors += 1
                     report.note(f"met:{oid}: {type(e).__name__}: {e}")
                 continue
+            # A skipped id is CONSUMED — it must not be re-examined on the next run, or a
+            # department full of imageless objects re-pays for them every time.
             if not o.get("primaryImage"):
                 if report:
                     report.skipped_no_image += 1
+                    report.cursor = {"offset": pos + 1}
                 continue
             if not o.get("isPublicDomain"):
                 if report:
                     report.skipped_rights += 1
+                    report.cursor = {"offset": pos + 1}
                 continue
             bits = [o.get("medium"), o.get("culture"), o.get("country"),
                     o.get("classification"), o.get("department")]
@@ -323,15 +630,54 @@ def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[s
                 wikidata_qid=_met_qid(o.get("objectWikidata_URL")),
                 tags=o.get("classification") or None)
             yielded += 1
+            # After the yield: the consumer has finished with this id, so it is safe to move
+            # past it. Advancing BEFORE the yield would skip a row on a crash mid-index.
+            if report is not None:
+                report.cursor = {"offset": pos + 1}
             time.sleep(0.05)                                  # be a good citizen on a keyless API
-        if report and yielded < limit:
-            report.note(f"scanned {scanned} of {len(ids)} ids for {yielded} indexable rows"
-                        + (" (scan cap reached)" if scanned >= scan_cap else " (listing exhausted)"))
+        if report is not None:
+            if start + scanned >= len(ids):
+                report.exhausted = True
+            if yielded < limit:
+                report.note(
+                    f"scanned {scanned} of {len(ids) - start} remaining ids for {yielded} "
+                    f"indexable rows"
+                    + (" (scan cap reached)" if scanned >= scan_cap else " (listing exhausted)"))
 
 
-SOURCES: Dict[str, Dict[str, Callable]] = {
-    "artic": {"collection": artic_collection, "items": artic_items},
-    "met": {"collection": met_collection, "items": met_items},
+SOURCES: Dict[str, SourceAdapter] = {
+    "artic": SourceAdapter(
+        id="artic",
+        collection=artic_collection,
+        items=artic_items,
+        enumeration="bulk-listing",
+        upstream_count=artic_upstream_count,
+        resumable=True,
+        publishes_pixel_dims=True,
+        rights_model="per-item",
+        notes="Keyless. The bulk /artworks listing has no depth cap (probed to page 1,320) and "
+              "carries thumbnail pixel dimensions, so the resolution floor runs at index time. "
+              "A --query switches to the relevance-ranked search endpoint, which is HARD-CAPPED "
+              "at 1,000 records — fine for a themed slice, never for full coverage.",
+    ),
+    "met": SourceAdapter(
+        id="met",
+        collection=met_collection,
+        items=met_items,
+        enumeration="bulk-dump",
+        upstream_count=met_upstream_count,
+        resumable=True,
+        publishes_pixel_dims=False,
+        rights_model="per-item",
+        notes="Keyless, one request PER OBJECT because the endpoints return ids only. The bulk "
+              "CSV (318 MB, 54 columns, 484,956 rows) carries `Is Public Domain`, so the rights "
+              "filter runs OFFLINE: 248,472 rows are public domain (51.2%), a 2.0x request "
+              "saving — modest, and the real wins are an exact per-department denominator and a "
+              "rights-filtered department slice the live listing cannot produce at all. "
+              "Publishes physical measurements rather than pixel dimensions, so the resolution "
+              "floor lands at promotion instead of at index time. Hands over Wikidata ids free "
+              "(tags 56%, artist 35%, object 19% of the public-domain subset).",
+    ),
 }
 
 
@@ -339,25 +685,52 @@ SOURCES: Dict[str, Dict[str, Callable]] = {
 
 def harvest(source: str, *, limit: int = 200, scope: str = "global",
             project: Optional[str] = None, library=None, progress=None,
-            **source_kwargs) -> HarvestReport:
+            resume: bool = True, **source_kwargs) -> HarvestReport:
     """Harvest into the discovery tier. Idempotent: a re-run refreshes rows by `source_ref`
-    instead of duplicating them.
+    instead of duplicating them, and RESUMES from where the last run stopped.
 
     `limit` counts ROWS INDEXED, not records fetched — the one contract every adapter honours, so
     "give me 200" means 200 usable rows whether the source's listing is pre-filtered (artic) or
     full of imageless entries (met). Whatever it walked past to get there is in the report.
+
+    `resume=False` restarts the enumeration from the beginning (a re-crawl to refresh identity
+    rather than to extend coverage).
     """
     if source not in SOURCES:
         raise ValueError(f"unknown harvest source {source!r} (known: {sorted(SOURCES)})")
+    import json as _json
+
     from nolan.imagelib import ImageLibrary
 
     adapter = SOURCES[source]
     lib = library or ImageLibrary(scope=scope, project=project)
     col_kwargs = {k: v for k, v in source_kwargs.items() if k in ("dept", "query")}
-    collection = lib.upsert_collection(adapter["collection"](**col_kwargs))
+    collection = lib.upsert_collection(adapter.collection(**col_kwargs))
     report = HarvestReport(collection=collection.slug)
 
-    for item in adapter["items"](limit=limit, report=report, **source_kwargs):
+    # RESUME. Without this every run restarts at page 1 / id 0 and leans on source_ref dedup to
+    # skip — which for the Met costs one HTTP request per already-indexed object just to
+    # rediscover it is a duplicate, and makes a job measured in hours one that never finishes.
+    start_cursor = None
+    if resume and adapter.resumable and collection.cursor:
+        try:
+            start_cursor = _json.loads(collection.cursor)
+        except Exception:
+            report.note(f"ignoring unreadable cursor {collection.cursor!r}")
+
+    def _persist_cursor() -> None:
+        if report.cursor is None or not adapter.resumable:
+            return
+        lib.upsert_collection(Collection(
+            slug=collection.slug, source=source, title=collection.title,
+            cursor=_json.dumps(report.cursor),
+            cursor_at=time.strftime("%Y-%m-%dT%H:%M:%S")))
+
+    items_kwargs = dict(source_kwargs)
+    if adapter.resumable:
+        items_kwargs["cursor"] = start_cursor
+
+    for item in adapter.items(limit=limit, report=report, **items_kwargs):
         report.scanned += 1
         try:
             # RETRY transient CDN failures. Measured on a 899-record crawl: 44 items (~5%) were
@@ -391,10 +764,34 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
             report.note(f"{item.source_ref}: {type(e).__name__}: {e}")
         if progress:
             progress(report)
+        # Checkpoint the cursor periodically, not only at the end: a crawl killed after four
+        # hours must not resume from where it started four hours ago.
+        if report.scanned % 50 == 0:
+            _persist_cursor()
 
+    # THE DENOMINATOR. Ask the source how much exists, so coverage can be stated as a share
+    # rather than as a bare count — "841 indexed" reads as complete, "841 of 62,035 (1.4%)"
+    # cannot. Only overwritten when the source actually answers: a None here leaves the previous
+    # figure alone, and a collection that has never been able to answer reports coverage as
+    # unknown rather than as full.
+    upstream = report.upstream_count
+    if upstream is None and adapter.upstream_count is not None:
+        try:
+            upstream = adapter.upstream_count(**col_kwargs)
+        except Exception as e:
+            report.note(f"upstream count unavailable: {type(e).__name__}: {e}")
+    report.upstream_count = upstream
+
+    indexed = lib.catalog.count("active", held=0, collection_id=collection.id)
+    if upstream:
+        report.note(f"coverage: {indexed} of {upstream} upstream "
+                    f"({indexed / upstream * 100:.1f}%)")
     lib.upsert_collection(Collection(
         slug=collection.slug, source=source, title=collection.title,
-        item_count=lib.catalog.count("active", held=0, collection_id=collection.id),
+        item_count=indexed,
+        upstream_count=upstream,
+        cursor=(_json.dumps(report.cursor) if report.cursor and adapter.resumable else None),
+        cursor_at=(time.strftime("%Y-%m-%dT%H:%M:%S") if report.cursor else None),
         last_crawled=time.strftime("%Y-%m-%dT%H:%M:%S")))
     return report
 

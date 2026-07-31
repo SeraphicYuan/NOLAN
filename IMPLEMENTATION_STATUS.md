@@ -4,6 +4,53 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The adapters became crawlers — a strategy, a cursor, and a denominator (2026-07-30)
+
+Visual Lib had two adapters and 1.4% of one collection. Not a budget choice: `artic_items` walked
+`/artworks/search`, which **403s at page 11** — a hard 1,000-record ceiling, so `--limit 5000`
+would have silently returned ~900. Verified live, along with everything else below.
+
+**The enumeration strategy is now first-class.** `SOURCES` was `{collection, items}` — two
+functions and no room for the part that differs between museums, so it lived in a docstring where
+it was also wrong. It is now a `SourceAdapter` declaring `enumeration`, `upstream_count`,
+`resumable`, `publishes_pixel_dims`, `rights_model`, and `ENUMERATION` is the registry of the five
+strategies with their constraints (including `curated-collection`, which exists to hold the LoC
+rights trap before that adapter is written).
+
+**artic moved to the bulk listing**, which has no depth cap — probed live to page 1,320, 132k
+records in, still 200 — and does carry `thumbnail.width/height`, so the index-time resolution
+floor survives the move. A `--query` still uses the capped search endpoint for themed slices and
+now *says* it is capped. The docstring's justification for the old choice ("spent 11 of every 12
+records on items we must refuse on rights → a 12x saving") does not reproduce: **52.2% usable**
+over 1,500 rows and **48.1%** over a fresh 800-row probe, with per-page variance of 0%–99%. It
+bought ~1.9x and paid a ceiling.
+
+**The Met enumerates from its bulk dump** (`nolan images dump met`): 318 MB, 54 columns, 484,956
+rows, parsed in 3.5s. `Is Public Domain` is a column, so the rights filter runs offline —
+248,472 rows (51.2%). That is a **2.0x** request saving, stated plainly because the whole point of
+this commit is not repeating the "11 of 12" mistake; the real wins are an exact per-department
+denominator and a rights-filtered department slice the live listing cannot produce at all. Free
+on the public-domain subset: tags QID 56%, **artist QID 35% (85,944 rows)** — which is the
+artist-knowledge key the caption design refuses to spend a vision call on — and object QID 19%.
+
+**A resume cursor**, on the `collections` row, advanced only *after* a row is consumed: re-walking
+is free (dedup makes it a refresh), skipping loses rows silently. It had to be within-page, and a
+live smoke run is what proved it — a page-granular cursor never advances when `limit` is satisfied
+inside the first page, so four runs of `limit=4` produced four rows and no progress at all. Now
+run 1 → 4 rows, run 2 → 4 *different* rows, coverage 0.0064% → 0.0129%.
+
+**A denominator.** `collections.upstream_count` + `Collection.coverage`, measured live per crawl:
+artic 62,035 public-domain of 132,630 (it was 61,568 three days earlier — which is exactly why it
+is measured rather than hardcoded), Met European Paintings 2,327. A source that cannot be asked
+reports **unknown**, never full: `nolan images collections` prints "841 indexed, upstream total
+unknown" for collections harvested before this existed.
+
+Verified end to end against both live APIs into throwaway libraries, not just in tests: the Met
+run indexed 3 rows with **0 skipped_rights** — the offline filter doing its job — carried Wikidata
+ids for all three, resumed to offset 6 with 3 new rows, and reported coverage 0.129% → 0.258%.
+
+Full suite: 2,246 passed, 5 skipped, 0 failed.
+
 ## The resolution floor was measuring the file, not the picture (2026-07-30)
 
 `nolan/pixels.py` — deterministic pixel measurement, and the first consumer of it, a gate that

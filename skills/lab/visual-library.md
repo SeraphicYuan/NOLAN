@@ -64,10 +64,13 @@ and topic, and that inherited context is what makes a T1 row retrievable at all.
 ## The loop
 
 ```
-nolan images harvest artic --limit 600 [--query "..."]   # T0 + T1, idempotent by source_ref
+nolan images dump met                                    # bulk CSV, so the rights filter is offline
+nolan images harvest artic --limit 600 [--query "..."]   # T0 + T1, idempotent, RESUMES by default
+nolan images harvest met --dept "European Paintings" -n 500
+nolan images harvest artic --restart                     # re-walk from the start (refresh, not extend)
 nolan images discover "a rainy Paris boulevard"          # routed search over the not-held tier
 nolan images fetch <id>                                  # promotion: bytes + gate -> held=1
-nolan images collections                                 # coverage per collection
+nolan images collections                                 # coverage per collection, vs upstream
 ```
 
 `harvest(source, ...)` → `HarvestReport` (scanned / added / refreshed / skipped_no_image /
@@ -100,32 +103,60 @@ template by hand is the menu that rots (WIRING_CHECKLIST pitfall #5), and
 `_bounded_limit`: an explicit `0` is refused, never widened to the default — `or default` on a
 falsy bound is a bounded crawl unbounding itself.
 
-## Adapters
+## Adapters — and the crawler contract
 
-`harvest.SOURCES` maps a source id to `{collection, items}`. Add a museum by adding one adapter —
-the gate, thumbnails, identity columns and dedup are shared. Every adapter MUST yield a namespaced
-`source_ref` (`artic:27992`): a not-held row keyed on a CDN url cannot survive that url rotating,
-and the ref is what makes a re-crawl update instead of duplicate. `limit` means **rows indexed**,
-never records fetched — one meaning across adapters, and it mattered: as "ids fetched" a request
-for 12 Met rows silently delivered 2. `tests/test_visuallib.py` enforces the ref, a rights
-assertion, and the `limit` contract on every registered adapter.
+`harvest.SOURCES` maps a source id to a **`SourceAdapter`**: the two functions (`collection`,
+`items`) plus the part that actually differs between museums — `enumeration`, `upstream_count`,
+`resumable`, `publishes_pixel_dims`, `rights_model`, `notes`. It used to be a bare
+`{collection, items}` dict, so HOW a source can be walked survived only as prose in a docstring,
+where it was also *wrong*.
+
+Every adapter MUST yield a namespaced `source_ref` (`artic:27992`): a not-held row keyed on a CDN
+url cannot survive that url rotating, and the ref is what makes a re-crawl update instead of
+duplicate. `limit` means **rows indexed**, never records fetched — one meaning across adapters,
+and it mattered: as "ids fetched" a request for 12 Met rows silently delivered 2.
+
+**`ENUMERATION`** is the registry of strategies, each with its constraint:
+`bulk-listing` (uncapped, unfiltered) · `search-ranked` (**depth-capped** — the trap) ·
+`bulk-dump` (download, filter offline, then fetch) · `per-object` (one request per row) ·
+`curated-collection` (**rights are not uniform** — the LoC case).
+
+Three properties every crawl now has, each with a test:
+
+- **A resume cursor**, stored on the `collections` row and advanced *after* a row is consumed —
+  re-walking is free (dedup turns it into a refresh), skipping loses rows silently. It is
+  **within-page**, not per-page: a page-granular cursor never advances when `limit` is satisfied
+  inside the first page, so repeated small harvests re-walk page 1 forever. A live smoke run
+  caught exactly that (four runs of `limit=4` → four rows, no progress). `harvest(resume=False)`
+  / `--restart` re-walks deliberately.
+- **An upstream denominator** (`collections.upstream_count`, `Collection.coverage`). "841
+  indexed" reads as complete; "841 of 62,035 (1.4%)" cannot. A source that cannot be asked
+  reports **unknown**, never full.
+- **A declared enumeration strategy**, so a job measured in hours says up front whether it is
+  capped and whether it can resume. Surfaced on `/api/visuallib/sources`.
 
 Shipped:
 
-- **`artic`** — Art Institute of Chicago. Keyless, paginated 100/request, IIIF, server-side
-  `is_public_domain` filter (measured: the unfiltered listing spent 11 of every 12 records on
-  items we must refuse on rights). Carries real pixel dimensions, so the gate's resolution floor
-  runs at index time. Cheapest adapter per row.
+- **`artic`** — Art Institute of Chicago. Keyless, 100/request, IIIF, resumable, carries real
+  pixel dimensions so the resolution floor runs at index time. **Enumerates via the bulk
+  `/artworks` listing**, which has no depth cap (probed live to page 1,320 = 132k records in).
+  A `--query` switches to `/artworks/search`, which is **hard-capped at 1,000 records** (403 at
+  page 11) — fine for a themed slice, useless for coverage, and the report says so. The old
+  docstring justified the search endpoint by claiming the listing "spent 11 of every 12 records"
+  on rights refusals; that does not reproduce — measured 52.2% usable over 1,500 rows and 48.1%
+  over a fresh 800, with per-page variance of 0%–99%. It bought ~1.9× and paid a ceiling.
+  Denominator: **62,035** public-domain of 132,630 total, measured live (it was 61,568 three
+  days earlier — which is why it is measured, not hardcoded).
 - **`met`** — The Metropolitan Museum of Art. Keyless, `--dept "Photographs"` or an id (see
-  `MET_DEPARTMENTS`), `--query` for a themed slice. **Hands over `wikidata_qid` for free** — 8 of
-  8 rows on a European Paintings probe — which is the entire justification for that column.
-  Costs ONE REQUEST PER OBJECT: the listing returns ids only, and the search endpoint cannot
-  substitute (probed live, `departmentId` + `isPublicDomain` + `hasImages` returns 0 results for
-  whole departments — dept 19 → 0 for every query form, dept 11 → 22). Two consequences worth
-  knowing before a big harvest: departments vary hugely in image coverage (European Paintings
-  ~8/8, Photographs ~2/12, so the same `limit` costs 4× the requests there), and the Met
-  publishes physical measurements rather than pixel dimensions, so the resolution floor lands at
-  promotion (`check_file` on real bytes) instead of at index time.
+  `MET_DEPARTMENTS`), resumable by offset. **Enumerates via the bulk CSV** (`nolan images dump
+  met` → 318 MB, 54 columns, 484,956 rows, parses in 3.5s). `Is Public Domain` is a column, so
+  the rights filter runs **offline**: 248,472 rows (51.2%) are public domain — a 2.0× request
+  saving, which is modest and honestly stated; the real wins are an exact per-department
+  denominator (European Paintings = 2,327 PD) and a rights-filtered department slice the live
+  listing cannot produce at all. Free identity extras on the PD subset: tags QID 56%, **artist
+  QID 35%**, object QID 19%. Without the dump it falls back to the unfiltered listing. Publishes
+  physical measurements rather than pixel dimensions, so the resolution floor lands at promotion
+  (`check_file` on real bytes) instead of at index time.
 
 Wanted next: **Library of Congress** — probed and deliberately NOT shipped yet. Its collection
 endpoint returns only a 150px thumbnail and no rights per row; the richer per-item JSON is a

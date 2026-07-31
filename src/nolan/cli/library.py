@@ -150,13 +150,19 @@ def images_stats(scope, project):
 
 @images.command('harvest')
 @click.argument('source')
-@click.option('--limit', '-n', type=int, default=200, help='How many catalog records to scan.')
+@click.option('--limit', '-n', type=int, default=200, help='How many ROWS to index.')
 @click.option('--query', default=None, help='Bias the harvest toward a theme.')
 @click.option('--dept', default=None, help='Filter to one department.')
+@click.option('--restart', is_flag=True,
+              help='Ignore the saved cursor and re-walk from the beginning (refresh, not extend).')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
 @click.option('--project', '-p', default=None)
-def images_harvest(source, limit, query, dept, scope, project):
-    """Harvest a collection into the discovery tier (metadata + thumbnail, no bytes)."""
+def images_harvest(source, limit, query, dept, restart, scope, project):
+    """Harvest a collection into the discovery tier (metadata + thumbnail, no bytes).
+
+    Resumes from the last run's cursor by default, so repeated calls EXTEND coverage instead of
+    re-walking the same rows.
+    """
     import json
 
     from nolan.imagelib.harvest import SOURCES, harvest
@@ -164,10 +170,46 @@ def images_harvest(source, limit, query, dept, scope, project):
         click.echo(f"unknown source {source!r} (known: {', '.join(sorted(SOURCES))})")
         raise SystemExit(2)
     kw = {k: v for k, v in (('query', query), ('dept', dept)) if v}
-    rep = harvest(source, limit=limit, scope=scope, project=project, **kw)
+    rep = harvest(source, limit=limit, scope=scope, project=project,
+                  resume=not restart, **kw)
     click.echo(json.dumps(rep.to_dict(), indent=2, ensure_ascii=False))
     if rep.refused_gate or rep.errors:
         click.echo(f"NOTE: {rep.refused_gate} refused by the asset gate, {rep.errors} errored.")
+
+
+@images.command('dump')
+@click.argument('source')
+@click.option('--force', is_flag=True, help='Re-download even if a copy is cached.')
+def images_dump(source, force):
+    """Fetch a source's bulk data dump, so its rights filter can run OFFLINE.
+
+    Only sources whose enumeration strategy is `bulk-dump` have one. For the Met that is a 318 MB
+    CSV of 484,956 rows, of which 248,472 are public domain — downloading it is what turns a
+    blind id walk into a filtered one, and it supplies the per-department coverage denominator.
+    """
+    from nolan.imagelib.harvest import SOURCES, met_download_csv
+
+    adapter = SOURCES.get(source)
+    if adapter is None:
+        click.echo(f"unknown source {source!r} (known: {', '.join(sorted(SOURCES))})")
+        raise SystemExit(2)
+    if adapter.enumeration != "bulk-dump":
+        click.echo(f"{source} enumerates by {adapter.enumeration!r}, not a bulk dump — "
+                   f"nothing to download.")
+        raise SystemExit(2)
+    if source != "met":
+        click.echo(f"no dump downloader registered for {source!r}")
+        raise SystemExit(2)
+
+    bar = {"last": 0}
+
+    def prog(got, total):
+        if got - bar["last"] >= 32 << 20:
+            bar["last"] = got
+            click.echo(f"  {got / 1e6:>6.0f} MB / {total / 1e6:.0f} MB")
+
+    path = met_download_csv(force=force, progress=prog)
+    click.echo(f"dump ready: {path} ({path.stat().st_size / 1e6:.0f} MB)")
 
 
 @images.command('discover')
@@ -221,8 +263,15 @@ def images_collections(scope, project):
         return
     for c in cols:
         st = lib.discovery_stats(collection_id=c.id)
+        # COVERAGE, not just a count. "841 indexed" reads as a finished collection; "841 of
+        # 62,035 (1.4%)" cannot. An unknown denominator says so rather than implying completeness.
+        cov = c.coverage
+        cover = (f"{st['discovery']} of {c.upstream_count:,} upstream ({cov:.1%})"
+                 if cov is not None else f"{st['discovery']} indexed, upstream total unknown")
         click.echo(f"  #{c.id} {c.slug} — {c.title}")
-        click.echo(f"      {st['discovery']} indexed, {st['described_pct']}% captioned; "
+        click.echo(f"      {cover}; {st['described_pct']}% captioned; "
                    f"rights: {c.rights or '?'}; last crawled {c.last_crawled or 'never'}")
+        if c.cursor:
+            click.echo(f"      resumes at {c.cursor} (set {c.cursor_at or '?'})")
 
 

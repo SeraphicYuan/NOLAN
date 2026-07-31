@@ -106,6 +106,23 @@ _ASSET_MIGRATIONS = {
     "regions": "TEXT",
 }
 
+# Columns added to `collections` after its first release, same ALTER-on-open mechanism.
+_COLLECTION_MIGRATIONS = {
+    # THE DENOMINATOR. `item_count` says what we indexed; without what EXISTS upstream, a
+    # coverage page reads "841 indexed" and looks complete when it is 1.4% of the collection —
+    # the same honesty failure this tier was built to avoid, one level up. Nullable because not
+    # every source can be asked how big it is, and a guessed denominator is worse than none.
+    "upstream_count": "INTEGER",
+    # THE RESUME CURSOR, a JSON blob whose shape is the adapter's business ({"page": 14} for a
+    # paginated listing, {"offset": 3200} for an id walk). Without it every run restarts at page
+    # one and leans on source_ref dedup to skip — which for the Met costs one HTTP request per
+    # already-indexed object just to rediscover it is a duplicate. A job measured in hours that
+    # cannot resume is a job that never finishes.
+    "cursor": "TEXT",
+    # When the cursor was last advanced, so a stalled crawl is visible rather than merely slow.
+    "cursor_at": "TEXT",
+}
+
 
 @dataclass
 class Asset:
@@ -170,9 +187,25 @@ class Collection:
     added_at: Optional[str] = None
     last_crawled: Optional[str] = None
     id: Optional[int] = None
+    # --- crawl state (see _COLLECTION_MIGRATIONS) ---
+    upstream_count: Optional[int] = None
+    cursor: Optional[str] = None
+    cursor_at: Optional[str] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+    @property
+    def coverage(self) -> Optional[float]:
+        """Indexed share of what exists upstream, or None when the denominator is unknown.
+
+        None is a first-class answer here and must be rendered as "unknown", never as 100%: the
+        whole point of carrying `upstream_count` is that a collection which is 1.4% harvested
+        should be unable to look finished.
+        """
+        if not self.upstream_count:
+            return None
+        return min(1.0, (self.item_count or 0) / self.upstream_count)
 
 
 class AssetCatalog:
@@ -195,6 +228,10 @@ class AssetCatalog:
             for col, decl in _ASSET_MIGRATIONS.items():
                 if col not in cols:
                     self._conn.execute(f"ALTER TABLE assets ADD COLUMN {col} {decl}")
+            ccols = {r["name"] for r in self._conn.execute("PRAGMA table_info(collections)")}
+            for col, decl in _COLLECTION_MIGRATIONS.items():
+                if col not in ccols:
+                    self._conn.execute(f"ALTER TABLE collections ADD COLUMN {col} {decl}")
             # A source's own id is UNIQUE where present — re-crawling a collection must UPDATE the
             # row, never duplicate it. Partial index: held=1 rows carry no source_ref and are
             # unaffected (SQLite treats every NULL as distinct anyway; the WHERE is documentation
@@ -390,17 +427,19 @@ class AssetCatalog:
                 cur = self._conn.execute(
                     """INSERT INTO collections
                        (slug, source, title, description, rights, copyright_free, era, topics,
-                        url, item_count, added_at, last_crawled)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        url, item_count, added_at, last_crawled,
+                        upstream_count, cursor, cursor_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (c.slug, c.source, c.title, c.description, c.rights,
                      None if c.copyright_free is None else int(c.copyright_free),
-                     c.era, c.topics, c.url, c.item_count, c.added_at, c.last_crawled))
+                     c.era, c.topics, c.url, c.item_count, c.added_at, c.last_crawled,
+                     c.upstream_count, c.cursor, c.cursor_at))
                 self._conn.commit()
             c.id = cur.lastrowid
             return c
         fields = {}
         for k in ("source", "title", "description", "rights", "era", "topics", "url",
-                  "item_count", "last_crawled"):
+                  "item_count", "last_crawled", "upstream_count", "cursor", "cursor_at"):
             v = getattr(c, k)
             if v is not None:
                 fields[k] = v

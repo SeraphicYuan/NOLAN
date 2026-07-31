@@ -54,12 +54,21 @@ def register(app, ctx):
     async def visuallib_sources():
         """The harvest registry, as the UI's menu. Derived, so a new adapter appears in the form
         the moment it is registered and a removed one cannot linger as a dead button."""
-        from nolan.imagelib.harvest import MET_DEPARTMENTS, SOURCES
+        from nolan.imagelib.harvest import ENUMERATION, MET_DEPARTMENTS, SOURCES
         out = []
         for name, adapter in sorted(SOURCES.items()):
-            col = adapter["collection"]()
+            col = adapter.collection()
             out.append({"id": name, "title": col.title, "rights": col.rights,
                         "description": col.description,
+                        # How this source can be walked, and what that costs, straight from the
+                        # registry — a crawl measured in hours should say up front whether it can
+                        # resume and whether it is capped.
+                        "enumeration": adapter.enumeration,
+                        "enumeration_constraint": ENUMERATION[adapter.enumeration]["constraint"],
+                        "resumable": adapter.resumable,
+                        "publishes_pixel_dims": adapter.publishes_pixel_dims,
+                        "rights_model": adapter.rights_model,
+                        "notes": adapter.notes,
                         "departments": (sorted(MET_DEPARTMENTS.values()) if name == "met" else [])})
         return {"sources": out}
 
