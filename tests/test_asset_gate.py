@@ -78,9 +78,14 @@ def _img(tmp_path, name, w, h, painter=None):
     from PIL import Image, ImageDraw
     im = Image.new("RGB", (w, h), (120, 110, 100))
     d = ImageDraw.Draw(im)
-    # non-uniform body so the banner band is the only suspicious region
+    # Non-uniform body so the banner band is the only suspicious region. The stripes run the FULL
+    # height deliberately: they used to cover only the middle half, which left the top and bottom
+    # quarters as literally flat fill — and once the resolution floor started judging content
+    # rather than the file (see nolan/pixels.py), this "clean image" correctly measured as
+    # 1581x600 of picture inside a 1600x1200 file, i.e. a matted image rather than a clean one.
+    # The fixture was the thing that stopped being representative, not the gate.
     for i in range(0, w, 40):
-        d.rectangle([i, h // 4, i + 20, 3 * h // 4], fill=(90 + i % 80, 80, 70))
+        d.rectangle([i, 0, i + 20, h], fill=(90 + i % 80, 80, 70))
     if painter:
         painter(im, d)
     p = tmp_path / name

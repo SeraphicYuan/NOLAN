@@ -7,8 +7,8 @@
   },
   "border-weight": {
     "_var": "--bw",
-    "_desc": "primary border weight — hairline gallery to heavy brutalist",
+    "_desc": "primary border weight — borderless, then hairline gallery to heavy brutalist. `none` mirrors the radius ladder's own `none` step: a theme whose shape character is carried by a drop shadow instead of an edge (scatterbrain's post-it) has to be able to SAY so, and before this step existed the ladder forced it off-scale.",
     "default": "2px",
-    "steps": {"hair": "1px", "thin": "1.5px", "base": "2px", "bold": "3px", "heavy": "4px"}
+    "steps": {"none": "0", "hair": "1px", "thin": "1.5px", "base": "2px", "bold": "3px", "heavy": "4px"}
   }
 }

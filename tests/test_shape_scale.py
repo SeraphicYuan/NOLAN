@@ -25,7 +25,10 @@ def test_registry_shape():
     assert REG["radius"]["_var"] == "--r-card" and REG["radius"]["steps"]
     bw = REG["border-weight"]
     assert bw["_var"] == "--bw" and bw["default"] == "2px"
-    assert set(bw["steps"]) == {"hair", "thin", "base", "bold", "heavy"}
+    # `none` is a real step, not a loophole: the radius ladder has always had one, and a theme
+    # whose shape character is a drop shadow rather than an edge (scatterbrain's post-it) was
+    # otherwise forced to sit off-scale.
+    assert set(bw["steps"]) == {"none", "hair", "thin", "base", "bold", "heavy"}
 
 
 def test_scale_tokens_are_consumed():

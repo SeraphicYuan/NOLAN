@@ -188,6 +188,16 @@ comparable; the unfiltered run is the honest one.
 5. **Both fetches are acquisition doors.** `add_discovery` (thumbnail) and `promote_to_held` (full
    image) are in `ASSET_GATE_DOORS`. An un-gated discovery tier is a laundering route around the
    gate `add_url` applies to held assets.
+5b. **The resolution floor judges CONTENT, not the file** (`nolan/pixels.py`, `tests/test_pixels.py`).
+   Museum object photography is an object on a plain sweep, so the file routinely overstates the
+   asset: measured over the live corpus, 22% of rows carry ≥5% dead margin on some side and coins
+   run 29–32%, which makes a 3000x1511 coin photo at 31% content a **2197x644** asset. The gate was
+   admitting those as archival-grade. `add_discovery` now measures the stored thumbnail and scales
+   the content share onto the catalog's declared dimensions; `asset_gate.check_file` does the same
+   on real bytes. It REFUSES rather than flags, because cropping cannot create pixels. Characterised
+   before wiring (checklist #10/#11): **7 of 841** discovery rows and **1 of 46** held rows newly
+   refused, every content box inspected by eye, 834 still passing. Rows from a source that
+   publishes no pixel dimensions (the Met — physical size only) are unaffected.
 6. **`regions` is a column and nothing writes it.** The labelled subject/face/text/watermark boxes
    are reserved and deliberately unpopulated — the column ships only because adding one to a
    populated table is the expensive part. When it shipped, the HF path had no focal point at all.

@@ -348,6 +348,28 @@ class ImageLibrary:
             dest.unlink(missing_ok=True)
             raise ValueError(f"discovery refused (watermark banner strip): {source_ref}")
 
+        # THE CONTENT FLOOR. `check_candidate` above judged the museum's declared dimensions,
+        # which describe the FILE — and museum object photography is an object on a wide sweep,
+        # so the file routinely overstates the asset. Now that a thumbnail is on disk we can
+        # measure the content's share and apply the floor to what is actually there: a
+        # 3000x1511 coin photo at 31% content is a 2197x644 asset, and 644px does not clear the
+        # archival floor however the file is cropped. Characterised over the live corpus before
+        # wiring (checklist #10/#11): 7 of 841 rows with declared dimensions newly refused, all
+        # coins or small objects on large grounds, every content box inspected by eye; 834 still
+        # pass. Rows whose source publishes no pixel dimensions (the Met, which publishes
+        # physical size) are unaffected — there is nothing to scale.
+        if width and height:
+            from nolan.pixels import effective_dims
+            from nolan.asset_gate import FLOORS
+            eff = effective_dims(dest, declared=(int(width), int(height)))
+            if eff:
+                min_dim, min_px = FLOORS.get(tier, FLOORS["stock"])
+                if min(eff) < min_dim or eff[0] * eff[1] < min_px:
+                    dest.unlink(missing_ok=True)
+                    raise ValueError(
+                        f"discovery refused (content {eff[0]}x{eff[1]} below the {tier} floor; "
+                        f"declared {width}x{height} is mostly dead margin): {source_ref}")
+
         rel = str(dest.relative_to(self.base)).replace("\\", "/")
         fields = dict(url=url, source=source, source_url=source_url, license=license,
                       title=title, description=description, width=width, height=height,

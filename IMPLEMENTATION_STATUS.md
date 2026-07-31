@@ -4,6 +4,52 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The resolution floor was measuring the file, not the picture (2026-07-30)
+
+`nolan/pixels.py` — deterministic pixel measurement, and the first consumer of it, a gate that
+stops mistaking dead margin for an asset.
+
+The premise came out of a 50-row caption validation: a VLM asked whether an image had a dead
+border agreed with pixel measurement on **16 of 50**, worse than chance, and said "no border" on
+ten rows where the margin was ≥15% of the frame, one at 32%. It was answering a different
+question — a decorative border *inside* the artwork, not dead margin *around* it. The same pass
+killed `focal_zone` (the centre cell on 50/50) and `open_zones` (7 answers for 50 images, 38 of
+them one of two templates). So: **the model names, a detector localises, and nothing numeric is
+ever asked of a model.**
+
+What that buys, measured over the live 1,091-row corpus at ~16 ms/row: content box + per-side
+dead margin, content fraction, uniform-background flag, aspect + shape, edge contact, luminance,
+contrast, saturation, and a quiet-region map (the honest `open_zones`). **22%** of rows carry ≥5%
+dead margin on some side; coins run 29–32%, because a coin photo is two coins on a wide grey
+field.
+
+The live bug that follows: a 3000x1511 coin photo at 31% content is a **2197x644** asset, and the
+gate was reading the file. `asset_gate.check_file` and `imagelib.add_discovery` now judge content
+dimensions. It REFUSES rather than flags — cropping cannot create pixels.
+
+Characterised over shipped artifacts BEFORE wiring (checklist #10/#11), both directions reported:
+**7 of 841** discovery rows and **1 of 46** held rows newly refused — all coins, small objects on
+large grounds, and one page facsimile whose printed area really is 649x971 — with 834 discovery
+rows still passing. Every content box was inspected by eye on contact sheets.
+
+Three defects found by looking at the output rather than by reasoning about it, each now a
+regression test: a whole-border background estimate missed **one-sided** margins (the asymmetric
+case that motivated the module); a flat painted **sky** was eaten as margin on Pippin's *Cabin in
+the Cotton* until an achromatic-ground guard was added (a mount is neutral, a sky is not); and
+`shape` called an engraving, a dalmatic and three Greek kraters "tondo" (12 of 19 wrong) until it
+was replaced by a real circularity test against the inscribed circle — and renamed `round`, since
+the survivors are as often round *objects* as round *pictures*.
+
+Two pre-existing failures cleared alongside, both mis-attributions rather than missing work:
+`sfx_ingest.add`'s gate was never unwired — the door moved into `nolan.sound.curate` (c6337c9) and
+the `ASSET_GATE_DOORS` manifest kept pointing at the CLI wrapper, so the fix was the manifest, not
+a second gate call (checklist class 4). And `scatterbrain`'s `--bw '0'` was off the border-weight
+ladder because the ladder had no `none` step, though the radius ladder has always had one; a theme
+whose shape character is a drop shadow rather than an edge has to be able to say so.
+
+Full suite: 2,236 passed, 5 skipped, 0 failed — the first fully green run in this tree since
+c6337c9 landed the sfx extraction.
+
 ## The video retrieval program — a lexical channel, a shot grid, and an abstain rate (2026-07-27)
 
 Wiring the transcript library into acquisition opened two doors at once: rich searchable

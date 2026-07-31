@@ -149,8 +149,14 @@ ASSET_GATE_DOORS = {
     "attribution.build_attribution": {
         "file": "src/nolan/attribution.py", "func": "def build_attribution",
         "calls": ["scan_files"]},
+    # The door moved, the gate did not. `nolan sfx add` was extracted into
+    # nolan.sound.curate so the CLI, the /sfx webUI route and the source-adapter
+    # registry drive ONE implementation (c6337c9); this entry kept pointing at the
+    # CLI wrapper, which now only formats output. Re-adding a call in the CLI would
+    # have been two gates for one decision (checklist class 4) — the manifest is
+    # what was stale, not the wiring.
     "sfx_ingest.add": {
-        "file": "src/nolan/cli/sfx.py", "func": "def sfx_add",
+        "file": "src/nolan/sound/curate.py", "func": "def add_sound",
         "calls": ["check_sound"]},
     "sfx_search.fetch_to_library": {
         "file": "src/nolan/sfx_search.py", "func": "def fetch_to_library",
@@ -368,20 +374,53 @@ def banner_suspect(path: Path) -> bool:
     return False
 
 
+def content_dims(path) -> Optional[Tuple[int, int]]:
+    """The dimensions the resolution floor must judge: the PICTURE, not the FILE.
+
+    Museum object photography is an object on a plain sweep, so the file is routinely far larger
+    than the asset. Measured over the live corpus: 22% of rows carry >=5% dead margin on some
+    side and coins run 29-32%, which means a 3000x1511 coin photo at 31% content is really a
+    2197x644 asset. The floor was reading the file and admitting those as archival-grade.
+
+    Cropping cannot create pixels, which is why this REFUSES rather than merely flags: an asset
+    whose content is 644px tall is 644px tall however it is trimmed.
+
+    Falls back to the file's own dimensions whenever measurement is unavailable — an image the
+    detector cannot read must not become an image the gate cannot refuse.
+    """
+    try:
+        from nolan.pixels import measure
+    except Exception:                                    # numpy/Pillow unavailable
+        return _probe(Path(path))
+    facts = measure(path)
+    if facts is None:
+        return _probe(Path(path))
+    return facts.effective_dims
+
+
 def check_file(path, tier: str = "stock",
                vision: Optional[Callable[[Path], Optional[bool]]] = None) -> GateVerdict:
     """Gate a downloaded image file. Resolution floor → banner heuristic →
     optional vision watermark check (``vision(path) -> True/False/None``;
-    None = unavailable, treated as unchecked, flagged)."""
+    None = unavailable, treated as unchecked, flagged).
+
+    The floor judges CONTENT dimensions (see :func:`content_dims`), so dead margin cannot buy an
+    asset a pass it has not earned.
+    """
     v = GateVerdict(ok=True)
     p = Path(path)
-    size = _probe(p)
+    size = content_dims(p)
     if size:
         w, h = size
         min_dim, min_px = FLOORS.get(tier, FLOORS["stock"])
         if min(w, h) < min_dim or w * h < min_px:
             v.ok = False
-            v.reasons.append(f"below resolution floor ({w}x{h}, tier={tier})")
+            file_size = _probe(p)
+            detail = ""
+            if file_size and tuple(file_size) != (w, h):
+                detail = f", file is {file_size[0]}x{file_size[1]} incl. dead margin"
+            v.reasons.append(
+                f"below resolution floor (content {w}x{h}{detail}, tier={tier})")
             return v
     if banner_suspect(p):
         v.ok = False
