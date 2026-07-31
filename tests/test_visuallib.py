@@ -524,6 +524,123 @@ def test_backfill_retires_a_row_whose_pixels_fail_the_content_floor(lib, tmp_pat
     assert lib.catalog.get_by_ref("artic:8").status == "rejected"
 
 
+# --- on-demand pixels: concurrent, gated, and after ranking ----------------------------------
+
+def _fake_thumb_downloader(monkeypatch, size=(400, 400), delay=0.0):
+    """A downloader that writes a real (textured, full-bleed) image so the gates pass.
+
+    Also records the MAXIMUM number of downloads in flight at once, which is how the concurrency
+    claim gets tested directly instead of inferred from wall-clock — a timing assertion here
+    measured the serial CLIP embed as much as the parallel fetch, and was both flaky and wrong.
+    """
+    import threading
+    import time as _t
+    import numpy as np
+    from PIL import Image
+
+    class _Calls(list):
+        """A list that also carries the in-flight watermark."""
+        state: dict
+
+    calls = _Calls()
+    state = {"inflight": 0, "max_inflight": 0}
+    lock = threading.Lock()
+
+    def _dl(url, dest, **kw):
+        with lock:
+            calls.append(url)
+            state["inflight"] += 1
+            state["max_inflight"] = max(state["max_inflight"], state["inflight"])
+        try:
+            if delay:
+                _t.sleep(delay)
+            Path(dest).parent.mkdir(parents=True, exist_ok=True)
+            rng = np.random.default_rng(abs(hash(url)) % 2**31)
+            Image.fromarray(rng.integers(40, 220, size=(size[1], size[0], 3),
+                                         dtype="uint8")).save(dest)
+        finally:
+            with lock:
+                state["inflight"] -= 1
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _dl)
+    calls.state = state
+    return calls
+
+
+def test_warm_pixels_fetches_concurrently(lib, monkeypatch):
+    """The FETCH is what runs wide — it is nearly all network. The CLIP embed and the SQLite
+    write stay serial on purpose, and they are the floor on a page (~90 ms/row), so this asserts
+    parallelism directly rather than through wall-clock."""
+    calls = _fake_thumb_downloader(monkeypatch, delay=0.05)
+    rows = []
+    for i in range(16):
+        a, _ = lib.add_discovery(source_ref=f"artic:{i}", thumb_url=f"https://e.org/{i}.jpg",
+                                 source="artic", title=f"t{i}", license="CC0", pixels=False)
+        rows.append(a)
+
+    res = lib.warm_pixels(rows, concurrency=8)
+
+    assert res["fetched"] == 16 and len(calls) == 16
+    assert calls.state["max_inflight"] > 1, "the fetch ran serially"
+    assert calls.state["max_inflight"] <= 8, "concurrency cap not honoured"
+    assert all(lib.catalog.get(a.id).has_pixels for a in rows)
+
+
+def test_warm_pixels_honours_a_serial_setting(lib, monkeypatch):
+    calls = _fake_thumb_downloader(monkeypatch, delay=0.01)
+    rows = [lib.add_discovery(source_ref=f"artic:{i}", thumb_url=f"https://e.org/{i}.jpg",
+                              source="artic", title=f"t{i}", license="CC0", pixels=False)[0]
+            for i in range(4)]
+    lib.warm_pixels(rows, concurrency=1)
+    assert calls.state["max_inflight"] == 1
+
+
+def test_warm_pixels_runs_the_same_gate_as_the_batch_path(lib, monkeypatch):
+    """One implementation for both doors — the same picture must not be admitted by one and
+    refused by the other."""
+    import numpy as np
+    from PIL import Image
+
+    def _dl(url, dest, **kw):
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        canvas = np.full((400, 400, 3), 128, dtype="uint8")   # a speck on a huge grey sweep
+        rng = np.random.default_rng(3)
+        canvas[195:205, 195:205] = rng.integers(0, 255, size=(10, 10, 3), dtype="uint8")
+        Image.fromarray(canvas).save(dest)
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _dl)
+    a, _ = lib.add_discovery(source_ref="artic:1", thumb_url="https://e.org/1.jpg",
+                             source="artic", title="t", license="CC0",
+                             width=1000, height=1000, pixels=False)
+    res = lib.warm_pixels([a], tier="archival")
+    assert res["refused"] == 1 and res["fetched"] == 0
+    assert lib.catalog.get(a.id).status == "rejected"
+
+
+def test_search_does_no_network_io_unless_asked(lib, monkeypatch):
+    """A plain programmatic search must stay free of fetches — warming is opt-in."""
+    calls = _fake_thumb_downloader(monkeypatch)
+    lib.add_discovery(source_ref="artic:1", thumb_url="https://e.org/1.jpg", source="artic",
+                      title="A Stone Bridge", license="CC0", pixels=False)
+    lib.search_discovery("stone bridge", k=5)
+    assert calls == [], "search warmed pixels without being asked"
+
+    lib.search_discovery("stone bridge", k=5, warm=True)
+    assert len(calls) == 1, "warm=True must fetch the page's pixels"
+
+
+def test_warming_happens_after_ranking_not_before(lib, monkeypatch):
+    """Warming before ranking would fetch for every candidate the three channels touched (k*3)
+    to serve a page of k."""
+    calls = _fake_thumb_downloader(monkeypatch)
+    for i in range(9):
+        lib.add_discovery(source_ref=f"artic:{i}", thumb_url=f"https://e.org/{i}.jpg",
+                          source="artic", title=f"bridge {i}", license="CC0", pixels=False)
+    hits = lib.search_discovery("bridge", k=3, warm=True)
+    assert len(hits) <= 3
+    assert len(calls) <= 3, f"warmed {len(calls)} rows to serve a page of 3"
+
+
 # --- the structured caption (v1) -------------------------------------------------------------
 
 def test_caption_schema_registry_names_a_consumer_for_every_field():

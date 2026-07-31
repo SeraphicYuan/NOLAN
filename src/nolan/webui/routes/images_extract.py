@@ -111,16 +111,24 @@ def register(app, ctx):
 
     @app.get("/api/images/discover")
     async def api_images_discover(q: str = "", scope: str = "global", project: str = None,
-                                  k: int = 24, collection_id: int = None):
+                                  k: int = 24, collection_id: int = None,
+                                  warm: bool = True):
         """Search the NOT-HELD tier (Visual Lib). A hit is a POINTER, not a file — its `raw`
-        serves the 512px thumbnail we do hold, and `fetch` is what pulls the real image."""
+        serves the 512px thumbnail we do hold, and `fetch` is what pulls the real image.
+
+        `warm` (default ON for the UI, off in the library API) fetches pixels for the rows on
+        THIS page — the phase-split crawl leaves most rows record-only, and a card with no
+        thumbnail is not much of a search result. The fetch is concurrent; the CLIP embed that
+        follows is the real floor at ~90 ms/row.
+        """
         import asyncio as _asyncio
 
         def _do():
             lib = _open_imagelib(scope, project)
             if q.strip():
                 rows = [(h.asset, h.score) for h in
-                        lib.search_discovery(q, k=k, collection_id=collection_id)]
+                        lib.search_discovery(q, k=k, collection_id=collection_id,
+                                             warm=warm)]
             else:
                 rows = [(a, None) for a in lib.catalog.list(status="active", held=0, limit=k,
                                                             collection_id=collection_id)]

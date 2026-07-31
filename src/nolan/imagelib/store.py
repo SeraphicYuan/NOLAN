@@ -496,8 +496,94 @@ class ImageLibrary:
         return {"counts": counts, "changed": changed, "total": total,
                 "unknown_pct": round(100.0 * counts["unknown"] / total, 1)}
 
+    def _fetch_thumb(self, source_ref: str, thumb_url: str) -> Path:
+        """Download + shrink one thumbnail. Pure I/O, safe to run on a worker thread."""
+        from nolan.http_client import download_file_sync
+
+        dest = self._thumb_dest(source_ref, thumb_url)
+        if not dest.exists():
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            download_file_sync(thumb_url, str(dest), headers={"User-Agent": _UA})
+            _shrink(dest, _THUMB_PX)
+        return dest
+
+    def warm_pixels(self, assets, *, concurrency: int = 8, tier: str = "archival") -> dict:
+        """Fetch pixels for a HANDFUL of rows right now — the on-demand path behind search.
+
+        Retrieval returns a page of results; the ones a human is about to look at are exactly the
+        ones worth spending pixels on.
+
+        WHAT IS ACTUALLY PARALLEL, stated precisely because a first version of the test measured
+        the wrong thing and "reported" a speed-up it had not achieved: the **fetch** runs
+        `concurrency`-wide, because it is nearly all network. The gates, the CLIP embed and the
+        SQLite write stay SERIAL — the embedder is not documented thread-safe and the catalog
+        serialises writes through one lock anyway.
+
+        So the honest cost model for a page of 24 is: fetch ≈ (24/8) x one round-trip, plus
+        ~90 ms/row of embedding that does not parallelise. The embed is therefore the floor
+        (~2 s for a page of 24), not the network — which is the opposite of what the original
+        1.7 s/row estimate implied, and worth knowing before anyone tries to make this faster by
+        widening the pool.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        todo = [a for a in assets if a is not None and not a.thumb_path and a.thumb_url]
+        out = {"attempted": len(todo), "fetched": 0, "refused": 0, "errors": 0, "reasons": []}
+        if not todo:
+            return out
+
+        downloaded: Dict[int, Path] = {}
+        with ThreadPoolExecutor(max_workers=max(1, concurrency)) as pool:
+            futures = {pool.submit(self._fetch_thumb, a.source_ref, a.thumb_url): a
+                       for a in todo}
+            for fut, a in futures.items():
+                try:
+                    downloaded[a.id] = fut.result()
+                except Exception as e:
+                    out["errors"] += 1
+                    if len(out["reasons"]) < 12:
+                        out["reasons"].append(f"{a.source_ref}: {type(e).__name__}: {e}")
+
+        for a in todo:
+            dest = downloaded.get(a.id)
+            if dest is None:
+                continue
+            verdict = self._gate_fetched_thumb(a, dest, tier=tier)
+            if verdict is not None:
+                out["refused"] += 1
+                if len(out["reasons"]) < 12:
+                    out["reasons"].append(f"{a.source_ref}: {verdict}")
+                self.catalog.set_status(a.id, "rejected")
+                continue
+            rel = str(dest.relative_to(self.base)).replace("\\", "/")
+            self.catalog.update(a.id, thumb_path=rel, path=rel)
+            self._index_discovery(self.catalog.get(a.id), dest, clip=True, ident=False)
+            out["fetched"] += 1
+        return out
+
+    def _gate_fetched_thumb(self, asset: Asset, dest: Path, *, tier: str) -> Optional[str]:
+        """Run the gates that need pixels. Returns a refusal reason, or None if it passes.
+
+        One implementation for both the batch backfill and the on-demand warm path — the same
+        picture must not be admitted by one door and refused by the other.
+        """
+        from nolan.asset_gate import FLOORS, OPEN_ACCESS_SOURCES, banner_suspect
+        from nolan.pixels import effective_dims
+
+        if asset.source not in OPEN_ACCESS_SOURCES and banner_suspect(dest):
+            dest.unlink(missing_ok=True)
+            return "watermark banner strip"
+        if asset.width and asset.height:
+            eff = effective_dims(dest, declared=(int(asset.width), int(asset.height)))
+            if eff:
+                min_dim, min_px = FLOORS.get(tier, FLOORS["stock"])
+                if min(eff) < min_dim or eff[0] * eff[1] < min_px:
+                    dest.unlink(missing_ok=True)
+                    return f"content {eff[0]}x{eff[1]} below the {tier} floor"
+        return None
+
     def backfill_pixels(self, *, limit: int = 200, collection_id: Optional[int] = None,
-                        tier: str = "archival", progress=None) -> dict:
+                        tier: str = "archival", concurrency: int = 8, progress=None) -> dict:
         """PHASE B — fetch thumbnails for record-only rows, so `look` retrieval grows over time.
 
         Deliberately incremental and bounded: measured at 470 ms/row, the whole artic
@@ -506,54 +592,26 @@ class ImageLibrary:
         than as one heroic job that must not fail.
 
         Every gate that Phase A could not run — the banner heuristic and the content-resolution
-        floor — runs HERE, at the moment the pixels first exist. A row that fails them is
-        retired rather than left half-indexed, so the tier can never hold a row whose picture we
-        looked at and refused.
-        """
-        from nolan.asset_gate import (FLOORS, OPEN_ACCESS_SOURCES, banner_suspect)
-        from nolan.http_client import download_file_sync
-        from nolan.pixels import effective_dims
+        floor — runs HERE, at the moment the pixels first exist, through the SAME
+        `_gate_fetched_thumb` the on-demand `warm_pixels` path uses. One implementation, because
+        the same picture must not be admitted by one door and refused by the other.
 
-        out = {"attempted": 0, "fetched": 0, "refused": 0, "errors": 0, "reasons": []}
+        The fetch runs `concurrency`-wide: it is nearly all network, and a serial batch spends
+        its whole wall-clock waiting on museum CDNs.
+        """
         rows = [a for a in self.catalog.list(status="active", held=0,
                                              collection_id=collection_id,
                                              limit=max(limit * 4, 200))
-                if not a.thumb_path and a.thumb_url]
-        for a in rows[:limit]:
-            out["attempted"] += 1
-            dest = self._thumb_dest(a.source_ref, a.thumb_url)
-            try:
-                if not dest.exists():
-                    dest.parent.mkdir(parents=True, exist_ok=True)
-                    download_file_sync(a.thumb_url, str(dest), headers={"User-Agent": _UA})
-                    _shrink(dest, _THUMB_PX)
-                if a.source not in OPEN_ACCESS_SOURCES and banner_suspect(dest):
-                    dest.unlink(missing_ok=True)
-                    raise ValueError("watermark banner strip")
-                if a.width and a.height:
-                    eff = effective_dims(dest, declared=(int(a.width), int(a.height)))
-                    if eff:
-                        min_dim, min_px = FLOORS.get(tier, FLOORS["stock"])
-                        if min(eff) < min_dim or eff[0] * eff[1] < min_px:
-                            dest.unlink(missing_ok=True)
-                            raise ValueError(
-                                f"content {eff[0]}x{eff[1]} below the {tier} floor")
-            except ValueError as e:                        # a gate VERDICT — loud, never silent
-                out["refused"] += 1
-                if len(out["reasons"]) < 12:
-                    out["reasons"].append(f"{a.source_ref}: {e}")
-                self.catalog.set_status(a.id, "rejected")
-                continue
-            except Exception as e:
-                out["errors"] += 1
-                if len(out["reasons"]) < 12:
-                    out["reasons"].append(f"{a.source_ref}: {type(e).__name__}: {e}")
-                continue
-            rel = str(dest.relative_to(self.base)).replace("\\", "/")
-            self.catalog.update(a.id, thumb_path=rel, path=rel)
-            fresh = self.catalog.get(a.id)
-            self._index_discovery(fresh, dest, clip=True, ident=False)
-            out["fetched"] += 1
+                if not a.thumb_path and a.thumb_url][:limit]
+
+        out = {"attempted": 0, "fetched": 0, "refused": 0, "errors": 0, "reasons": []}
+        # Chunked so `progress` still ticks during a long run and a crash loses at most a chunk.
+        step = max(1, concurrency * 2)
+        for i in range(0, len(rows), step):
+            res = self.warm_pixels(rows[i:i + step], concurrency=concurrency, tier=tier)
+            for k in ("attempted", "fetched", "refused", "errors"):
+                out[k] += res[k]
+            out["reasons"].extend(res["reasons"][:max(0, 12 - len(out["reasons"]))])
             if progress:
                 progress(out)
         return out
@@ -665,7 +723,8 @@ class ImageLibrary:
         return asset, True
 
     def search_discovery(self, query: str, *, k: int = 12,
-                         collection_id: Optional[int] = None) -> List[LibraryHit]:
+                         collection_id: Optional[int] = None,
+                         warm: bool = False, warm_concurrency: int = 8) -> List[LibraryHit]:
         """Search the NOT-HELD tier. Three channels, ROUTED by what the query is asking for.
 
         A query that NAMES something ("Seurat, La Grande Jatte") is an identity question, answered
@@ -715,7 +774,23 @@ class ImageLibrary:
             c = clip[aid].score if aid in clip else 0.0
             merged.append(LibraryHit(asset=asset,
                                      score=round(wi * i + wc * c + wcov * cover.get(aid, 0.0), 4)))
-        return sorted(merged, key=lambda h: h.score, reverse=True)[:k]
+        top = sorted(merged, key=lambda h: h.score, reverse=True)[:k]
+
+        # ON-DEMAND PIXELS. The phase-split crawl leaves most rows record-only, and the rows a
+        # human is about to LOOK at are exactly the ones worth spending a fetch on. Opt-in
+        # (`warm=True`) because a plain programmatic search must stay free of network I/O.
+        #
+        # This deliberately runs AFTER ranking, not before: warming first would mean fetching for
+        # every candidate the three channels touched (k*3 of them) to serve a page of k.
+        # Re-reading the rows afterwards keeps the returned hits consistent with what was stored.
+        if warm and top:
+            fetched = self.warm_pixels([h.asset for h in top], concurrency=warm_concurrency)
+            if fetched.get("fetched") or fetched.get("refused"):
+                fresh = self.catalog.get_many([h.asset.id for h in top])
+                top = [LibraryHit(asset=fresh.get(h.asset.id, h.asset), score=h.score)
+                       for h in top
+                       if fresh.get(h.asset.id, h.asset).status == "active"]
+        return top
 
     def _search_discovery_identity(self, query: str, *, k: int, collection_id=None
                                    ) -> List[LibraryHit]:

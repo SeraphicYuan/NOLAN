@@ -4,6 +4,28 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## On-demand pixels — and the embed, not the network, is the floor (2026-07-31)
+
+`search_discovery(warm=True)` fetches pixels for the rows on the page a human is about to look
+at. The phase-split crawl leaves most rows record-only, and a card with no thumbnail is not much
+of a search result. Warming runs AFTER ranking, not before — warming first would fetch for every
+candidate the three channels touched (k×3) to serve a page of k. Opt-in in the library API, on by
+default for the UI route.
+
+`warm_pixels` and `backfill_pixels` now share ONE gate (`_gate_fetched_thumb`), because the same
+picture must not be admitted by one door and refused by the other.
+
+**A test caught me overstating the speed-up.** I wrote that concurrency makes a page fast, then
+measured 16 rows at 1.58 s — *slower than serial*. The fetch was parallel; the serial CLIP embed
+(~90 ms/row) dominated and I had timed the whole call. Two corrections: the test now asserts
+parallelism DIRECTLY (a max-in-flight watermark) instead of inferring it from wall-clock, which
+is both precise and not flaky; and the docstring states the honest cost model — fetch ≈ (24/8) ×
+one round-trip, plus ~90 ms/row of embedding that does not parallelise. **The embed is the floor
+(~2 s for a page of 24), not the network**, which is the opposite of what the original
+1.7 s/row estimate implied and worth knowing before anyone widens the pool expecting a win.
+
+Full suite: 2,277 passed, 5 skipped, 0 failed.
+
 ## The structured caption, v1 — what survived being measured (2026-07-31)
 
 `imagelib/caption.py`, plus `caption_json` and `caption_schema` columns. The one thing a vision

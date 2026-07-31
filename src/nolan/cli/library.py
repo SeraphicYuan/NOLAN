@@ -244,12 +244,15 @@ def images_dump(source, force):
 @images.command('discover')
 @click.argument('query')
 @click.option('--top', '-k', type=int, default=12)
+@click.option('--warm', is_flag=True,
+              help='Fetch pixels for THIS page of results (concurrent). Record-only rows rank '
+                   'on identity alone until their thumbnail lands.')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
 @click.option('--project', '-p', default=None)
-def images_discover(query, top, scope, project):
+def images_discover(query, top, warm, scope, project):
     """Search the NOT-HELD tier — 'this image exists, here, under these terms'."""
     lib = _open_library(scope, project)
-    hits = lib.search_discovery(query, k=top)
+    hits = lib.search_discovery(query, k=top, warm=warm)
     click.echo(f"{len(hits)} discovery result(s) for '{query}':")
     for h in hits:
         a = h.asset
