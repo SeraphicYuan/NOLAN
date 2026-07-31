@@ -348,6 +348,34 @@ comparable; the unfiltered run is the honest one.
 
 ## Deliberately deferred
 
+- **Indexing RESTRICTED rows (`is_public_domain: false`) as a rights-flagged tier.** Today all
+  three adapters DROP them — `report.skipped_rights += 1; continue` — so no row and no flag
+  exists. The need is real: a search for *Nighthawks* returns nothing, and "we hold no picture of
+  it" is indistinguishable from "it exists, it is Hopper, it is in copyright until 2038, stop
+  looking."
+
+  **Deferred because it is the wrong SHAPE, not because the need is fake.** It is an on-demand
+  question — it arises rarely, for one named thing someone just searched for — and pre-indexing
+  ~70k unusable rows to have the answer waiting is the same trade this tier already rejected when
+  it chose demand-driven captioning over captioning 132k items. The live answer costs ONE request
+  (`is_public_domain` on a title search, ~200ms).
+
+  The argument that settles it: **NOLAN has no licensing path.** The rights posture is
+  open-access-only, so there is no workflow where you see a restricted artwork and buy it. The
+  information can change what you UNDERSTAND but never what you DO, and diagnostics do not justify
+  doubling a corpus. It also adds a second orthogonal "look but never use" axis on top of
+  `held=0`, doubling the ways a future acquisition path can leak — the exact direction of the
+  incident this gate was built after.
+
+  **REVISIT IF A LICENSING PATH APPEARS.** That is the trigger; the reasoning above collapses the
+  moment a restricted artwork becomes something you can act on. The design, so it is not
+  re-derived: a real `rights_status` column (`open` / `restricted` / `unknown`) rather than
+  inferring from a collection label; those rows **excluded by default from every read path**, the
+  way `held=0` already is; and a SEPARATE collection, so the existing CC0 assertion stays true.
+  Cost ≈ 2x rows and 2x identity embeddings (132k vs 62k for artic), plus a re-crawl to backfill.
+
+  The cheap interim, if the confusion ever bites in practice: when a NAMED query returns nothing,
+  ask the source live and report "exists, restricted" — ~30 lines, no storage, no leak surface.
 - **Text / watermark / face regions.** The `subject` label is produced; the rest of
   `REGION_LABELS` is still reserved. A watermark box would be immediately spendable by
   `hyperframes/cleanup.py`, which now has a measured *matte* detector (`detect_matte`) but still
