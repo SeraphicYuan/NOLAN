@@ -4,6 +4,55 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## 97,625 rows, and the look column is measuring COVERAGE, not the router (2026-07-31)
+
+**Cleveland harvested to completion** — `exhausted: true`, cursor 41,477 = upstream_count exactly,
+**0 errors**, and `skipped_rights: 0` because its server-side `cc0=1` filter did that work (the
+advantage the 7-question probe predicted). Its 121 gate refusals are all `3400x79`-shaped
+panoramic strips at 43:1 — correctly refused twice over, being under 600k pixels AND under the
+absolute short-side floor, so the new high-aspect waiver rightly does not rescue them.
+
+Library: **97,625 discovery rows** across three institutions. The composition is now
+**36.6% print, 13.1% drawing, 10.9% textile, 6.3% painting**.
+
+**Identity batching: 87 → 32 ms/row, MEASURED (2.7x).** The estimate beforehand was 15–20, and
+saying 2.7x rather than the guess is the point. Buffering created a hazard that needed three
+guards, one of which only appears if you ask what a hard kill does: a row can sit in SQLite while
+its embedding is still in memory, and **a re-crawl cannot repair that**, because a refresh with
+unchanged identity skips re-embedding by design. Hence flush-before-cursor, flush-on-read, and
+`reindex_identity()`.
+
+**Artist knowledge: 200 calls, 174 learned, 22,874 rows covered** (~23% of the corpus). It also
+surfaced a real limit: `Francisco José de Goya y Lucientes` (277 works) and `Francisco de Goya
+(Spanish, 1746–1828)` (253 works) were enriched SEPARATELY. `artist_key` strips parentheticals and
+dates but cannot fold genuinely different name strings written by different institutions. That is
+what `wikidata_qid` exists for, and the deferral's own trigger — "revisit at 3+ collections" —
+has now arrived.
+
+**The eval, with the answer key extended to 28 needs** (8 added for prints/textile/ceramic/
+metalwork, every title verified present first, because a golden entry that is merely plausible
+measures nothing):
+
+| | @1 | @5 | @10 |
+|---|---|---|---|
+| **named — routed** | **92.9** | **100** | **100** |
+| named — baseline keyword | 92.9 | 96.4 | 96.4 |
+| look — routed | 14.3 | 28.6 | 53.6 |
+| look — baseline keyword | 25.0 | 35.7 | 46.4 |
+
+**Named held across a 116× corpus growth AND a broadened key** — 7 of the 8 new print/textile/
+ceramic needs return at rank 1 out of 97,610 rows. That is the result.
+
+**The look column was then TESTED rather than explained away.** Hypothesis: it tracks pixel
+availability, not ranking quality. Measured against every golden answer — **79% agreement**, and
+the shape is decisive: rows WITH pixels were found **18 of 22** (82%), rows WITHOUT pixels **2 of
+6** (33%). The two found without pixels are the 0.1 identity assist earning its keep ("a gilded
+shrine built like a miniature gothic church" shares vocabulary with *Reliquary Monstrance in the
+form of a Church*). At **1.6% pixel coverage** the look number is a coverage measurement wearing a
+ranking measurement's clothes, and it stays unreadable until the backfill runs.
+
+Full suite: 2,305 passed, 5 skipped, 0 failed.
+
 ## The library is 91.4% harvested — and the first real eval says "not yet" (2026-07-31)
 
 **Phase A ran to completion.** 132,630 records walked (artic's entire catalog), `exhausted: true`,
