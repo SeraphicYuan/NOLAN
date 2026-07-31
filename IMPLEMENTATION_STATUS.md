@@ -4,6 +4,35 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The crawl splits into two phases, and the ratio is 5.4x — not the 50x I assumed (2026-07-30)
+
+`harvest(pixels=False)` indexes the catalog record and nothing else; `backfill_pixels` fetches
+thumbnails progressively afterwards. A record-only row keeps its `thumb_url` (new column), so
+Phase B never has to re-walk the source.
+
+**The number is the story.** I wrote "~50x, ~29 hours against ~20 minutes" into three docstrings
+from an earlier estimate, then benchmarked it: **87 ms/row** for a record + identity index against
+**470 ms/row** with pixels — **5.4x**, or 1.5 h against 9.6 h over the 62,035-row artic catalog.
+Still an 8-hour saving and still worth the split, but a fifth of the claim. Of Phase A's 87 ms, 78
+is BGE indexing and the row write itself is 9 ms, which is where a future optimisation lives
+(batch the embeddings). Corrected everywhere rather than left to rot — this module's own history
+is what an unverified comfortable number costs, and one commit ago I criticised the artic adapter
+for exactly that.
+
+Retrieval consequence, from the existing eval: identity-only scores **named 94.7 / 100 / 100** and
+**look 47.4 / 78.9 / 84.2**, against look@1 63.2 with pixels. **Pixels buy ranking, not reach**, so
+a Phase-A row is immediately useful for "find me the Holbein woodcut" and weak for "find me
+something stormy". `discovery_stats` now reports `pixels_pct` beside `described_pct` so a
+records-only collection cannot read as fully indexed.
+
+The gates that need pixels — the banner heuristic and the content-resolution floor from the
+commit before this — run in Phase B, when the pixels first exist; a row that fails them is retired,
+never left half-indexed. Verified live: 20 records with **zero thumbnail files on disk**, identity
+search returning the right row at 0.925 with no pixels at all, then backfill taking coverage 0% →
+40%.
+
+Full suite: 2,250 passed, 5 skipped, 0 failed.
+
 ## The adapters became crawlers — a strategy, a cursor, and a denominator (2026-07-30)
 
 Visual Lib had two adapters and 1.4% of one collection. Not a budget choice: `artic_items` walked

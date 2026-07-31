@@ -61,6 +61,20 @@ region at any size on demand — the image is a view, not a file).
 Knowledge inherits DOWNWARD: an item with no caption still carries its collection's rights, era
 and topic, and that inherited context is what makes a T1 row retrievable at all.
 
+**T1 splits into two phases**, because pixels dominate the cost. `harvest(pixels=False)` /
+`--no-pixels` writes the catalog record and nothing else; `ImageLibrary.backfill_pixels` /
+`nolan images backfill` fetches thumbnails progressively afterwards. Benchmarked (60 records,
+30 backfills, models pre-warmed): **87 ms/row** for a record + identity index against **470
+ms/row** with pixels — **5.4x**, or 1.5 h against 9.6 h over the 62,035-row artic catalog. Of
+Phase A's 87 ms, 78 is BGE indexing; the row write itself is 9 ms.
+
+Retrieval consequence, from the eval: a record-only row is at FULL strength for named queries
+(94.7 / 100 / 100 with no pixels at all) and materially weaker for look (47.4 vs 63.2 at rank 1).
+**Pixels buy ranking, not reach.** `discovery_stats` therefore reports `pixels_pct` alongside
+`described_pct`, so a records-only collection cannot read as fully indexed. The gates that need
+pixels — the banner heuristic and the content-resolution floor — run in Phase B, at the moment
+the pixels first exist, and a row that fails them is retired rather than left half-indexed.
+
 ## The loop
 
 ```

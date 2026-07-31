@@ -439,6 +439,91 @@ def test_met_csv_rows_filters_public_domain_offline(tmp_path, monkeypatch):
     assert H.met_public_domain_ids(dept="Photographs") == [33]
 
 
+def test_phase_a_indexes_a_record_without_fetching_pixels(lib, tmp_path, monkeypatch):
+    """The phase split: pixels are ~50x the cost of the record (~29h vs ~20min for the artic
+    catalog), so Phase A must write a searchable row and fetch NOTHING."""
+    calls = []
+
+    def _boom(url, dest, **kw):
+        calls.append(url)
+        raise AssertionError("Phase A must not download anything")
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _boom)
+
+    asset, created = lib.add_discovery(
+        source_ref="artic:1", thumb_url="https://example.org/t.jpg",
+        url="https://example.org/full.jpg", source="artic", title="A Bridge",
+        creator="Someone", license="CC0", width=3000, height=2000, pixels=False)
+    assert created and calls == []
+    assert asset.thumb_path is None, "a record-only row has no local thumbnail"
+    assert asset.thumb_url == "https://example.org/t.jpg", (
+        "the thumb URL must be kept, or Phase B would have to re-walk the whole source")
+    assert asset.has_pixels is False
+    # the identity channel still indexed — this row IS findable by name
+    assert asset.identity_text()
+
+    st = lib.discovery_stats()
+    assert st["discovery"] == 1 and st["with_pixels"] == 0 and st["pixels_pct"] == 0.0
+
+
+def test_pixel_coverage_is_reported_separately_from_row_count(lib, tmp_path):
+    """A records-only collection must not read as fully indexed just because rows exist."""
+    lib.add_discovery(source_ref="artic:1", thumb_url="https://e.org/1.jpg", source="artic",
+                      title="one", license="CC0", pixels=False)
+    lib.add_discovery(source_ref="artic:2", thumb_url="https://e.org/2.jpg", source="artic",
+                      title="two", license="CC0", pixels=False)
+    st = lib.discovery_stats()
+    assert st["discovery"] == 2
+    assert st["with_pixels"] == 0
+    assert st["pixels_pct"] == 0.0
+
+
+def test_backfill_fetches_pixels_and_runs_the_gates_phase_a_could_not(lib, tmp_path, monkeypatch):
+    """Phase B is where the pixel-dependent gates run — they had nothing to run on in Phase A,
+    and a row whose picture we look at and refuse must be retired, not left half-indexed."""
+    from PIL import Image
+
+    lib.add_discovery(source_ref="artic:7", thumb_url="https://e.org/7.jpg", source="artic",
+                      title="seven", license="CC0", width=4000, height=4000, pixels=False)
+
+    def _fake_dl(url, dest, **kw):
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        import numpy as np
+        rng = np.random.default_rng(4)
+        Image.fromarray(rng.integers(40, 220, size=(400, 400, 3), dtype="uint8")).save(dest)
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _fake_dl)
+    res = lib.backfill_pixels(limit=10)
+    assert res["fetched"] == 1 and res["refused"] == 0, res
+
+    a = lib.catalog.get_by_ref("artic:7")
+    assert a.thumb_path and a.has_pixels
+    assert lib.discovery_stats()["pixels_pct"] == 100.0
+
+
+def test_backfill_retires_a_row_whose_pixels_fail_the_content_floor(lib, tmp_path, monkeypatch):
+    """The D2 floor, applied at the moment the pixels first exist."""
+    from PIL import Image
+    import numpy as np
+
+    lib.add_discovery(source_ref="artic:8", thumb_url="https://e.org/8.jpg", source="artic",
+                      title="eight", license="CC0", width=1000, height=1000, pixels=False)
+
+    def _fake_dl(url, dest, **kw):
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        # a tiny object adrift on a huge grey sweep: content is ~4% of the frame
+        canvas = np.full((400, 400, 3), 128, dtype="uint8")
+        rng = np.random.default_rng(9)
+        canvas[190:210, 190:210] = rng.integers(0, 255, size=(20, 20, 3), dtype="uint8")
+        Image.fromarray(canvas).save(dest)
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _fake_dl)
+    res = lib.backfill_pixels(limit=10, tier="archival")
+    assert res["refused"] == 1 and res["fetched"] == 0, res
+    assert any("below the archival floor" in r for r in res["reasons"]), res["reasons"]
+    assert lib.catalog.get_by_ref("artic:8").status == "rejected"
+
+
 def test_met_csv_absent_fails_loudly(tmp_path, monkeypatch):
     """No silent fallback to an empty id list — that would read as "this department is empty"."""
     from nolan.imagelib import harvest as H

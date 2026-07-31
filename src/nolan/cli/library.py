@@ -155,9 +155,12 @@ def images_stats(scope, project):
 @click.option('--dept', default=None, help='Filter to one department.')
 @click.option('--restart', is_flag=True,
               help='Ignore the saved cursor and re-walk from the beginning (refresh, not extend).')
+@click.option('--no-pixels', is_flag=True,
+              help='Phase A only: index catalog records, skip thumbnails (5.4x faster — '
+                   '87ms/row vs 470ms). Fill them in later with `nolan images backfill`.')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
 @click.option('--project', '-p', default=None)
-def images_harvest(source, limit, query, dept, restart, scope, project):
+def images_harvest(source, limit, query, dept, restart, no_pixels, scope, project):
     """Harvest a collection into the discovery tier (metadata + thumbnail, no bytes).
 
     Resumes from the last run's cursor by default, so repeated calls EXTEND coverage instead of
@@ -171,10 +174,36 @@ def images_harvest(source, limit, query, dept, restart, scope, project):
         raise SystemExit(2)
     kw = {k: v for k, v in (('query', query), ('dept', dept)) if v}
     rep = harvest(source, limit=limit, scope=scope, project=project,
-                  resume=not restart, **kw)
+                  resume=not restart, pixels=not no_pixels, **kw)
     click.echo(json.dumps(rep.to_dict(), indent=2, ensure_ascii=False))
     if rep.refused_gate or rep.errors:
         click.echo(f"NOTE: {rep.refused_gate} refused by the asset gate, {rep.errors} errored.")
+    if no_pixels:
+        click.echo("Phase A only — these rows are searchable by IDENTITY but carry no pixels, "
+                   "so they cannot rank on LOOK yet. Run: nolan images backfill")
+
+
+@images.command('backfill')
+@click.option('--limit', '-n', type=int, default=200, help='How many rows to fetch pixels for.')
+@click.option('--collection', '-c', type=int, default=None, help='Restrict to one collection id.')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_backfill(limit, collection, scope, project):
+    """PHASE B: fetch thumbnails for record-only discovery rows, so `look` search grows.
+
+    Incremental by design — measured at 470 ms/row, the whole artic public-domain catalog is
+    ~8 hours of pixels, so this is meant to be run repeatedly rather than as one job that must
+    not fail. The gates Phase A could not run (watermark banner, content-resolution floor) run
+    here, when the pixels first exist.
+    """
+    lib = _open_library(scope, project)
+    res = lib.backfill_pixels(limit=limit, collection_id=collection)
+    click.echo(f"attempted {res['attempted']}: fetched {res['fetched']}, "
+               f"refused {res['refused']}, errors {res['errors']}")
+    for r in res["reasons"]:
+        click.echo(f"    {r}")
+    st = lib.discovery_stats(collection_id=collection)
+    click.echo(f"pixel coverage now {st['with_pixels']}/{st['discovery']} ({st['pixels_pct']}%)")
 
 
 @images.command('dump')
@@ -269,7 +298,8 @@ def images_collections(scope, project):
         cover = (f"{st['discovery']} of {c.upstream_count:,} upstream ({cov:.1%})"
                  if cov is not None else f"{st['discovery']} indexed, upstream total unknown")
         click.echo(f"  #{c.id} {c.slug} — {c.title}")
-        click.echo(f"      {cover}; {st['described_pct']}% captioned; "
+        click.echo(f"      {cover}; {st['pixels_pct']}% with pixels; "
+                   f"{st['described_pct']}% captioned; "
                    f"rights: {c.rights or '?'}; last crawled {c.last_crawled or 'never'}")
         if c.cursor:
             click.echo(f"      resumes at {c.cursor} (set {c.cursor_at or '?'})")

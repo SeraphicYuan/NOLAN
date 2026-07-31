@@ -96,8 +96,13 @@ _ASSET_MIGRATIONS = {
     # counting catalog prose as "captioned" would report a 0%-captioned collection as complete.
     "description_source": "TEXT",
     # Local 512px derivative: what makes this a VISUAL library rather than a text index, what CLIP
-    # embeds for a not-held row, and what survives a dead link.
+    # embeds for a not-held row, and what survives a dead link. NULL on a record-only row — see
+    # `thumb_url`.
     "thumb_path": "TEXT",
+    # WHERE the thumbnail can be fetched from. Required by the phase-split crawl: a Phase-A row is
+    # indexed from its catalog record alone (no bytes, ~50x cheaper), and without this column
+    # Phase B could not fetch its pixels later without re-walking the whole source.
+    "thumb_url": "TEXT",
     "collection_id": "INTEGER",
     # Reserved for the labelled-region pass (subject/face/text/watermark/negative_space boxes).
     # DELIBERATELY UNPOPULATED: the executor (a focal point in compose's media_ground) does not
@@ -152,8 +157,15 @@ class Asset:
     identity_source: Optional[str] = None
     description_source: Optional[str] = None
     thumb_path: Optional[str] = None
+    thumb_url: Optional[str] = None
     collection_id: Optional[int] = None
     regions: Optional[str] = None
+
+    @property
+    def has_pixels(self) -> bool:
+        """True once Phase B has fetched this row's thumbnail. A record-only row is searchable by
+        IDENTITY (BGE over the catalog text) but not by LOOK (CLIP needs pixels)."""
+        return bool(self.thumb_path)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -261,16 +273,17 @@ class AssetCatalog:
                    (content_hash, path, url, source, source_url, license, title,
                     description, width, height, bytes, tags, query, status, added_at,
                     held, source_ref, wikidata_qid, creator, date_text, institution,
-                    identity_source, description_source, thumb_path, collection_id, regions)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    identity_source, description_source, thumb_path, thumb_url,
+                    collection_id, regions)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (asset.content_hash, asset.path, asset.url, asset.source,
                  asset.source_url, asset.license, asset.title, asset.description,
                  asset.width, asset.height, asset.bytes, asset.tags, asset.query,
                  asset.status, asset.added_at,
                  int(asset.held), asset.source_ref, asset.wikidata_qid, asset.creator,
                  asset.date_text, asset.institution, asset.identity_source,
-                 asset.description_source, asset.thumb_path, asset.collection_id,
-                 asset.regions),
+                 asset.description_source, asset.thumb_path, asset.thumb_url,
+                 asset.collection_id, asset.regions),
             )
             self._conn.commit()
         asset.id = cur.lastrowid
@@ -282,7 +295,7 @@ class AssetCatalog:
         "content_hash", "path", "url", "source", "source_url", "license", "title", "description",
         "width", "height", "bytes", "tags", "query", "held", "source_ref", "wikidata_qid",
         "creator", "date_text", "institution", "identity_source", "description_source",
-        "thumb_path", "collection_id", "regions"})
+        "thumb_path", "thumb_url", "collection_id", "regions"})
 
     def update(self, asset_id: int, **fields) -> None:
         """Patch named columns on one row. Unknown column names raise (a typo'd field that
