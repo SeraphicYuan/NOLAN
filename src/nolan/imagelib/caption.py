@@ -243,6 +243,85 @@ def caption_text(cap: Dict[str, Any]) -> str:
     return ". ".join(b for b in bits if b)
 
 
+def spanning_sample(assets, n: int = 12) -> List[Any]:
+    """Pick `n` rows that SPAN a collection rather than sampling its skew.
+
+    Round-robin across `image_kind`, which is exactly what made the original 50-row validation
+    informative: the corpus is ~60% paintings, and a proportional sample would have said almost
+    nothing about coins, textiles or object photography — the cases that later turned out to
+    carry every hard problem (dead margin, two-faced coins, inscribed lettering).
+    """
+    from collections import OrderedDict
+    buckets: "OrderedDict[str, list]" = OrderedDict()
+    for a in assets:
+        buckets.setdefault(a.image_kind or "unknown", []).append(a)
+    out: List[Any] = []
+    while len(out) < n and any(buckets.values()):
+        for kind in list(buckets):
+            if not buckets[kind]:
+                continue
+            out.append(buckets[kind].pop(0))
+            if len(out) >= n:
+                break
+    return out
+
+
+def consensus(caps: List[Dict[str, Any]], *, top: int = 6) -> Dict[str, Any]:
+    """Fold a spanning sample of captions into a collection's VISUAL DIALECT.
+
+    Deterministic on purpose — no second model call to summarise the first model's answers. The
+    interesting content is already in the captions; what is wanted is the *repeated* part, and
+    counting is both cheaper and more honest than asking for a summary that could introduce
+    claims no caption made.
+
+    Carries `n` so the dialect can never be mistaken for a fact about the whole collection: it is
+    the consensus of N rows out of however many, and the reader is told which.
+    """
+    from collections import Counter
+
+    subj: Counter = Counter()
+    moods: Counter = Counter()
+    palette: Counter = Counter()
+    kinds: Counter = Counter()
+    for c in caps:
+        if not c:
+            continue
+        for s in c.get("subjects") or []:
+            subj[s.strip().lower()] += 1
+        for m in (c.get("mood") or "").split(","):
+            if m.strip():
+                moods[m.strip().lower()] += 1
+        for p in (c.get("palette_words") or "").split(","):
+            if p.strip():
+                palette[p.strip().lower()] += 1
+        kinds[c.get("human_presence") or "none"] += 1
+    return {
+        "n": len([c for c in caps if c]),
+        "subjects": [s for s, _ in subj.most_common(top)],
+        "mood": [m for m, _ in moods.most_common(3)],
+        "palette_words": [p for p, _ in palette.most_common(4)],
+        "human_presence": kinds.most_common(1)[0][0] if kinds else "none",
+        "schema": CAPTION_SCHEMA,
+    }
+
+
+def dialect_text(d: Optional[Dict[str, Any]]) -> str:
+    """The inherited sentence an un-captioned member can carry. Says how many rows it came from,
+    because a dialect asserted as if it were this row's own caption would be a small lie."""
+    if not d or not d.get("n"):
+        return ""
+    bits = []
+    if d.get("subjects"):
+        bits.append("commonly " + ", ".join(d["subjects"][:5]))
+    if d.get("mood"):
+        bits.append("mood " + ", ".join(d["mood"]))
+    if d.get("palette_words"):
+        bits.append("palette " + ", ".join(d["palette_words"]))
+    if not bits:
+        return ""
+    return f"Typical of this collection ({d['n']} sampled): " + "; ".join(bits)
+
+
 def is_watermarked(cap: Optional[Dict[str, Any]]) -> bool:
     """A RIGHTS signal, not merely a pixel problem — the taxonomy split is what makes this
     answerable at all (a coin's inscribed Latin must not read as a watermark)."""

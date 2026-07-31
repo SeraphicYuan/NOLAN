@@ -4,6 +4,48 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The regions column finally has a producer — and it is a detector (2026-07-31)
+
+`nolan/regions.py` + `ImageLibrary.locate_subjects`. `regions` shipped unpopulated, sat
+consumer-blocked until the camera umbrella landed `solve_push(target=(x,y))`, then sat
+producer-blocked. The producer had to be a **detector**, and the evidence is unambiguous: asked
+for a focal cell, a VLM answered middle-centre on **50 of 50** rows. A language model can say
+what is in a picture; it cannot say where.
+
+Two tiers: `energy` (gradient mass inside the measured content box — no model, ~2 ms, the
+default) and `matting` (rembg/U2Net, accurate, ~170 MB, opt-in). Dead margin is excluded before
+locating, which matters more than it sounds — on a coin photograph at 31% content the centroid of
+the full frame is dragged into the middle of an empty grey field.
+
+**I reproduced the exact bug I was replacing, and a test caught it.** The first confidence
+formula used the share of above-threshold pixels — but the threshold *is* the 70th percentile, so
+that share is always ~0.30 and the confidence was always 0.24. A constant field, inside the module
+written to replace a constant field. It is now box area, which is a real measurement, and a box
+covering >70% of the frame returns None instead.
+
+`focal_point()` returns None below a confidence floor on purpose: pushing on a badly-located
+target is worse than pushing on the centre, because the move looks deliberate either way and only
+one of them is. `crop_safe()` is the first payoff — a 16:9 `cover` on a tall portrait is how you
+decapitate someone.
+
+Characterised on 24 real museum rows spanning every `image_kind`: **17 located** with tight boxes
+(a carved Veranda Post at conf 0.87, a seated Buddha, a pastel portrait), **7 declined** — and
+every decline is a genuinely full-bleed composition (Caillebotte's *Paris Street; Rain*, Van
+Gogh's *Bedroom*, a landscape photograph). Declining there is the answer, not a failure.
+
+**One limitation recorded rather than shipped silently:** on a `panel_count: pair` row — a coin
+showing both faces — the box correctly spans both, which puts its centre in the empty ground
+between them. A caller holding that caption field should target one panel; a focal point
+confidently in the gap is worse than none.
+
+Also landed: **the collection visual dialect** (`nolan images dialect`). A spanning sample of ~12
+captions, folded deterministically — no second model call to summarise the first model's answers,
+because counting cannot introduce a claim no caption made. Inherited at READ time
+(`effective_description`), never written into rows: an inherited fact stored on a row would be
+indistinguishable from something observed about that row, and a captioned row speaks for itself.
+
+Full suite: 2,296 passed, 5 skipped, 0 failed.
+
 ## A third source, a probe protocol — and the LoC trap closed (2026-07-31)
 
 **`cleveland`** ships, and the 7-question probe is why we knew its shape before writing a line.

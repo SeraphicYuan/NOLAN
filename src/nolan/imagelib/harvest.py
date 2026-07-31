@@ -991,7 +991,8 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
 
 
 def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int] = None,
-                       describer=None, model: str = "vlm", progress=None) -> int:
+                       describer=None, model: str = "vlm", progress=None,
+                       only_ids=None) -> int:
     """T2, on demand: caption not-held rows that lack a description, from their THUMBNAIL.
 
     Bounded by `limit` on purpose — this is the expensive tier and it is spent on what retrieval
@@ -1021,6 +1022,9 @@ def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int]
                                   limit=max(limit * 8, 200)):
         if done >= limit:
             break
+        if only_ids is not None and a.id not in only_ids:
+            continue                       # a caller chose these rows deliberately (the dialect
+                                           # sample spans image_kind rather than taking the head)
         # Never pay twice. A row already carrying THIS schema version is done; one carrying an
         # older version is a re-caption candidate, which is the whole reason the version exists.
         if (a.description_source or "catalog") != "catalog" and \
@@ -1057,6 +1061,44 @@ def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int]
         if progress:
             progress(done, limit)
     return done
+
+
+def learn_collection_dialect(library, collection_id: int, *, n: int = 12,
+                             describer=None, model: str = "vlm") -> Dict[str, Any]:
+    """Caption a SPANNING sample of a collection and store the consensus as its visual dialect.
+
+    Cheap and high-leverage: a dozen calls give every row in the collection something useful to
+    say about how the collection looks, long before that row is individually worth a vision call.
+    It is also not throwaway work — the sampled rows keep their own full captions.
+
+    The sample spans `image_kind` rather than following the corpus's skew, for the reason the
+    original 50-row validation did: a proportional sample of a 60%-painting corpus says almost
+    nothing about the coins, textiles and object photography that carry the hard cases.
+    """
+    from nolan.imagelib.caption import consensus, spanning_sample
+
+    rows = [a for a in library.catalog.list(status="active", held=0,
+                                            collection_id=collection_id, limit=2000)
+            if a.thumb_path]
+    picks = spanning_sample(rows, n=n)
+    if not picks:
+        return {"n": 0, "note": "no rows with pixels — run backfill first"}
+
+    # Caption exactly the picks, reusing the one caption path (never a second implementation).
+    wanted = {a.id for a in picks}
+    described = describe_discovery(
+        library, limit=len(picks), collection_id=collection_id,
+        describer=describer, model=model,
+        only_ids=wanted)
+    caps = [c for c in (library.catalog.get(i).caption() for i in wanted) if c]
+    d = consensus(caps)
+    col = library.catalog.get_collection_by_id(collection_id)
+    library.catalog.upsert_collection(Collection(
+        slug=col.slug, source=col.source, title=col.title,
+        dialect_json=json.dumps(d, ensure_ascii=False)))
+    d["captioned_now"] = described
+    d["kinds_sampled"] = sorted({a.image_kind or "unknown" for a in picks})
+    return d
 
 
 def _takes_prompt(fn) -> bool:

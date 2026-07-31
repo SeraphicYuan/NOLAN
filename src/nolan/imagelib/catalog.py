@@ -176,6 +176,12 @@ _COLLECTION_MIGRATIONS = {
     "cursor": "TEXT",
     # When the cursor was last advanced, so a stalled crawl is visible rather than merely slow.
     "cursor_at": "TEXT",
+    # THE VISUAL DIALECT — the consensus of a spanning sample of captions, inherited by every
+    # member that has not been captioned individually. Cheap (a dozen calls) and it gives every
+    # row in the collection something useful to say about how the collection LOOKS, long before
+    # the row itself is worth a vision call. Matches how this tier already works: knowledge
+    # inherits downward.
+    "dialect_json": "TEXT",
 }
 
 
@@ -330,6 +336,17 @@ class Collection:
     upstream_count: Optional[int] = None
     cursor: Optional[str] = None
     cursor_at: Optional[str] = None
+    dialect_json: Optional[str] = None
+
+    def dialect(self) -> Optional[dict]:
+        if not self.dialect_json:
+            return None
+        try:
+            import json as _json
+            obj = _json.loads(self.dialect_json)
+            return obj if isinstance(obj, dict) else None
+        except Exception:
+            return None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -653,18 +670,19 @@ class AssetCatalog:
                     """INSERT INTO collections
                        (slug, source, title, description, rights, copyright_free, era, topics,
                         url, item_count, added_at, last_crawled,
-                        upstream_count, cursor, cursor_at)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        upstream_count, cursor, cursor_at, dialect_json)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (c.slug, c.source, c.title, c.description, c.rights,
                      None if c.copyright_free is None else int(c.copyright_free),
                      c.era, c.topics, c.url, c.item_count, c.added_at, c.last_crawled,
-                     c.upstream_count, c.cursor, c.cursor_at))
+                     c.upstream_count, c.cursor, c.cursor_at, c.dialect_json))
                 self._conn.commit()
             c.id = cur.lastrowid
             return c
         fields = {}
         for k in ("source", "title", "description", "rights", "era", "topics", "url",
-                  "item_count", "last_crawled", "upstream_count", "cursor", "cursor_at"):
+                  "item_count", "last_crawled", "upstream_count", "cursor", "cursor_at",
+                  "dialect_json"):
             v = getattr(c, k)
             if v is not None:
                 fields[k] = v
@@ -687,6 +705,12 @@ class AssetCatalog:
     def get_collection(self, slug: str) -> Optional[Collection]:
         with self._lock:
             r = self._conn.execute("SELECT * FROM collections WHERE slug=?", (slug,)).fetchone()
+        return self._collection_row(r) if r else None
+
+    def get_collection_by_id(self, collection_id: int) -> Optional[Collection]:
+        with self._lock:
+            r = self._conn.execute("SELECT * FROM collections WHERE id=?",
+                                   (collection_id,)).fetchone()
         return self._collection_row(r) if r else None
 
     def list_collections(self) -> List[Collection]:

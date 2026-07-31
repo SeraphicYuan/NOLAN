@@ -813,6 +813,73 @@ def test_a_row_already_at_this_schema_is_not_recaptioned(lib):
     assert describe_discovery(lib, limit=5, describer=fake, model="v") == 1
 
 
+# --- collection dialect + read-time inheritance -----------------------------------------------
+
+def test_spanning_sample_covers_kinds_not_the_corpus_skew():
+    """A proportional sample of a 60%-painting corpus says almost nothing about the coins,
+    textiles and object photography that carry every hard case."""
+    from nolan.imagelib.caption import spanning_sample
+
+    class A:
+        def __init__(self, i, k):
+            self.id, self.image_kind = i, k
+
+    rows = [A(i, "painting") for i in range(50)] + [A(100, "coin"), A(101, "textile")]
+    picks = spanning_sample(rows, n=6)
+    kinds = [p.image_kind for p in picks]
+    assert "coin" in kinds and "textile" in kinds, kinds
+    assert kinds.count("painting") <= 4
+
+
+def test_consensus_counts_rather_than_asks_a_model():
+    """No second model call to summarise the first model's answers — the repeated part is what
+    is wanted, and counting cannot introduce a claim no caption made."""
+    from nolan.imagelib.caption import consensus, dialect_text
+    caps = [
+        {"subjects": ["ship", "sea"], "mood": "stormy, bleak", "palette_words": "slate, grey",
+         "human_presence": "none"},
+        {"subjects": ["ship", "harbour"], "mood": "stormy", "palette_words": "slate",
+         "human_presence": "none"},
+    ]
+    d = consensus(caps)
+    assert d["n"] == 2
+    assert d["subjects"][0] == "ship"
+    assert "stormy" in d["mood"] and "slate" in d["palette_words"]
+    txt = dialect_text(d)
+    assert "2 sampled" in txt, "a dialect must say how many rows it came from"
+    assert dialect_text(None) == "" and dialect_text({"n": 0}) == ""
+
+
+def test_an_uncaptioned_row_inherits_the_dialect_but_a_captioned_one_does_not(lib):
+    """Inheritance is applied at READ time: written into the row it would be indistinguishable
+    from something observed about that row."""
+    import json as _json
+    from nolan.imagelib.catalog import Artist, Collection
+
+    col = lib.catalog.upsert_collection(Collection(
+        slug="c1", source="artic", title="Seascapes",
+        dialect_json=_json.dumps({"n": 12, "subjects": ["ship", "sea"], "mood": ["stormy"],
+                                  "palette_words": ["slate"]})))
+    lib.catalog.upsert_artist(Artist(name="A Painter", movement="Romanticism", source="t"))
+
+    bare, _ = lib.add_discovery(source_ref="a:1", thumb_url="https://e/1.jpg", source="artic",
+                                title="Untitled", creator="A Painter", license="CC0",
+                                collection_id=col.id, pixels=False)
+    text = lib.effective_description(bare)
+    assert "Typical of this collection" in text and "ship" in text
+    assert "Romanticism" in text, "artist manner inherits too"
+
+    got, _ = lib.add_discovery(source_ref="a:2", thumb_url="https://e/2.jpg", source="artic",
+                               title="Named", creator="A Painter", license="CC0",
+                               collection_id=col.id, pixels=False,
+                               description="a three-masted barque heeling in a gale")
+    lib.catalog.update(got.id, caption_json=_json.dumps({"summary": "a barque in a gale"}),
+                       caption_schema=1)
+    own = lib.effective_description(lib.catalog.get(got.id))
+    assert "Typical of this collection" not in own, "a captioned row speaks for itself"
+    assert "barque" in own
+
+
 # --- artist world-knowledge: one call per PERSON ---------------------------------------------
 
 def test_artist_key_folds_the_ways_a_catalog_writes_one_name():

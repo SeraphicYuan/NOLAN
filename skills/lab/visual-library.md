@@ -332,22 +332,26 @@ comparable; the unfiltered run is the honest one.
    before wiring (checklist #10/#11): **7 of 841** discovery rows and **1 of 46** held rows newly
    refused, every content box inspected by eye, 834 still passing. Rows from a source that
    publishes no pixel dimensions (the Met — physical size only) are unaffected.
-6. **`regions` is a column and nothing writes it.** The labelled subject/face/text/watermark boxes
-   are reserved and deliberately unpopulated — the column ships only because adding one to a
-   populated table is the expensive part. When it shipped, the HF path had no focal point at all.
-   That changed the same day: the camera umbrella (`src/nolan/camera`) landed `solve_push(target=
-   (x, y))`, framed so the target stays put. **The consumer now exists; the missing half is the
-   PRODUCER** — a pass that turns a picture into labelled boxes (VLM *names* the regions, a
-   detector/rembg *localizes* them; never raw coordinates from prose). The test's sentinel watches
-   that solver's `target` parameter, not a CSS string.
+6. **`regions` is now PRODUCED** (`nolan/regions.py`, `ImageLibrary.locate_subjects`). It shipped
+   as an unpopulated column, was consumer-blocked until the camera umbrella landed
+   `solve_push(target=(x,y))`, then producer-blocked — and the producer had to be a DETECTOR:
+   asked for a focal cell, a VLM answered middle-centre on **50 of 50** rows. Two tiers: `energy`
+   (gradient mass inside the measured content box — no model, ~2 ms, the default) and `matting`
+   (rembg/U2Net, accurate, ~170 MB). `focal_point()` is the seam to the solver and **returns None
+   below a confidence floor** — pushing on a badly-located target is worse than pushing on the
+   centre, because the move looks deliberate either way. `crop_safe()` is the first payoff: a
+   16:9 `cover` on a tall portrait is how you decapitate someone.
+   Characterised on 24 real rows spanning every kind — 17 located with tight boxes, 7 declined,
+   every decline a genuinely full-bleed composition. **Known limitation:** on a `panel_count:
+   pair` row (a coin showing both faces) the box spans both, so its centre lands in the ground
+   between them; a caller holding that caption field should target one panel.
 
 ## Deliberately deferred
 
-- **The location/region pass** — now PRODUCER-blocked, not consumer-blocked (see invariant 6).
-  What remains is the region schema (`{label, kind, box, conf}`), the pass that fills it, and the
-  seam from a stored region to `camera.solve`'s `target`. The first payoff is crop safety
-  (`cover` decapitates a portrait in a 16:9 frame), not the zoom — and a watermark/text box is
-  immediately spendable by `hyperframes/cleanup.py`, which crops those today by vision guess.
+- **Text / watermark / face regions.** The `subject` label is produced; the rest of
+  `REGION_LABELS` is still reserved. A watermark box would be immediately spendable by
+  `hyperframes/cleanup.py`, which now has a measured *matte* detector (`detect_matte`) but still
+  crops logos and caption bands by heuristic + optional vision confirm.
 - **Wikidata entity linking.** `wikidata_qid` is a nullable column populated only when a source
   hands it over free. Full name→QID disambiguation + SPARQL joins only pay off across several
   collections; revisit at 3+, or when key-assets' per-candidate VLM verify becomes the complaint.

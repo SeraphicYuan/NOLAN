@@ -470,6 +470,42 @@ class ImageLibrary:
                 ident=created or (existing.identity_text() != asset.identity_text()))
         return asset, created
 
+    def locate_subjects(self, *, limit: int = 200, collection_id: Optional[int] = None,
+                        prefer: str = "energy", progress=None) -> dict:
+        """Fill the `regions` column — the producer it has been waiting for.
+
+        The column shipped unpopulated because it was consumer-blocked; the camera umbrella
+        un-blocked it with `solve_push(target=)`. This is the other half, and it is a DETECTOR
+        (`nolan.regions`), never a vision model: asked for a focal cell, a VLM answered
+        middle-centre on 50 of 50 rows.
+
+        Rows with no separable subject are left NULL rather than given a centre box — "we could
+        not locate one" and "it is in the middle" must stay distinguishable, or every consumer
+        inherits a guess it cannot detect.
+        """
+        from nolan.regions import detect_subject, regions_json
+
+        out = {"examined": 0, "located": 0, "no_subject": 0}
+        for a in self.catalog.list(status="active", held=0, collection_id=collection_id,
+                                   limit=max(limit * 4, 200)):
+            if out["examined"] >= limit:
+                break
+            if not a.thumb_path or a.regions:
+                continue
+            thumb = (self.base / a.thumb_path)
+            if not thumb.exists():
+                continue
+            out["examined"] += 1
+            r = detect_subject(thumb, prefer=prefer)
+            if r is None:
+                out["no_subject"] += 1
+                continue
+            self.catalog.update(a.id, regions=regions_json([r]))
+            out["located"] += 1
+            if progress:
+                progress(out)
+        return out
+
     def rederive_kinds(self, *, collection_id: Optional[int] = None) -> dict:
         """Recompute `image_kind` from columns already on disk. No network, no model.
 
@@ -821,6 +857,33 @@ class ImageLibrary:
             if a and a.status == "active":
                 hits.append(LibraryHit(asset=a, score=round(1.0 - float(dist), 4)))
         return hits
+
+    def effective_description(self, asset: Asset) -> str:
+        """What this row can say about itself, INCLUDING what it inherits.
+
+        Knowledge inherits downward in this tier, and read time is the right place to apply it:
+        an inherited fact written INTO the row would be indistinguishable from something observed
+        about that row, and re-deriving it after the collection's dialect changed would mean
+        rewriting every member.
+
+        Order of authority: the row's own caption, then the collection's visual dialect, then the
+        artist's manner. Each is labelled in the text rather than blended, so nothing reads as a
+        claim about this picture that was actually a claim about its neighbours.
+        """
+        from nolan.imagelib.artists import artist_context
+        from nolan.imagelib.caption import dialect_text
+
+        own = (asset.description or "").strip()
+        if asset.caption_json:
+            return own                     # captioned individually — it speaks for itself
+
+        parts = [own] if own else []
+        if asset.collection_id is not None:
+            col = self.catalog.get_collection_by_id(asset.collection_id)
+            if col is not None:
+                parts.append(dialect_text(col.dialect()))
+        parts.append(artist_context(self, asset.creator))
+        return ". ".join(p for p in parts if p)
 
     def discovery_stats(self, collection_id: Optional[int] = None) -> dict:
         """Coverage, stated honestly, on BOTH axes a discovery row can be partial along.

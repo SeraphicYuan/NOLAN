@@ -330,6 +330,32 @@ def images_artists(limit, min_works, collection, show, scope, project):
     click.echo(f"covering {res['rows_covered']} rows — {res['leverage']} rows per call")
 
 
+@images.command('dialect')
+@click.option('--collection', '-c', type=int, required=True, help='Collection id.')
+@click.option('--sample', '-n', type=int, default=12, help='How many rows to caption.')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_dialect(collection, sample, scope, project):
+    """Learn a collection's VISUAL DIALECT from a spanning sample of captions.
+
+    ~12 calls give every row in the collection something useful to say about how it looks, long
+    before that row is individually worth a vision call. The sample spans `image_kind` rather
+    than the corpus's skew, and the sampled rows keep their own full captions — not throwaway.
+    """
+    import json
+
+    from nolan.config import load_config
+    from nolan.imagelib.describe import make_describer
+    from nolan.imagelib.harvest import learn_collection_dialect
+
+    lib = _open_library(scope, project)
+    cfg = load_config()
+    describer = make_describer(cfg)
+    model = getattr(cfg.vision, "model", "vlm")
+    d = learn_collection_dialect(lib, collection, n=sample, describer=describer, model=model)
+    click.echo(json.dumps(d, indent=2, ensure_ascii=False))
+
+
 @images.command('rederive')
 @click.option('--collection', '-c', type=int, default=None, help='Restrict to one collection id.')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
