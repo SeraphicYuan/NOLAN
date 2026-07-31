@@ -180,6 +180,33 @@ trusts `loc` wholesale — so a LoC adapter must assert rights per CURATED COLLE
 (`fsa-owi-black-and-white-negatives`, 171,074 items, no known restrictions) rather than
 free-text-searching the whole institution. Write that table before writing the adapter.
 
+## The four knowledge sources (and what the VLM may NOT be asked)
+
+The organising rule: **a vision call may only produce what is in the pixels and nowhere else.**
+Everything else has a cheaper, more authoritative source — and asking a model for it is not just
+wasteful, it is the hallucination surface.
+
+| source | cost | gives |
+|---|---|---|
+| **catalog record** | free with the crawl | title, creator, date, `medium`, `place`, `classification`, `department`, `culture`, QID, rights |
+| **collection** | free, once | description, rights, era, topics — inherited down |
+| **deterministic CV** (`nolan/pixels.py`) | free, no model | every NUMBER: content box, dead margin, aspect, shape, edge contact, luminance, contrast, saturation, quiet cells |
+| **VLM caption** | one call per row, on demand | what is actually DEPICTED — and nothing else |
+
+**Never ask the VLM for:** title/artist/date/medium/dimensions/institution (catalog) · movement/
+style/period/school (artist knowledge) · rights/license (collection, sticky) · culture/geographic
+origin (catalog) · **any number** (CV) · **any policy** like "is this usable as a backdrop"
+(computed at read time — baking a policy into a caption means changing your mind costs a
+re-caption over 60k rows).
+
+`image_kind` is **derived**, not asked: `taxonomy.image_kind()` buckets the institution's own
+`classification`/`medium` into a closed vocabulary (painting, print, drawing, photograph,
+sculpture, textile, ceramic, metalwork, coin, glass, furniture, book, map, object, unknown). The
+VLM was measured against this and lost on every row where they disagreed. Fallthrough is
+MEASURED, not assumed: **0.4% unknown** on artic's 119-value vocabulary and **2.6%** on the Met's
+961-value one (248,472 rows). `nolan images rederive` recomputes it from columns already on disk —
+one SQL pass, no network, no model — which is what makes the vocabulary safe to correct.
+
 ## Retrieval is ROUTED, not blended
 
 A query that NAMES something is an identity question, answered from the catalog's own words

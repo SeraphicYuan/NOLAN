@@ -524,6 +524,80 @@ def test_backfill_retires_a_row_whose_pixels_fail_the_content_floor(lib, tmp_pat
     assert lib.catalog.get_by_ref("artic:8").status == "rejected"
 
 
+# --- the catalog tier: fields, not prose -----------------------------------------------------
+
+def test_image_kind_is_derived_from_the_sources_own_words():
+    """The VLM was asked this and lost to a regex over the institution's own classification on
+    every row where they disagreed — the museum already catalogued the object."""
+    from nolan.imagelib.taxonomy import IMAGE_KINDS, image_kind
+    # real values from both vocabularies, not invented ones
+    assert image_kind("Photographs|Ephemera") == "photograph"   # compound; photo wins over book
+    assert image_kind("Medals and Plaquettes") == "coin"        # shape beats material
+    assert image_kind("Textiles-Woven") == "textile"
+    assert image_kind("Ceramics-Porcelain") == "ceramic"
+    assert image_kind("Prints|Ornament & Architecture") == "print"
+    assert image_kind("painting") == "painting"                 # artic is lowercase
+    assert image_kind("oil on canvas") == "painting"            # ...and mixes in the medium
+    assert image_kind("Dress") == "textile"                     # the Met names the garment
+    assert image_kind("Archery Equipment-Arrowheads") == "metalwork"
+    assert all(k in IMAGE_KINDS for k in
+               (image_kind("Vases"), image_kind("Drawings"), image_kind("Glass")))
+
+
+def test_image_kind_falls_through_loudly_not_silently():
+    """Closed vocabulary with a LOUD fallback (checklist class 3). An unmapped value must become
+    `unknown` and be countable, never get quietly filed under `object`."""
+    from nolan.imagelib.taxonomy import image_kind, kind_coverage
+    assert image_kind("Zorblatt Assemblage") == "unknown"
+    assert image_kind(None) == "unknown" and image_kind("") == "unknown"
+    cov = kind_coverage([("Prints",), ("Zorblatt",), ("Vases",)])
+    assert cov["print"] == 1 and cov["ceramic"] == 1 and cov["unknown"] == 1
+
+
+def test_first_non_empty_field_decides(tmp_path):
+    """The Art Institute puts 'painting' in one row's column and 'oil on canvas' in the next, so
+    a single-field lookup would return unknown for a large share of a well-described collection."""
+    from nolan.imagelib.taxonomy import image_kind
+    assert image_kind(None, "", "etching") == "print"
+    assert image_kind("Sculpture", "oil on canvas") == "sculpture"   # authority order holds
+
+
+def test_catalog_fields_are_stored_as_columns_not_only_prose(lib):
+    """'Oil on canvas, Saint-Rémy-de-Provence, oil on canvas, Painting and Sculpture of Europe'
+    embeds fine and filters not at all — you cannot ask a sentence for 'textiles from Iran'."""
+    asset, _ = lib.add_discovery(
+        source_ref="artic:99", thumb_url="https://e.org/x.jpg", source="artic",
+        title="Wheat Field", license="CC0", pixels=False,
+        description="Oil on canvas, Saint-Rémy-de-Provence, painting, Painting and Sculpture",
+        medium="Oil on canvas", classification="painting",
+        department="Painting and Sculpture of Europe", place="Saint-Rémy-de-Provence")
+    assert asset.medium == "Oil on canvas"
+    assert asset.classification == "painting"
+    assert asset.department == "Painting and Sculpture of Europe"
+    assert asset.place == "Saint-Rémy-de-Provence"
+    assert asset.image_kind == "painting", "derived at write time"
+    # the prose survives untouched, because it is what BGE embeds
+    assert "Saint-Rémy" in (asset.description or "")
+
+
+def test_rederive_recomputes_kinds_without_a_recrawl(lib, monkeypatch):
+    """A caption is expensive to redo; a bucket derived from the source's own words costs one SQL
+    pass. That is what makes the vocabulary safe to correct."""
+    lib.add_discovery(source_ref="artic:1", thumb_url="https://e.org/1.jpg", source="artic",
+                      title="a", license="CC0", classification="Zorblatt", pixels=False)
+    assert lib.catalog.get_by_ref("artic:1").image_kind == "unknown"
+
+    import nolan.imagelib.taxonomy as tax
+    real = tax.image_kind
+    monkeypatch.setattr(tax, "image_kind", lambda *v: "textile" if any(
+        "Zorblatt" in (x or "") for x in v) else real(*v))
+
+    res = lib.rederive_kinds()
+    assert res["changed"] == 1
+    assert lib.catalog.get_by_ref("artic:1").image_kind == "textile"
+    assert "unknown_pct" in res, "the fallthrough rate must be reported, not hidden"
+
+
 def test_met_csv_absent_fails_loudly(tmp_path, monkeypatch):
     """No silent fallback to an empty id list — that would read as "this department is empty"."""
     from nolan.imagelib import harvest as H

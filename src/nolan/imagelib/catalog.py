@@ -104,6 +104,20 @@ _ASSET_MIGRATIONS = {
     # Phase B could not fetch its pixels later without re-walking the whole source.
     "thumb_url": "TEXT",
     "collection_id": "INTEGER",
+    # THE CATALOG TIER, unpacked. These arrived as one comma-joined prose blob in `description`
+    # ("Oil on canvas, Saint-Rémy-de-Provence, oil on canvas, Painting and Sculpture of Europe"),
+    # which embeds fine and filters not at all — you cannot ask for "textiles from Iran" of a
+    # sentence. They are the institution's OWN words, so they are also the fields a vision model
+    # must never be asked for: the museum already recorded them.
+    "medium": "TEXT",
+    "classification": "TEXT",
+    "department": "TEXT",
+    "culture": "TEXT",
+    "place": "TEXT",
+    # Coarse subject bucket DERIVED from the above (nolan.imagelib.taxonomy). Stored so it can be
+    # filtered in SQL; derived by a pure function so the vocabulary can change without a
+    # re-crawl — `nolan images rederive` recomputes it from columns already on disk.
+    "image_kind": "TEXT",
     # Reserved for the labelled-region pass (subject/face/text/watermark/negative_space boxes).
     # DELIBERATELY UNPOPULATED: the executor (a focal point in compose's media_ground) does not
     # exist yet, and an authored field with no consumer is the repo's most-repeated bug. The column
@@ -160,6 +174,13 @@ class Asset:
     thumb_url: Optional[str] = None
     collection_id: Optional[int] = None
     regions: Optional[str] = None
+    # --- catalog tier, unpacked (see _ASSET_MIGRATIONS) ---
+    medium: Optional[str] = None
+    classification: Optional[str] = None
+    department: Optional[str] = None
+    culture: Optional[str] = None
+    place: Optional[str] = None
+    image_kind: Optional[str] = None
 
     @property
     def has_pixels(self) -> bool:
@@ -274,8 +295,10 @@ class AssetCatalog:
                     description, width, height, bytes, tags, query, status, added_at,
                     held, source_ref, wikidata_qid, creator, date_text, institution,
                     identity_source, description_source, thumb_path, thumb_url,
-                    collection_id, regions)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    collection_id, regions,
+                    medium, classification, department, culture, place, image_kind)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+                           ?,?,?,?,?,?)""",
                 (asset.content_hash, asset.path, asset.url, asset.source,
                  asset.source_url, asset.license, asset.title, asset.description,
                  asset.width, asset.height, asset.bytes, asset.tags, asset.query,
@@ -283,7 +306,9 @@ class AssetCatalog:
                  int(asset.held), asset.source_ref, asset.wikidata_qid, asset.creator,
                  asset.date_text, asset.institution, asset.identity_source,
                  asset.description_source, asset.thumb_path, asset.thumb_url,
-                 asset.collection_id, asset.regions),
+                 asset.collection_id, asset.regions,
+                 asset.medium, asset.classification, asset.department, asset.culture,
+                 asset.place, asset.image_kind),
             )
             self._conn.commit()
         asset.id = cur.lastrowid
@@ -295,7 +320,8 @@ class AssetCatalog:
         "content_hash", "path", "url", "source", "source_url", "license", "title", "description",
         "width", "height", "bytes", "tags", "query", "held", "source_ref", "wikidata_qid",
         "creator", "date_text", "institution", "identity_source", "description_source",
-        "thumb_path", "thumb_url", "collection_id", "regions"})
+        "thumb_path", "thumb_url", "collection_id", "regions",
+        "medium", "classification", "department", "culture", "place", "image_kind"})
 
     def update(self, asset_id: int, **fields) -> None:
         """Patch named columns on one row. Unknown column names raise (a typo'd field that

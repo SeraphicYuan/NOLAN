@@ -295,7 +295,9 @@ class ImageLibrary:
                       width=None, height=None, wikidata_qid=None, collection_id=None,
                       identity_source: str = "catalog", description_source: str = "catalog",
                       tags=None, tier: str = "archival", embed: bool = True,
-                      pixels: bool = True):
+                      pixels: bool = True,
+                      medium=None, classification=None, department=None,
+                      culture=None, place=None):
         """Index an image we do NOT hold: catalog metadata + (optionally) a local thumbnail.
         Returns ``(Asset, created)``; re-indexing a known `source_ref` refreshes it in place.
 
@@ -363,7 +365,8 @@ class ImageLibrary:
                 width=width, height=height, tags=tags, creator=creator, date_text=date_text,
                 institution=institution, identity_source=identity_source,
                 wikidata_qid=wikidata_qid, collection_id=collection_id, license=license,
-                thumb_url=thumb_url)
+                thumb_url=thumb_url, medium=medium, classification=classification,
+                department=department, culture=culture, place=place)
 
         fresh_thumb = not dest.exists()
         if fresh_thumb:
@@ -418,7 +421,8 @@ class ImageLibrary:
             width=width, height=height, tags=tags, creator=creator, date_text=date_text,
             institution=institution, identity_source=identity_source,
             wikidata_qid=wikidata_qid, collection_id=collection_id, license=license,
-            thumb_url=thumb_url)
+            thumb_url=thumb_url, medium=medium, classification=classification,
+            department=department, culture=culture, place=place)
 
     def _write_discovery_row(self, *, source_ref, existing, rel, fresh_thumb, embed,
                              thumb_url, description_source="catalog", **fields):
@@ -429,9 +433,17 @@ class ImageLibrary:
         populated, because there are no pixels to embed. `thumb_url` is recorded either way, so
         Phase B can fetch the picture later without re-walking the source.
         """
+        from nolan.imagelib.taxonomy import image_kind as _kind
+
         fields = {k: v for k, v in fields.items()}
         fields["thumb_path"] = rel
         fields["thumb_url"] = thumb_url
+        # DERIVED, never asked of a model: the institution already catalogued the object, and a
+        # regex over its own words beat the VLM on every row where the two disagreed. Order is
+        # authority order — classification, then the type tag, then the medium (the Art Institute
+        # puts "painting" and "oil on canvas" in the SAME column, so one field is not enough).
+        fields["image_kind"] = _kind(fields.get("classification"), fields.get("tags"),
+                                     fields.get("medium"), fields.get("description"))
         if fields.get("description"):
             fields["description_source"] = description_source
         if existing is not None:
@@ -457,6 +469,32 @@ class ImageLibrary:
                 asset, thumb, clip=bool(rel) and (created or fresh_thumb),
                 ident=created or (existing.identity_text() != asset.identity_text()))
         return asset, created
+
+    def rederive_kinds(self, *, collection_id: Optional[int] = None) -> dict:
+        """Recompute `image_kind` from columns already on disk. No network, no model.
+
+        This is what makes the derivation safe to change. A caption is expensive to redo (the
+        reason `caption_schema` is versioned), but a bucket derived from the institution's own
+        words costs one SQL pass — so the vocabulary can be corrected the moment a source turns
+        out to catalogue garments as "Collar" and "Cap" rather than as textiles.
+
+        Returns the kind histogram INCLUDING `unknown`, because a derivation whose fallthrough
+        rate nobody looks at is a silent cap.
+        """
+        from nolan.imagelib.taxonomy import IMAGE_KINDS, image_kind as _kind
+
+        counts = {k: 0 for k in IMAGE_KINDS}
+        changed = 0
+        for a in self.catalog.list(status="active", held=None,
+                                   collection_id=collection_id, limit=1_000_000):
+            k = _kind(a.classification, a.tags, a.medium, a.description)
+            counts[k] += 1
+            if k != (a.image_kind or None):
+                self.catalog.update(a.id, image_kind=k)
+                changed += 1
+        total = sum(counts.values()) or 1
+        return {"counts": counts, "changed": changed, "total": total,
+                "unknown_pct": round(100.0 * counts["unknown"] / total, 1)}
 
     def backfill_pixels(self, *, limit: int = 200, collection_id: Optional[int] = None,
                         tier: str = "archival", progress=None) -> dict:

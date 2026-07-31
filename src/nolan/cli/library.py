@@ -280,6 +280,24 @@ def images_fetch(asset_id, scope, project, tier):
                f"({asset.width}x{asset.height}) -> {asset.path}")
 
 
+@images.command('rederive')
+@click.option('--collection', '-c', type=int, default=None, help='Restrict to one collection id.')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_rederive(collection, scope, project):
+    """Recompute `image_kind` from the catalog columns already on disk (no network, no model).
+
+    Run this after changing the taxonomy rules. It also prints the FALLTHROUGH rate, because a
+    derivation whose `unknown` share nobody looks at is a silent cap.
+    """
+    lib = _open_library(scope, project)
+    res = lib.rederive_kinds(collection_id=collection)
+    for k, n in sorted(res["counts"].items(), key=lambda kv: -kv[1]):
+        if n:
+            click.echo(f"  {n:>7,} ({n / res['total'] * 100:>5.1f}%)  {k}")
+    click.echo(f"{res['changed']} rows updated; unknown rate {res['unknown_pct']}%")
+
+
 @images.command('collections')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
 @click.option('--project', '-p', default=None)

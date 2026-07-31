@@ -62,6 +62,13 @@ class HarvestItem:
     height: Optional[int] = None
     wikidata_qid: Optional[str] = None
     tags: Optional[str] = None
+    # The catalog tier as FIELDS rather than as prose. `description` keeps the joined sentence
+    # (it is what BGE embeds); these are what a filter can actually act on.
+    medium: Optional[str] = None
+    classification: Optional[str] = None
+    department: Optional[str] = None
+    culture: Optional[str] = None
+    place: Optional[str] = None
 
 
 @dataclass
@@ -314,7 +321,12 @@ def artic_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional
                     description=", ".join(b for b in bits if b),
                     license="CC0 (Art Institute of Chicago)",
                     width=thumb.get("width"), height=thumb.get("height"),
-                    tags=a.get("classification_title") or a.get("artwork_type_title"))
+                    tags=a.get("classification_title") or a.get("artwork_type_title"),
+                    medium=a.get("medium_display"),
+                    classification=(a.get("classification_title")
+                                    or a.get("artwork_type_title")),
+                    department=a.get("department_title"),
+                    place=a.get("place_of_origin"))
                 yielded += 1
                 # Advance the cursor to just past the row the CONSUMER has finished with. This
                 # line runs when the generator is resumed, i.e. after the caller indexed the
@@ -628,7 +640,12 @@ def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[s
                 # cannot run at index time for met rows (`check_candidate` skips it when dims are
                 # absent) and lands at promotion instead, where `check_file` measures real bytes.
                 wikidata_qid=_met_qid(o.get("objectWikidata_URL")),
-                tags=o.get("classification") or None)
+                tags=o.get("classification") or None,
+                medium=o.get("medium") or None,
+                classification=o.get("classification") or None,
+                department=o.get("department") or None,
+                culture=o.get("culture") or None,
+                place=o.get("country") or o.get("region") or None)
             yielded += 1
             # After the yield: the consumer has finished with this id, so it is safe to move
             # past it. Advancing BEFORE the yield would skip a row on a crash mid-index.
@@ -753,7 +770,10 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
                         license=item.license, width=item.width, height=item.height,
                         wikidata_qid=item.wikidata_qid, tags=item.tags,
                         collection_id=collection.id, identity_source="catalog",
-                        pixels=pixels)
+                        pixels=pixels,
+                        medium=item.medium, classification=item.classification,
+                        department=item.department, culture=item.culture,
+                        place=item.place)
                     break
                 except ValueError:
                     raise

@@ -4,6 +4,38 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The catalog tier stops being prose — and image_kind is derived, not asked (2026-07-31)
+
+Every discovery row carried its catalog facts as one comma-joined sentence: *"Oil on canvas,
+Saint-Rémy-de-Provence, oil on canvas, Painting and Sculpture of Europe"*. That embeds fine and
+filters not at all — you cannot ask a sentence for "textiles from Iran". `medium`,
+`classification`, `department`, `culture` and `place` are now real columns; `description` keeps
+the prose, because it is what BGE embeds and the retrieval eval was measured on it.
+
+**`image_kind` is derived from the institution's own words**, never asked of a model — the 50-row
+validation compared a VLM against regex bucketing of `classification` and the regex won on every
+row where they disagreed. Fifteen buckets, closed vocabulary, LOUD fallthrough (checklist class
+3). Built against the REAL vocabularies rather than invented: the Met publishes 961 distinct
+`Classification` values with pipe and hyphen compounds (`Photographs|Ephemera`,
+`Textiles-Woven`), and the Art Institute publishes 119 lowercase values that mix classification
+with medium — "painting" in one row and "oil on canvas" in the next, which is why the derivation
+takes several fields in authority order instead of one.
+
+Fallthrough is MEASURED, and the first measurement is why the rules are what they are: 5.6%
+unknown on the Met's 248,472 public-domain rows, whose top unmapped values turned out to be
+garments the Met catalogues by the thing rather than the material (Dress, Collar, Cap, Shoes,
+Handkerchief, Button), arms (Helmets, Arrowheads) and small objects (Sealing, Clay-Tablets, Snuff
+Bottles, Papyrus). Adding those patterns took it to **2.6% on the Met and 0.4% on artic** — and
+the remaining share is reported rather than quietly filed under `object`.
+
+`nolan images rederive` recomputes the bucket from columns already on disk — one SQL pass, no
+network, no model — and prints the fallthrough rate. That is the point: a caption is expensive to
+redo (hence `caption_schema` versioning), but a derivation from the source's own words is cheap,
+so the vocabulary stays safe to correct. Re-derived the live library: 1,137 rows, 57.4% painting,
+12.6% print, 4.3% unknown (the held tier carries no museum classification at all).
+
+Full suite: 2,255 passed, 5 skipped, 0 failed.
+
 ## The crawl splits into two phases, and the ratio is 5.4x — not the 50x I assumed (2026-07-30)
 
 `harvest(pixels=False)` indexes the catalog record and nothing else; `backfill_pixels` fetches
