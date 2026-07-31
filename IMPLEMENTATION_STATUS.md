@@ -4,6 +4,42 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## A third source, a probe protocol — and the LoC trap closed (2026-07-31)
+
+**`cleveland`** ships, and the 7-question probe is why we knew its shape before writing a line.
+It is the best of the three: a server-side `cc0=1` filter **AND** full depth (artic makes you
+choose), plus published pixel dimensions so the resolution floor runs at index time. Denominator
+probed live: **42,255 CC0 of 68,770**. Its listing order is not perfectly stable, so a skip-cursor
+occasionally re-sees an indexed row (1 of 4 on a resumed run) — dedup makes that a refresh, which
+is precisely why the cursor may re-walk but never skip.
+
+The probe is now written down as a protocol in the bound skill: enumeration (**is it
+depth-capped?**) · rights + denominator · stable id · URL derivation · pixel dims · auth · free
+identity extras. Answers go into the `SourceAdapter` so they cannot rot back into prose.
+
+**Cleveland also repeated a bug I had already fixed once.** Its cursor advanced to the end of the
+PAGE inside the item loop, so a harvest of 4 rows left it at offset 100 and the next run skipped
+96 rows it had never seen. Same class as the artic within-page fix. Twice is a pattern, so it is
+now a contract test over every registered adapter rather than a third fix waiting to happen.
+
+**THE LoC TRAP IS CLOSED, and it was live rather than hypothetical.** `loc` sat in
+`OPEN_ACCESS_SOURCES`, so every Library of Congress result cleared the archival gate on the
+strength of the institution's name with `license=None` — the Alamy failure mode with a more
+respectable logo. The LoC is not uniformly public domain; its rights advisories are written per
+COLLECTION. A test caught that this was not theoretical: `loc` was an active entry in
+`ART_SOURCES`, so the acquisition pipeline was fetching from it under exactly that wholesale
+trust.
+
+So: `loc` is out of `OPEN_ACCESS_SOURCES` and out of `ART_SOURCES`, and
+`asset_gate.PER_COLLECTION_RIGHTS` + `collection_is_open()` are the mechanism for putting it
+back — per curated collection, with the advisory URL recorded so the assertion can be re-checked.
+`fsa-owi-black-and-white-negatives` (~171k items, no known restrictions) is seeded. **Unknown
+returns None**, a real third answer that must not be read as either yes or no.
+
+This narrows what the pipeline will fetch, deliberately. See the note in the hand-off below.
+
+Full suite: 2,284 passed, 5 skipped, 0 failed.
+
 ## cleanup gets a matte detector, and the watermark check gets a backstop (2026-07-31)
 
 `hyperframes/cleanup.detect_matte` — the dead-margin detector that did not exist. `detect_logo`

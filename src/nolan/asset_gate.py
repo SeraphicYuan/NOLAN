@@ -51,11 +51,52 @@ STOCK_PREVIEW_HOSTS: Tuple[str, ...] = (
 )
 
 # Providers whose results are open-access / public-domain by construction.
+#
+# "By construction" is the load-bearing phrase. A source belongs here only if EVERYTHING it can
+# hand us is open — not if it merely holds a lot of open material.
 OPEN_ACCESS_SOURCES = frozenset({
     "wikimedia", "met", "artic", "cleveland", "rijksmuseum", "wellcome",
-    "loc", "harvard", "europeana", "dpla", "smithsonian", "nga",
+    "harvard", "europeana", "dpla", "smithsonian", "nga",
     "gutenberg", "internet_archive", "artvee",
 })
+
+# NOT uniformly open, and therefore NOT in the set above. `loc` used to be, which meant the gate
+# waved through anything from the Library of Congress on the strength of the institution's name.
+# The LoC holds an enormous amount of public-domain material AND a great deal that is restricted,
+# rights-undetermined, or licensed only for research — its own rights advisories are written PER
+# COLLECTION, not per institution.
+#
+# So rights are asserted per curated collection, and only for collections whose advisory has
+# actually been read. Anything outside this table falls through to the normal license check,
+# where "unknown" means refused at the archival tier — the safe direction.
+#
+# Sources of truth are the collection's own rights page; each entry records it so the assertion
+# can be re-checked rather than trusted.
+PER_COLLECTION_RIGHTS: dict = {
+    "loc": {
+        # https://www.loc.gov/collections/fsa-owi-black-and-white-negatives/about-this-collection/rights-and-restrictions/
+        "fsa-owi-black-and-white-negatives": {
+            "open": True,
+            "note": "No known restrictions. ~171k items, US government work (FSA/OWI).",
+        },
+    },
+}
+
+
+def collection_is_open(source: Optional[str], collection: Optional[str]) -> Optional[bool]:
+    """Rights for ONE curated collection of a not-uniformly-open institution.
+
+    Returns True (asserted open), False (asserted restricted), or **None — unknown**, which is a
+    real answer and must not be read as either. An institution that is open "mostly" is the exact
+    shape that produces a rights incident.
+    """
+    table = PER_COLLECTION_RIGHTS.get((source or "").strip().lower())
+    if not table:
+        return None
+    entry = table.get((collection or "").strip().lower())
+    if entry is None:
+        return None
+    return bool(entry.get("open"))
 
 # Providers whose platform license permits our use (attribution handled by
 # the credits pipeline).
@@ -205,6 +246,11 @@ def _license_known_open(result) -> bool:
     src = (getattr(result, "source", None) or "").lower()
     lic = getattr(result, "license", None) or ""
     if src in OPEN_ACCESS_SOURCES:
+        return True
+    # A not-uniformly-open institution may still vouch for a NAMED curated collection. Only an
+    # explicit True counts — unknown falls through to the license string, where "unknown" is a
+    # refusal at the archival tier.
+    if collection_is_open(src, getattr(result, "collection", None)) is True:
         return True
     return bool(_OPEN_LICENSE_RE.search(lic))
 

@@ -362,6 +362,26 @@ def test_cursor_advances_within_a_page_not_only_between_pages():
     assert '"offset": idx + 1' in src, "artic cursor must record its position WITHIN the page"
 
 
+def test_no_paged_adapter_advances_its_cursor_past_unconsumed_rows():
+    """REGRESSION, and it has now happened TWICE — once in artic, once in cleveland, where a
+    harvest of 4 rows left the cursor at 100 and the next run skipped 96 rows it had never seen.
+
+    Re-walking a row is free (source_ref dedup turns it into a refresh); SKIPPING loses it in
+    silence. So a per-item cursor update inside a page loop must be indexed by the ITEM, never by
+    the page length.
+    """
+    import re
+    from nolan.imagelib.harvest import SOURCES
+    for name, adapter in SOURCES.items():
+        src = inspect_source(adapter.items)
+        body = src[src.index("yield HarvestItem"):] if "yield HarvestItem" in src else ""
+        for line in body.splitlines():
+            if "report.cursor" in line and "len(data)" in line:
+                raise AssertionError(
+                    f"{name}: cursor advances by page length beside a yielded item "
+                    f"({line.strip()}) — that skips every row the caller did not consume")
+
+
 def test_the_cursor_advances_only_after_a_row_is_consumed():
     """Re-walking a row is free (source_ref dedup turns it into a refresh); SKIPPING one loses it
     silently, which is the failure this tier exists to prevent. So the cursor update must sit

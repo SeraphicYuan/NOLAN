@@ -295,6 +295,43 @@ def test_cleanup_leaves_a_full_bleed_picture_alone(tmp_path):
     assert cleanup.plan_crop(800, 600, logos=[], caption=None, matte=None) is None
 
 
+def test_loc_is_no_longer_trusted_wholesale():
+    """THE TRAP. `loc` sat in OPEN_ACCESS_SOURCES, so the gate waved through anything from the
+    Library of Congress on the strength of the institution's name — but the LoC's rights
+    advisories are written PER COLLECTION, and it holds a great deal that is restricted."""
+    from nolan import asset_gate
+    assert "loc" not in asset_gate.OPEN_ACCESS_SOURCES
+
+    class R:
+        source = "loc"
+        license = None
+        collection = None
+        width = height = 4000
+        url = source_url = thumbnail_url = "https://www.loc.gov/item/x/"
+
+    v = asset_gate.check_candidate(R(), tier="archival")
+    assert v.ok is False, "an unqualified LoC item must not clear the archival tier"
+
+
+def test_a_named_loc_collection_with_a_read_advisory_is_open():
+    """Rights per curated collection — asserted, sourced, and re-checkable."""
+    from nolan import asset_gate
+    assert asset_gate.collection_is_open(
+        "loc", "fsa-owi-black-and-white-negatives") is True
+    # unknown is a REAL answer and must not read as either yes or no
+    assert asset_gate.collection_is_open("loc", "something-unvetted") is None
+    assert asset_gate.collection_is_open("artic", "anything") is None
+
+    class R:
+        source = "loc"
+        license = None
+        collection = "fsa-owi-black-and-white-negatives"
+        width = height = 4000
+        url = source_url = thumbnail_url = "https://www.loc.gov/item/x/"
+
+    assert asset_gate.check_candidate(R(), tier="archival").ok is True
+
+
 def test_watermark_backstop_flags_an_unvouched_source():
     """The detector missed a 27%-opacity tile on a pale fresco. A faint watermark is still a
     RIGHTS signal, so provenance is the other half of the answer."""

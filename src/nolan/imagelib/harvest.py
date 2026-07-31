@@ -663,6 +663,156 @@ def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[s
                     + (" (scan cap reached)" if scanned >= scan_cap else " (listing exhausted)"))
 
 
+# ---------------------------------------------------------------- Cleveland Museum of Art
+
+CMA_API = "https://openaccess-api.clevelandart.org/api/artworks"
+
+
+def cleveland_collection(dept: Optional[str] = None, query: Optional[str] = None) -> Collection:
+    """The T0 row for a Cleveland harvest. As with the others, only CC0 items are harvested, so
+    the rights assertion is a property of THIS harvest rather than a claim about the museum."""
+    slug = "cleveland-cc0" + (f"-{dept.lower().replace(' ', '-')}" if dept else "") \
+                           + (f"-{query.lower().replace(' ', '-')[:24]}" if query else "")
+    return Collection(
+        slug=slug, source="cleveland",
+        title="Cleveland Museum of Art — CC0 artworks" + (f" ({dept})" if dept else ""),
+        description=("Open-access artworks from the Cleveland Museum of Art: paintings, prints, "
+                     "drawings, photographs, textiles, sculpture and decorative arts across the "
+                     "collection, each catalogued with title, creator, date, technique, culture "
+                     "and department. Images are served at web, print and full-TIFF sizes."),
+        rights="CC0 (Cleveland Museum of Art) — share_license_status=CC0 only",
+        copyright_free=True, url="https://www.clevelandart.org/open-access",
+        topics="art, painting, print, drawing, photography, textile, sculpture")
+
+
+def cleveland_upstream_count(dept: Optional[str] = None,
+                             query: Optional[str] = None) -> Optional[int]:
+    """Probed live: 42,255 CC0 of 68,770 total."""
+    import httpx
+    try:
+        with httpx.Client(headers={"User-Agent": _UA}, timeout=30.0) as c:
+            params: Dict[str, Any] = {"limit": 1, "cc0": "1", "has_image": "1"}
+            if dept:
+                params["department"] = dept
+            if query:
+                params["q"] = query
+            r = c.get(CMA_API, params=params)
+            r.raise_for_status()
+            return int((r.json().get("info") or {}).get("total") or 0) or None
+    except Exception:
+        return None
+
+
+def cleveland_items(limit: int = 200, *, dept: Optional[str] = None,
+                    query: Optional[str] = None, page_size: int = 100,
+                    report: Optional[HarvestReport] = None,
+                    cursor: Optional[Dict[str, Any]] = None, **_ignored
+                    ) -> Iterator[HarvestItem]:
+    """Walk the Cleveland catalog. Keyless, `skip`/`limit` paginated, RESUMABLE by offset.
+
+    The best-shaped of the three sources, and the 7-question probe is why we know that before
+    writing a line of it:
+
+      1. ENUMERATION   — `skip`/`limit`, no depth cap inside the result set (probed skip=20,000).
+      2. RIGHTS        — a PER-ITEM flag (`share_license_status`) *and* a server-side `cc0=1`
+                         filter, so unlike artic we get both filtering and depth.
+      3. STABLE ID     — numeric `id`, namespaced here as `cleveland:94979`.
+      4. IMAGE URLS    — three fixed derivatives: `web` (~750px), `print` (~2850px), `full`
+                         (a multi-megabyte TIFF). We thumbnail `web` and promote `print`; the
+                         TIFF is deliberately not our problem.
+      5. PIXEL DIMS    — published per derivative, so the gate's resolution floor runs at INDEX
+                         time rather than being deferred to promotion (the Met's weakness).
+      6. AUTH          — keyless.
+      7. FREE EXTRAS   — `creators` with biographical descriptions, `technique`, `culture`,
+                         `department`, `tombstone`.
+
+    One observed property worth knowing: the listing order is NOT perfectly stable across calls,
+    so a skip-based cursor occasionally re-sees a row it has already indexed (measured: 1 of 4 on
+    a resumed run). `source_ref` dedup turns that into a refresh rather than a duplicate, which
+    is precisely why the cursor is allowed to re-walk but never to skip.
+    """
+    import httpx
+
+    yielded = 0
+    skip = int((cursor or {}).get("offset") or 0)
+    if report is not None and skip:
+        report.note(f"resuming at offset {skip}")
+    with httpx.Client(headers={"User-Agent": _UA}, timeout=45.0) as c:
+        while yielded < limit:
+            params: Dict[str, Any] = {"limit": page_size, "skip": skip, "cc0": "1",
+                                      "has_image": "1"}
+            if dept:
+                params["department"] = dept
+            if query:
+                params["q"] = query
+            try:
+                r = c.get(CMA_API, params=params)
+                r.raise_for_status()
+                data = r.json().get("data") or []
+            except Exception as e:
+                if report:
+                    report.errors += 1
+                    report.note(f"skip {skip}: {type(e).__name__}: {e}")
+                return
+            if not data:
+                if report:
+                    report.exhausted = True
+                return
+            for idx, a in enumerate(data):
+                if yielded >= limit:
+                    return
+                imgs = a.get("images") or {}
+                web = imgs.get("web") or {}
+                pr = imgs.get("print") or web
+                if not web.get("url"):
+                    if report:
+                        report.skipped_no_image += 1
+                    continue
+                if (a.get("share_license_status") or "").upper() != "CC0":
+                    if report:
+                        report.skipped_rights += 1
+                    continue
+                creators = a.get("creators") or []
+                creator = (creators[0].get("description") if creators else None) or None
+                # The biographical tail ("(American, 1738-1815)") is real information, but it
+                # belongs to the ARTIST rather than to this row — `artist_key` strips it so the
+                # per-person knowledge still folds correctly.
+                culture = a.get("culture")
+                if isinstance(culture, list):
+                    culture = ", ".join(str(x) for x in culture if x) or None
+                bits = [a.get("technique"), culture, a.get("type"), a.get("department")]
+                try:
+                    w = int(pr.get("width") or 0) or None
+                    h = int(pr.get("height") or 0) or None
+                except (TypeError, ValueError):
+                    w = h = None
+                yield HarvestItem(
+                    source_ref=f"cleveland:{a.get('id')}",
+                    thumb_url=web.get("url"),
+                    url=pr.get("url") or web.get("url"),
+                    source_url=a.get("url"),
+                    title=a.get("title"), creator=creator,
+                    date_text=a.get("creation_date"),
+                    institution="Cleveland Museum of Art",
+                    description=", ".join(str(b) for b in bits if b),
+                    license="CC0 (Cleveland Museum of Art)",
+                    width=w, height=h,
+                    tags=a.get("type"),
+                    medium=a.get("technique"), classification=a.get("type"),
+                    department=a.get("department"), culture=culture)
+                yielded += 1
+                # Just past the row the consumer has finished with — NOT the end of the page.
+                # The first version advanced to skip+len(data) here, so a harvest of 4 rows left
+                # the cursor at 100 and the next run skipped 96 rows it had never seen. Same
+                # class as the artic within-page fix: re-walking is free, skipping loses rows.
+                if report is not None:
+                    report.cursor = {"offset": skip + idx + 1}
+            skip += len(data)
+            if report is not None:
+                report.cursor = {"offset": skip}
+            time.sleep(0.15)                              # be a good citizen on a keyless API
+
+
 SOURCES: Dict[str, SourceAdapter] = {
     "artic": SourceAdapter(
         id="artic",
@@ -695,6 +845,22 @@ SOURCES: Dict[str, SourceAdapter] = {
               "Publishes physical measurements rather than pixel dimensions, so the resolution "
               "floor lands at promotion instead of at index time. Hands over Wikidata ids free "
               "(tags 56%, artist 35%, object 19% of the public-domain subset).",
+    ),
+    "cleveland": SourceAdapter(
+        id="cleveland",
+        collection=cleveland_collection,
+        items=cleveland_items,
+        enumeration="bulk-listing",
+        upstream_count=cleveland_upstream_count,
+        resumable=True,
+        publishes_pixel_dims=True,
+        rights_model="per-item",
+        notes="Keyless, skip/limit paginated, no depth cap inside the result set. The best-"
+              "shaped of the three: a server-side cc0=1 filter AND full depth (artic makes you "
+              "choose), plus published pixel dimensions per derivative so the resolution floor "
+              "runs at index time. Three fixed derivatives — web (~750px, thumbnailed), print "
+              "(~2850px, promoted) and a multi-megabyte full TIFF we deliberately ignore. "
+              "Denominator probed live: 42,255 CC0 of 68,770.",
     ),
 }
 

@@ -35,8 +35,17 @@ from typing import Any, Dict, List, Optional
 # ART_SOURCES_PRIMARY membership. Keyed providers are skipped automatically by
 # the client when unconfigured.
 ART_SOURCES_PRIMARY = ["artvee"]
+# `loc` was REMOVED (2026-07-31), and the removal is the point rather than an oversight.
+# The Library of Congress is not uniformly public domain — its rights advisories are written per
+# COLLECTION, not per institution — but it sat in `asset_gate.OPEN_ACCESS_SOURCES`, so every LoC
+# result cleared the archival gate on the strength of the institution's name with `license=None`.
+# That is the Alamy failure mode with a more respectable logo.
+#
+# It can come back the moment it is fetched per curated collection: `asset_gate`
+# .PER_COLLECTION_RIGHTS holds the assertions (fsa-owi-black-and-white-negatives, ~171k items,
+# no known restrictions), and `collection_is_open()` is what a LoC adapter would consult.
 ART_SOURCES_FALLBACK = ["wikimedia", "met", "artic", "cleveland", "rijksmuseum",
-                        "wellcome", "loc", "harvard", "europeana", "dpla"]
+                        "wellcome", "harvard", "europeana", "dpla"]
 ART_SOURCES = ART_SOURCES_PRIMARY + ART_SOURCES_FALLBACK
 
 # visual_type values this step owns. "archival-art" is the vocabulary the

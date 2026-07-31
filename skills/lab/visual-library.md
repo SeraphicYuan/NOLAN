@@ -190,6 +190,37 @@ Shipped:
   physical measurements rather than pixel dimensions, so the resolution floor lands at promotion
   (`check_file` on real bytes) instead of at index time.
 
+- **`cleveland`** — Cleveland Museum of Art. Keyless, `skip`/`limit`, resumable, and the
+  best-shaped of the three: a **server-side `cc0=1` filter AND full depth** (artic makes you
+  choose between them), plus published pixel dimensions per derivative so the resolution floor
+  runs at index time. Three fixed derivatives — `web` (~750px, thumbnailed), `print` (~2850px,
+  promoted), and a multi-megabyte full TIFF deliberately ignored. Denominator probed live:
+  **42,255 CC0 of 68,770**. Its listing order is not perfectly stable, so a skip-cursor
+  occasionally re-sees an indexed row (1 of 4 on a resumed run) — dedup makes that a refresh,
+  which is exactly why the cursor may re-walk but never skip.
+
+## Adding a source — the seven questions
+
+You give a URL and a sentence; this protocol answers the rest. **Probe before writing the
+adapter, and write the findings down** — every one of these has a consequence that is expensive
+to discover later, and the artic ceiling is what happens when the answers live in a docstring
+nobody re-measured.
+
+1. **Enumeration** — bulk listing, bulk dump, or per-object? *Is it depth-capped?* Probe a deep
+   page explicitly; artic's search 403s at page 11 and that cost us 98.6% of a collection.
+2. **Rights** — a per-item flag, or must rights be asserted per curated collection? Is there a
+   server-side filter? Get the **denominator** while you are here.
+3. **Stable id** → the `source_ref` namespace (`cleveland:94979`).
+4. **Thumbnail + full-image URL** derivation — IIIF, or fixed derivatives?
+5. **Pixel dimensions published?** Decides whether the resolution floor runs at index time or
+   waits for promotion.
+6. **Auth + rate limits** — keyless, or a key in config?
+7. **Free identity extras** — Wikidata QID, ULAN, artist bios. The Met's QID is why that column
+   exists; its `Artist Wikidata URL` at 35% is why the artist tier is cheap.
+
+Then declare the answers in the `SourceAdapter` (`enumeration`, `upstream_count`, `resumable`,
+`publishes_pixel_dims`, `rights_model`, `notes`) so they cannot rot back into prose.
+
 Wanted next: **Library of Congress** — probed and deliberately NOT shipped yet. Its collection
 endpoint returns only a 150px thumbnail and no rights per row; the richer per-item JSON is a
 second request; and `/photos/?fa=partof:…` was flaky under a plain crawl. The real design
