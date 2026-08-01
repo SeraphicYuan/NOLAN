@@ -4,6 +4,38 @@
 **Status:** Complete
 **Last Updated:** 2026-08-01
 
+## "auto" was the wrong word, and Remove never removed anything (2026-08-01)
+
+Follow-up to the tile-linking work, off the back of "this sources tab isn't uploaded by me? why
+there's auto there?" — a fair challenge, and tracing it found a defect behind the label.
+
+**Provenance, from the ledgers rather than from guessing.** 92 videos sit under the 26 derived
+tiles. 29 are in `picks_accepted.json`, every one `source:"broaden"`, `tier:"archive"` — the 🌱
+Broaden the library button. 7 more appear in `topic_judgements.json`, i.e. the on-demand topic
+search's tier 3. 20 are the bloomberg channel crawl. The remaining 36 archive rows are in neither
+ledger and CANNOT be attributed with certainty — the Curate tab's "add selected" records nothing.
+So: search-driven ingest, broaden first, on-demand topic search second. Nothing ran by itself.
+
+**`auto` → `origin`.** The chip claimed a mechanism ("something added this automatically") that
+never happened; what actually happened is you ingested VIDEOS and the tile is the page reporting
+where they live. `sources_view` now emits `origin`: `managed` (a sources.json row), `search` (an
+archive.org collection attributed to items the global tier pulled — 24 of the 31 tiles), or
+`unregistered` (a channel with videos but no source row — 2). The chip renders the word and
+explains itself on hover.
+
+**Remove was a no-op and said the opposite.** It drops the sources.json row and leaves the videos,
+so `sources_view` re-derives the tile immediately as `unregistered`; the confirm text ("its indexed
+videos stay searchable") was true and beside the point. bloomberg is exactly this: crawled after
+the upsert landed 2026-07-22, registered, then removed — 20 videos, no source row, a tile that
+couldn't be dismissed. A derived tile was worse still: no row to drop, so NO UI action could clear
+it. Added `transcript_lib.purge_source()` + `DELETE ...?purge=true` — deletes the channel's videos
+everywhere then the source row, which is the only thing that makes a tile go. Two confirms, per-
+video error reporting, and a failed row keeps its catalog entry rather than vanishing quietly. The
+Remove confirm now states plainly that the tile will come back as `unregistered`.
+
+Four tests in `tests/test_transcript_manage.py` pin the origin classification, the
+remove-leaves-the-tile / purge-clears-it pair, and the honest error report.
+
 ## The Sources tab's mystery tiles, named and linked (2026-08-01)
 
 "Under Sources there are many sources I don't recognize — altcensored, television_inbox — what are

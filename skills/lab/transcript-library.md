@@ -87,24 +87,37 @@ reason on the said/shown blend.
 Rebuild the title index with `POST /api/transcripts/topic-index/build` or
 `transcript_vectors.build()`; it is incremental (each row carries a signature of its embed text).
 
-## The Sources tab shows TWO kinds of tile (`transcript_lib.sources_view`)
+## The Sources tab: `origin` says why each tile exists (`transcript_lib.sources_view`)
 
-- **managed** — what someone actually added (`sources.json`): a documentary channel, a
-  `youtube_cc` stock channel, an `archive` collection. Syncable, removable.
-- **derived** (`managed:false`, chipped *auto*) — a `channel` value that appears in `catalog.json`
-  but was never registered. Almost all of these come from **tier-3 global archive.org search**:
-  `archive_source.fetch_transcript` has no collection to attribute an item to, so it takes
-  `metadata.collection[0]`, and archive.org's first collection is frequently an aggregator or
-  inbox — `television_inbox`, `altcensored`, `mirrortube`, `fringe`, `cowmev`, `vhsvault_inbox`.
-  **A tile you don't recognize is an archive.org collection one of your topic hits happened to
-  live in, not a source anyone chose.** They are shown, not hidden, so the tab can't understate
-  what is indexed; a derived tile's `kind` is taken from its videos' catalog `kind`, never guessed
-  from the string (`FedFlix` and `PeriscopeFilm` are collections, not channels).
+Only `sources.json` rows are sources anyone added. Every other tile is DERIVED from a `channel`
+value in `catalog.json` — shown, not hidden, so the tab can't understate what is indexed. The
+`origin` field names which is which, because "I never added this" is the first question the tab
+provokes:
+
+| origin | what it is |
+|---|---|
+| `managed` | a `sources.json` row — added deliberately. Syncable, removable. |
+| `search` | derived + archive: the collection **archive.org** files these items under, picked up when a topic / 🌱 broaden search over the global tier ingested them. Nobody chose the collection. |
+| `unregistered` | derived + youtube: a channel with indexed videos but no source row — a crawl whose source was later removed, or single-video ingests where the tile is yt-dlp's uploader NAME. |
+
+`search` is the bulk of them and the confusing one: `archive_source.fetch_transcript` has no
+collection to attribute an item to, so it takes `metadata.collection[0]`, and archive.org's first
+collection is frequently an aggregator or inbox — `television_inbox`, `altcensored`, `mirrortube`,
+`fringe`, `cowmev`, `vhsvault_inbox`. A derived tile's `kind` comes from its videos' catalog `kind`,
+never guessed from the string (`FedFlix` and `PeriscopeFilm` are collections, not channels).
 
 Every tile carries `url` + `url_exact` from `transcript_lib.source_url()` — the collection page or
 the channel page, so an unfamiliar tile is one click from an answer. `url_exact:false` means the
-reference is a bare uploader NAME (yt-dlp's `channel` field, e.g. "Christian Sommer") with no
-resolvable channel URL, and the link degrades to a YouTube search rather than a guessed `/c/` 404.
+reference is a bare uploader NAME with no resolvable channel URL, and the link degrades to a
+YouTube search rather than a guessed `/c/` 404.
+
+**Removing: `remove_source` does not remove a tile.** It drops the `sources.json` row while the
+videos stay in the catalog, so `sources_view` re-derives the tile as `unregistered` — and a derived
+tile has no row to drop at all, so it was unremovable by any UI action. `purge_source(index,
+channel)` deletes the channel's videos everywhere (DB + vectors + frames + catalog) and then the
+source row; that is the only thing that clears a tile. `DELETE /api/transcripts/sources?purge=true`.
+It reports `deleted` vs `errors` per video and leaves a failed row in the catalog rather than
+swallowing it.
 
 Known gap: ~60 stock-channel videos carry `channel: null` and therefore get NO tile — the tab
 undercounts by that much until the ingest backfills a channel for them.

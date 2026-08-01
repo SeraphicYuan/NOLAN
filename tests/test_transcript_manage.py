@@ -52,6 +52,65 @@ def test_sources_view_links_and_derives_kind_from_the_catalog(tmp_path):
     assert d["url"] == "https://archive.org/details/television_inbox"
 
 
+def test_origin_names_why_each_tile_exists(tmp_path):
+    """The chip has to answer "I never added this — why is it here?". An archive collection the global
+    search attributed → `search`; a channel with videos but no source row → `unregistered`."""
+    from nolan import transcript_lib as tl
+    tl.upsert_source("prelinger", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("p1", {"title": "A"}, 1, "prelinger", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("t1", {"title": "B"}, 1, "television_inbox", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("y1", {"title": "C"}, 1, "https://www.youtube.com/bloomberg", catalog_dir=tmp_path)
+    o = {r["channel"]: r["origin"] for r in tl.sources_view(tmp_path)}
+    assert o["prelinger"] == "managed"
+    assert o["television_inbox"] == "search"                     # archive.org's own collection, unchosen
+    assert o["https://www.youtube.com/bloomberg"] == "unregistered"   # crawled, then the source was removed
+
+
+def test_remove_source_leaves_the_tile_but_purge_clears_it(tmp_path):
+    """The defect this pins: remove_source drops the sources.json row while the videos stay, so the tile
+    comes straight back as `unregistered` — a derived tile was unremovable by any UI action. purge_source
+    deletes the videos too, which is the only thing that makes the tile go."""
+    from nolan import transcript_lib as tl
+    from nolan.indexer import VideoIndex
+    ch = "https://www.youtube.com/bloomberg"
+    index = VideoIndex(tmp_path / "index.db")
+    tl.upsert_source(ch, label="Bloomberg", catalog_dir=tmp_path)
+    for v in ("b1", "b2"):
+        tl.record_transcript(v, {"title": v}, 1, ch, catalog_dir=tmp_path)
+
+    assert tl.remove_source(ch, catalog_dir=tmp_path) is True
+    rows = {r["channel"]: r for r in tl.sources_view(tmp_path)}
+    assert ch in rows and rows[ch]["origin"] == "unregistered" and rows[ch]["video_count"] == 2
+
+    out = tl.purge_source(index, ch, catalog_dir=tmp_path)
+    assert out["videos"] == 2 and out["deleted"] == 2 and out["errors"] == []
+    assert tl.load_catalog(tmp_path) == {} and tl.sources_view(tmp_path) == []
+
+
+def test_purge_reports_the_rows_it_could_not_delete(tmp_path):
+    """No silent caps: a video that fails to delete keeps its catalog row and is NAMED, so the tile
+    surviving with a smaller count is explained rather than mysterious."""
+    from nolan import transcript_lib as tl
+    from nolan.indexer import VideoIndex
+    index = VideoIndex(tmp_path / "index.db")
+    real = tl.delete_transcript
+    tl.record_transcript("ok1", {"title": "A"}, 1, "coll", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("bad", {"title": "B"}, 1, "coll", kind="archive", catalog_dir=tmp_path)
+
+    def boom(index, vid, catalog_dir=None):
+        if vid == "bad":
+            raise RuntimeError("locked")
+        return real(index, vid, catalog_dir)
+    tl.delete_transcript = boom
+    try:
+        out = tl.purge_source(index, "coll", catalog_dir=tmp_path)
+    finally:
+        tl.delete_transcript = real
+    assert out["videos"] == 2 and out["deleted"] == 1 and len(out["errors"]) == 1
+    assert "bad" in out["errors"][0] and "locked" in out["errors"][0]
+    assert list(tl.load_catalog(tmp_path)) == ["bad"]            # the failure is still there, not swallowed
+
+
 def test_record_transcript_stores_frame_count(tmp_path):
     from nolan import transcript_lib as tl
     tl.record_transcript("abc", {"title": "T", "url": "https://youtu.be/abc"}, 10, "Ch", frames=7, catalog_dir=tmp_path)

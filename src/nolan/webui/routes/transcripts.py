@@ -434,10 +434,19 @@ def register(app, ctx):
         return {"sources": out, "count": len(out)}
 
     @app.delete("/api/transcripts/sources")
-    async def transcripts_remove_source(channel: str = Query(...)):
-        """Drop a channel from the managed list (its already-indexed videos stay searchable)."""
+    async def transcripts_remove_source(channel: str = Query(...), purge: bool = Query(default=False)):
+        """Drop a channel from the managed list. Its already-indexed videos stay searchable — and so the
+        TILE STAYS, re-derived as `unregistered` (that surprise is why `purge` exists).
+
+        `purge=true` deletes the channel's videos everywhere first (DB rows + vectors + frames + catalog),
+        which is what actually makes the tile disappear — and the only removal a derived tile has at all,
+        since it has no source row to drop."""
+        import asyncio
         from nolan import transcript_lib as tl
-        return {"removed": tl.remove_source(channel)}
+        if not purge:
+            return {"removed": tl.remove_source(channel), "purged": False}
+        from nolan.indexer import VideoIndex
+        return {**await asyncio.to_thread(tl.purge_source, VideoIndex(_db()), channel), "purged": True}
 
     # ---- Per-video: detail drill-down, delete, refresh -------------------------------------------
     @app.get("/api/transcripts/video")

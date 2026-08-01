@@ -150,9 +150,17 @@ def sources_view(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     GLOBAL tier — its `channel` is the item's first archive collection, so tiles like `television_inbox`
     or `altcensored` are collections we never added, not sources someone registered).
 
-    Each row carries a live ``video_count`` recomputed from the catalog and a ``url``/``url_exact`` link
-    to the source's own page. A derived row's ``kind`` comes from what its videos actually are (the
-    catalog's per-video ``kind``), not from guessing at the string.
+    Each row carries a live ``video_count`` recomputed from the catalog, a ``url``/``url_exact`` link to
+    the source's own page, and an ``origin`` naming HOW the tile exists. A derived row's ``kind`` comes
+    from what its videos actually are (the catalog's per-video ``kind``), not from guessing at the string.
+
+    ``origin`` is the answer to "I never added this — why is it here?":
+
+    * ``managed``      — a row in sources.json; someone added it.
+    * ``search``       — derived, archive: the collection archive.org files these items under, picked up
+      when a topic/broaden search over the global tier ingested them. Nobody chose the collection.
+    * ``unregistered`` — derived, youtube: a channel with indexed videos but no source row — a crawl
+      whose source was later removed, or single-video ingests where the tile is yt-dlp's uploader name.
     """
     from collections import Counter
     srcs = load_sources(catalog_dir)
@@ -166,19 +174,20 @@ def sources_view(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
         if e.get("kind"):
             kinds.setdefault(ch, Counter())[e["kind"]] += 1
 
-    def _row(base: Dict[str, Any], ch: str, kind: str) -> Dict[str, Any]:
+    def _row(base: Dict[str, Any], ch: str, kind: str, origin: str) -> Dict[str, Any]:
         url, exact = source_url(ch, kind)
-        return {**base, "kind": kind, "url": url, "url_exact": exact}
+        return {**base, "kind": kind, "origin": origin, "url": url, "url_exact": exact}
 
     out = [_row({**s, "managed": True, "video_count": counts.get(ch, s.get("video_count", 0))},
-                ch, s.get("kind") or "youtube")
+                ch, s.get("kind") or "youtube", "managed")
            for ch, s in srcs.items()]
     for ch, n in counts.items():                                   # derive tiles for un-managed channels
         if ch in srcs:
             continue
         kind = kinds[ch].most_common(1)[0][0] if ch in kinds else "youtube"
         out.append(_row({"channel": ch, "label": ch, "managed": False,
-                         "last_crawled": None, "video_count": n}, ch, kind))
+                         "last_crawled": None, "video_count": n}, ch, kind,
+                        "search" if kind == "archive" else "unregistered"))
     out.sort(key=lambda s: (s.get("managed") is False, -(s.get("video_count") or 0)))
     return out
 
@@ -191,6 +200,30 @@ def remove_source(channel: str, catalog_dir: Optional[Path] = None) -> bool:
         _sources_file(catalog_dir).write_text(json.dumps(srcs, indent=2, ensure_ascii=False), encoding="utf-8")
         return True
     return False
+
+
+def purge_source(index, channel: str, catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Delete every video indexed under ``channel``, then drop its source row — the ONLY way to make a
+    tile actually go away. ``remove_source`` alone can't: it deletes the sources.json row while the videos
+    stay in the catalog, and ``sources_view`` immediately re-derives the tile as `unregistered`. So a
+    derived tile (which has no source row to begin with) was previously unremovable by any UI action.
+
+    Reports honestly: ``deleted`` counts videos whose stores all came away clean, ``errors`` names the ones
+    that didn't. A video that fails to delete keeps its catalog row, so the tile survives with a smaller
+    count rather than the failure disappearing."""
+    vids = [vid for vid, e in load_catalog(catalog_dir).items() if e.get("channel") == channel]
+    deleted, errors = 0, []
+    for vid in vids:
+        try:
+            summary = delete_transcript(index, vid, catalog_dir)
+            if summary.get("db_error"):
+                errors.append(f"{vid}: {summary['db_error']}")
+            else:
+                deleted += 1
+        except Exception as e:                                    # never let one bad row abort the purge
+            errors.append(f"{vid}: {type(e).__name__}: {e}")
+    return {"channel": channel, "videos": len(vids), "deleted": deleted, "errors": errors,
+            "source_removed": remove_source(channel, catalog_dir)}
 
 
 def delete_transcript(index, video_id: str, catalog_dir: Optional[Path] = None) -> Dict[str, Any]:

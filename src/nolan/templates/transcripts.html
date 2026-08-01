@@ -1025,11 +1025,17 @@
       const kind = s.kind || "youtube";
       const archive = kind==="archive", cc = kind==="youtube_cc";
       const last = s.last_crawled ? `· last crawled ${esc(s.last_crawled.slice(0,10))}` : "· not yet synced";
-      const tag = (s.managed===false ? ` <span class="chip txt" title="not a source you added — these videos arrived via a global archive.org search (the tile is the item's own collection) or a pre-sidecar crawl">auto</span>` : "")
+      const ORIGIN = {
+        search: ["via search", "Nobody added this. A topic / 🌱 Broaden search over the GLOBAL archive.org tier ingested these videos, and this is the collection archive.org files them under — the collection was never chosen."],
+        unregistered: ["unregistered", "Has indexed videos but no source row — a channel crawl whose source was later removed, or single-video ingests where this tile is just the uploader's name."],
+      }[s.origin] || null;
+      const tag = (ORIGIN ? ` <span class="chip txt" title="${esc(ORIGIN[1])}">${ORIGIN[0]}</span>` : "")
         + (archive ? ` <span class="chip">🏛 archive</span>` : "")
         + (cc ? ` <span class="chip">🆓 copyright-free</span>` : "")
         + (s.copyright_free && !cc ? ` <span class="chip frames">copyright-free</span>` : "");
-      const rm = s.managed===false ? "" : `<button class="btn ghost mini danger" onclick="removeSource('${esc(s.channel)}')">Remove</button>`;
+      const n = s.video_count||0;
+      const rm = s.managed===false ? "" : `<button class="btn ghost mini danger" onclick="removeSource('${esc(s.channel)}',${n})" title="${n?"Unregister only — the "+n+" video(s) stay indexed and this tile stays, as 'unregistered'":"Drop this source"}">Remove</button>`;
+      const purge = !n ? "" : `<button class="btn ghost mini danger" onclick="purgeSource('${esc(s.channel)}',${n})" title="Delete all ${n} video(s) everywhere (index + vectors + frames + catalog) AND the source — the only thing that makes this tile disappear">🗑 Delete ${n}</button>`;
       const curate = `<button class="btn ghost mini" onclick="openCurateFor('${esc(s.channel)}','${kind}')" title="Browse + curate this source">🎯 Curate</button>`;
       const sync = (archive||cc) ? "" : `<button class="btn ghost mini" onclick="syncSource('${esc(s.channel)}')" title="Fetch only NEW uploads (dedup skips indexed)">↻ Sync</button>`;
       const open = !s.url ? "" : (s.url_exact
@@ -1038,8 +1044,8 @@
       const ref = s.url
         ? `<a class="srcref" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.channel)} ↗</a>`
         : `<div class="dim" style="font-size:11px">${esc(s.channel)}</div>`;
-      return `<div class="src-tile"><div><b>${esc(s.label||s.channel)}</b>${tag} <span class="dim">${s.video_count||0} videos ${last}</span>${ref}</div>
-        <span class="row">${open}${curate}${sync}${rm}</span></div>`;
+      return `<div class="src-tile"><div><b>${esc(s.label||s.channel)}</b>${tag} <span class="dim">${n} videos ${last}</span>${ref}</div>
+        <span class="row">${open}${curate}${sync}${rm}${purge}</span></div>`;
     }
     async function syncAll(){
       const st=$("#add-status"), log=$("#add-log"); st.textContent="syncing all channels…"; log.style.display="block"; log.textContent="";
@@ -1054,9 +1060,25 @@
         pollJob(d.job_id, st, log, ()=>{ loadSources(); loadVideos(); }); }
       catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
     }
-    async function removeSource(channel){
-      if(!confirm("Remove this source from the managed list? (its indexed videos stay searchable)")) return;
+    async function removeSource(channel, n){
+      const msg = n
+        ? `Unregister "${channel}"?\n\nIts ${n} indexed video(s) STAY searchable — so this tile will NOT go away: it comes back immediately as an "unregistered" tile (without Sync).\n\nTo make it disappear, use 🗑 Delete ${n} instead.`
+        : `Remove "${channel}" from the managed list?`;
+      if(!confirm(msg)) return;
       try{ await jdel(`/api/transcripts/sources?channel=${encodeURIComponent(channel)}`); loadSources(); }catch(e){ alert(e.message); }
+    }
+    async function purgeSource(channel, n){
+      if(!confirm(`DELETE all ${n} video(s) under "${channel}"?\n\nThis removes them everywhere — transcript index, embeddings, keyframes, catalog — and drops the source. NOT undoable; re-ingesting means re-crawling and re-captioning.\n\nThis is what makes the tile disappear.`)) return;
+      if(!confirm(`Last check: ${n} video(s) will be permanently deleted.`)) return;
+      const st=$("#src-stat"); st.textContent="deleting…";
+      try{
+        const d=await jdel(`/api/transcripts/sources?channel=${encodeURIComponent(channel)}&purge=true`);
+        const bad=(d.errors||[]).length;
+        st.innerHTML = bad ? `<span class="warn">deleted ${d.deleted}/${d.videos} — ${bad} failed: ${esc(d.errors[0])}</span>`
+                           : `✓ deleted ${d.deleted} video(s)`;
+        if(bad) alert(`${bad} video(s) could not be deleted and are still indexed:\n\n`+d.errors.slice(0,5).join("\n"));
+        loadSources(); loadVideos();
+      }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
     }
 
     /* ---------- videos list ---------- */
