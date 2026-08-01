@@ -251,7 +251,7 @@ def test_distinct_candidates_caps_giant_channel(tmp_path, monkeypatch):
     monkeypatch.setattr(tl, "cluster_dedup_candidates",
                         lambda cand, lib, **kw: {"distinct": cand, "dropped_lib": 0,
                                                  "clusters": len(cand), "candidates": len(cand)})
-    distinct, stats, _ = tl._distinct_candidates("big", cap=2500)
+    distinct, stats, _lib, _vecs = tl._distinct_candidates("big", cap=2500)
     assert stats["capped"] == 3500                                            # 6000 - 2500 dropped, reported
     assert stats["candidates"] == 2500 and len(distinct) <= 2500
     assert tl._distinct_candidates("big", cap=0)[1]["capped"] == 0            # cap=0 disables the bound
@@ -286,7 +286,7 @@ def test_archive_kind_dispatch_and_copyright_filter(tmp_path, monkeypatch):
     monkeypatch.setattr(tl, "cluster_dedup_candidates",
                         lambda cand, lib, **kw: {"distinct": cand, "dropped_lib": 0,
                                                  "clusters": len(cand), "candidates": len(cand)})
-    distinct, stats, _ = tl._distinct_candidates("prelinger", tmp_path, kind="archive", copyright_free_only=True)
+    distinct, stats, _lib, _vecs = tl._distinct_candidates("prelinger", tmp_path, kind="archive", copyright_free_only=True)
     assert stats["dropped_copyright"] == 1 and {d["video_id"] for d in distinct} == {"a", "c"}
 
 
@@ -772,7 +772,7 @@ def test_length_filter_drops_short_and_keeps_unknown(tmp_path, monkeypatch):
     monkeypatch.setattr(tl, "cluster_dedup_candidates",                        # isolate the length gate
                         lambda cand, lib, **kw: {"distinct": cand, "dropped_lib": 0,
                                                  "clusters": len(cand), "candidates": len(cand)})
-    distinct, stats, _ = tl._distinct_candidates("ch", min_sec=1200)          # 20 min floor
+    distinct, stats, _lib, _vecs = tl._distinct_candidates("ch", min_sec=1200)          # 20 min floor
     ids = {d["video_id"] for d in distinct}
     assert ids == {"d1", "d3", "d4"}                                          # d2 (90s) dropped; d4 (None) kept
     assert stats["dropped_length"] == 1
@@ -904,3 +904,76 @@ def test_small_collection_is_not_split(monkeypatch):
     rows, total = ar.survey_collection("small")
     assert (len(rows), total) == (300, 300)
     assert not any("publicdate:" in q for q in seen)
+
+
+def test_clustering_reuses_the_persisted_title_vectors(tmp_path, monkeypatch):
+    """The 118 MB title index existed and no clustering path read it — topic_cluster took a `vecs`
+    argument whose docstring promised exactly this reuse, and every caller re-embedded instead. This
+    pins the wiring: with a warm index, a Curate clustering run embeds NOTHING."""
+    import numpy as np
+    from nolan import transcript_lib as tl
+    from nolan import transcript_vectors as tvec
+
+    titles = [{"video_id": f"v{i}", "url": f"u{i}", "title": f"Subject number {i} explained"}
+              for i in range(12)]
+    tl.save_survey("coll", titles, tmp_path, kind="archive", total=len(titles))
+    tvec.build(tmp_path)                                        # warm the persisted index
+
+    calls = {"n": 0}
+    real = tl._embed_titles
+
+    def counting(ts):
+        calls["n"] += len(ts)
+        return real(ts)
+    monkeypatch.setattr(tl, "_embed_titles", counting)
+
+    out = tl.topic_view("coll", k=3, catalog_dir=tmp_path, kind="archive")
+    assert out["k"] >= 1 and out["distinct"] > 0
+    assert out["vec_reused"] == len(titles) and out["vec_embedded"] == 0
+    assert calls["n"] == 0, f"re-embedded {calls['n']} titles that were already in the index"
+
+
+def test_vectors_for_reembeds_only_what_changed(tmp_path):
+    """A stored vector is reused only while the row's embed text still matches its signature — an
+    edited title must never be clustered against its stale vector."""
+    from nolan import transcript_lib as tl
+    from nolan import transcript_vectors as tvec
+    rows = [{"video_id": "a", "url": "u", "title": "Bridges of the Rhine"},
+            {"video_id": "b", "url": "u", "title": "Tunnels under London"}]
+    tl.save_survey("coll", rows, tmp_path, kind="archive", total=2)
+    tvec.build(tmp_path)
+
+    _m, reused, embedded = tvec.vectors_for(rows, tmp_path)
+    assert (reused, embedded) == (2, 0)
+
+    edited = [dict(rows[0], title="Bridges of the Rhine (restored)"), rows[1]]
+    _m, reused, embedded = tvec.vectors_for(edited, tmp_path)
+    assert (reused, embedded) == (1, 1)                         # only the changed title is re-embedded
+
+    unknown = rows + [{"video_id": "zzz", "url": "u", "title": "Never surveyed"}]
+    _m, reused, embedded = tvec.vectors_for(unknown, tmp_path)
+    assert (reused, embedded) == (2, 1)
+
+
+def test_reused_vectors_still_collapse_near_duplicates(tmp_path):
+    """Reusing the index changes the vector space for ARCHIVE rows — it embeds `title + subject`, the
+    old path embedded title only. Measured on 3,000 Prelinger rows that is an improvement, not a
+    regression: near-duplicate collapse holds (417 multi-item clusters vs 404), while catalogue-number
+    titles stop over-merging (a 31-film blob of unrelated 'Home Movie: 0102xx' items becomes 19).
+    YouTube surveys carry no subject, so their vectors are title-only either way — unchanged."""
+    from nolan import transcript_lib as tl
+    from nolan import transcript_vectors as tvec
+    rows = ([{"video_id": f"d{i}", "url": "u", "title": "Bridge Building Part One",
+              "subject": ["Engineering"]} for i in range(3)]
+            + [{"video_id": "x1", "url": "u", "title": "Deep Sea Fishing", "subject": ["Ocean"]},
+               {"video_id": "x2", "url": "u", "title": "Alpine Railways", "subject": ["Trains"]}])
+    tl.save_survey("coll", rows, tmp_path, kind="archive", total=len(rows))
+    tvec.build(tmp_path)
+    vecs, reused, embedded = tvec.vectors_for(rows, tmp_path)
+    assert (reused, embedded) == (len(rows), 0)
+    dd = tl.cluster_dedup_candidates(rows, [], cand_vecs=vecs)
+    assert dd["clusters"] == 3                       # the 3 identical titles collapse; the 2 others don't
+    assert max(d["cluster_size"] for d in dd["distinct"]) == 3
+
+    # youtube rows have no subject -> the index's embed text IS the bare title
+    assert tvec.embed_text("Alpine Railways", None) == "Alpine Railways"

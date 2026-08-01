@@ -62,6 +62,36 @@ from the registry, `author.py` delegation, `block_registry` / `style_contract` /
 classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
 honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
 
+## The 118 MB index nothing read (2026-08-01)
+
+`title_vectors.npz` holds a BGE embedding for all 61,809 surveyed titles, is kept incremental, and
+was read by exactly one consumer — the topic search's tier 2. Every Curate and Coverage clustering
+run re-embedded the corpus from scratch. `topic_cluster` even takes a `vecs` argument whose
+docstring promises this reuse ("so clustering the whole 60k surveyed corpus costs no embedding at
+all"); only `transcript_broaden.corpus_topics` ever passed it. The other four callers didn't. Same
+bug class as the `transition` lesson: a capability with a documented contract and no consumer.
+
+`transcript_vectors.vectors_for(rows)` now returns row-aligned vectors from the index, reusing a
+stored vector only while the row's embed text still hashes to its stored signature, and embedding
+the misses in one batch. `_distinct_candidates` computes them ONCE and hands the same array to both
+the dedup and the clustering — which had been embedding the corpus twice per request. Counts are
+reported as `vec_reused` / `vec_embedded`, never swallowed.
+
+Prelinger, live: clustering ALL 9,361 candidates now takes **3.5s with zero embeddings**, against
+~100s before — the uncapped run is now faster than the capped one used to be.
+
+**One real semantic change, checked rather than assumed.** The index embeds `title + subject`; the
+old path embedded title only, so ARCHIVE rows now cluster in a different space (YouTube surveys
+carry no subject, so they are byte-identical). Measured on 3,000 Prelinger rows it is an
+improvement: near-duplicate collapse holds (417 multi-item clusters vs 404) while catalogue-number
+titles stop over-merging — `Home Movie: 0102xx` items are near-identical STRINGS with no content,
+so title-only vectors fused 31 unrelated films into one bucket; with subject tags that becomes 19.
+Distinct candidates rise 5,853 → 7,006 because ~1,150 wrongly-merged films are no longer discarded.
+
+Also fixed in passing: the dedup used to mutate caller rows to carry vector positions, which a
+stubbed test caught by exploding on the missing key. It returns a parallel `vec_pos` list instead,
+so a caller that stubs the dedup degrades to "no vectors to carry" rather than crashing.
+
 ## The survey's four quiet shortfalls (2026-08-01)
 
 Answering "is the survey a cache, or do I refetch?" (it is a cache — `surveys.json`, reused until

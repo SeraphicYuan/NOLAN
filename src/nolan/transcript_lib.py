@@ -1283,16 +1283,19 @@ def _embed_titles(titles):
     return [list(map(float, v)) for v in vecs]
 
 
-def cluster_dedup_candidates(cand, lib_titles, thr_lib=0.87, thr_dup=0.90):
+def cluster_dedup_candidates(cand, lib_titles, thr_lib=0.87, thr_dup=0.90, cand_vecs=None):
     """Deterministic, SCALABLE title dedup (BGE, no LLM -- handles 1000s of titles the LLM can't):
     (1) DROP candidates whose nearest LIBRARY title is >= thr_lib (already covered); (2) leader-CLUSTER the
     survivors at the TIGHT thr_dup so only near-DUPLICATE titles group (series parts / trailers / re-uploads /
     near-identical wording -- NOT same-subject-different-angle), keeping ONE rep (shortest title) per cluster.
-    Returns {distinct, dropped_lib, clusters, candidates}."""
+    `cand_vecs` (row-aligned) skips the candidate embedding entirely -- pass the persisted title vectors.
+    Returns {distinct, dropped_lib, clusters, candidates} plus each distinct row's `_vec_pos`, so the caller
+    can carry the SAME vectors into clustering instead of embedding the survivors a second time."""
     if not cand:
         return {"distinct": [], "dropped_lib": 0, "clusters": 0, "candidates": 0}
     import numpy as np
-    cv = np.asarray(_embed_titles([c.get("title") or "" for c in cand]), dtype=np.float32)  # (n, d) unit vecs
+    cv = (np.asarray(cand_vecs, dtype=np.float32) if cand_vecs is not None
+          else np.asarray(_embed_titles([c.get("title") or "" for c in cand]), dtype=np.float32))
     # (1) drop candidates near an existing library title -- one vectorized (n x m) cosine matrix, max per row
     if lib_titles:
         lv = np.asarray(_embed_titles(lib_titles), dtype=np.float32)
@@ -1305,6 +1308,7 @@ def cluster_dedup_candidates(cand, lib_titles, thr_lib=0.87, thr_dup=0.90):
     # preallocated leader matrix -- O(n * leaders * d) but vectorized, so ~1000x the old pure-Python cos loop
     # (which made a 2500-title channel take minutes). Deterministic: survivors kept in original order.
     groups: List[List[Dict[str, Any]]] = []
+    grp_idx: List[List[int]] = []                      # row positions in cv, parallel to `groups`
     leaders = np.empty((len(surv_idx), cv.shape[1]), dtype=np.float32) if surv_idx else np.empty((0, cv.shape[1]), dtype=np.float32)
     ng = 0
     for i in surv_idx:
@@ -1314,15 +1318,19 @@ def cluster_dedup_candidates(cand, lib_titles, thr_lib=0.87, thr_dup=0.90):
             j = int(sims.argmax())
             if sims[j] >= thr_dup:
                 groups[j].append(cand[i])
+                grp_idx[j].append(i)
                 continue
         leaders[ng] = v; ng += 1
         groups.append([cand[i]])
-    distinct = []
-    for grp in groups:
+        grp_idx.append([i])
+    distinct, vec_pos = [], []
+    for grp, idxs in zip(groups, grp_idx):
         rep = min(grp, key=lambda c: len(c.get("title") or ""))
+        vec_pos.append(idxs[grp.index(rep)])
         distinct.append({**rep, "cluster_size": len(grp),
                          "cluster_titles": [g["title"] for g in grp if g is not rep][:4]})
-    return {"distinct": distinct, "dropped_lib": dropped, "clusters": len(groups), "candidates": len(cand)}
+    return {"distinct": distinct, "dropped_lib": dropped, "clusters": len(groups),
+            "candidates": len(cand), "vec_pos": vec_pos}
 
 
 async def recommend_from_channel(channel, config, limit=250, catalog_dir=None, model="",
@@ -1335,10 +1343,10 @@ async def recommend_from_channel(channel, config, limit=250, catalog_dir=None, m
     import json
 
     from nolan.llm import create_text_llm
-    distinct, stats, lib_titles = _distinct_candidates(channel, catalog_dir, limit=limit, min_sec=min_sec,
-                                                       max_sec=max_sec, kind=kind,
-                                                       copyright_free_only=copyright_free_only,
-                                                       collection_free=collection_free)
+    distinct, stats, lib_titles, _vecs = _distinct_candidates(channel, catalog_dir, limit=limit,
+                                                              min_sec=min_sec, max_sec=max_sec, kind=kind,
+                                                              copyright_free_only=copyright_free_only,
+                                                              collection_free=collection_free)
     if not distinct:
         return {"coverage": "Nothing new -- every distinct topic on this channel is already covered.",
                 "items": [], "add": 0, **stats}
@@ -1554,14 +1562,23 @@ def _distinct_candidates(channel: str, catalog_dir: Optional[Path] = None, limit
         capped = len(cand) - cap
         cand = cand[:cap]                                        # newest-first -> keep the most recent cap
     lib_titles = [e.get("title") or "" for e in load_catalog(catalog_dir).values() if e.get("title")]
-    dd = cluster_dedup_candidates(cand, lib_titles)
+    # ONE embedding pass for the whole request, reusing the persisted title index. The dedup and the
+    # clustering that follows both run on these same vectors — they used to embed the corpus twice over.
+    from nolan import transcript_vectors as _tvec
+    cv, reused, embedded = _tvec.vectors_for(cand, catalog_dir)
+    dd = cluster_dedup_candidates(cand, lib_titles, cand_vecs=cv)
     distinct = dd["distinct"][:limit] if limit else dd["distinct"]
     cached = survey[0].get("_cached", "") if survey else ""
     stats = {"total": len(survey), "candidates": dd["candidates"], "dropped_redundant": dd["dropped_lib"],
              "dup_clusters": dd["clusters"], "distinct": len(dd["distinct"]), "cached": cached,
              "capped": capped, "dropped_length": dropped_len, "dropped_copyright": dropped_copyright,
-             "dropped_junk": dropped_junk}
-    return distinct, stats, lib_titles
+             "dropped_junk": dropped_junk, "vec_reused": reused, "vec_embedded": embedded}
+    # Row positions of the kept representatives, so clustering runs on the SAME vectors the dedup used.
+    # Absent (e.g. a test stubbing the dedup) simply means "no vectors to carry" — the caller re-embeds.
+    import numpy as _np
+    pos = (dd.get("vec_pos") or [])[:limit] if limit else (dd.get("vec_pos") or [])
+    vecs = _np.asarray([cv[i] for i in pos], dtype=_np.float32) if len(pos) == len(distinct) and pos else None
+    return distinct, stats, lib_titles, vecs
 
 
 def topic_view(channel: str, k: int = 0, catalog_dir: Optional[Path] = None,
@@ -1570,14 +1587,15 @@ def topic_view(channel: str, k: int = 0, catalog_dir: Optional[Path] = None,
                cap: int = MAX_CANDIDATES) -> Dict[str, Any]:
     """Browse a source BY TOPIC: distinct candidates grouped into ~k topic clusters (auto ≈ n/8 when
     k=0), each labelled by its distinctive keywords, medoid pre-flagged. For hand-selection. No LLM."""
-    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec,
-                                              max_sec=max_sec, kind=kind, copyright_free_only=copyright_free_only,
-                                              collection_free=collection_free, cap=cap)
+    distinct, stats, _lib, vecs = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec,
+                                                      max_sec=max_sec, kind=kind,
+                                                      copyright_free_only=copyright_free_only,
+                                                      collection_free=collection_free, cap=cap)
     if not distinct:
         return {"groups": [], "k": 0, **stats}
     if not k:
         k = max(4, min(40, round(len(distinct) / 8) or 1))
-    groups = topic_cluster(distinct, k)
+    groups = topic_cluster(distinct, k, vecs=vecs)
     return {"groups": groups, "k": len(groups), **stats}
 
 
@@ -1587,13 +1605,14 @@ def diverse_sample(channel: str, n: int = 20, catalog_dir: Optional[Path] = None
                    cap: int = MAX_CANDIDATES) -> Dict[str, Any]:
     """NO-LLM recommender: cluster the distinct candidates into exactly `n` topics and return the medoid
     of each — n picks spread maximally across the source's subject space, for zero API cost."""
-    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec,
-                                              max_sec=max_sec, kind=kind, copyright_free_only=copyright_free_only,
-                                              collection_free=collection_free, cap=cap)
+    distinct, stats, _lib, vecs = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec,
+                                                      max_sec=max_sec, kind=kind,
+                                                      copyright_free_only=copyright_free_only,
+                                                      collection_free=collection_free, cap=cap)
     if not distinct:
         return {"picks": [], "groups": 0, **stats}
     n = max(1, min(int(n), len(distinct)))
-    groups = topic_cluster(distinct, n)
+    groups = topic_cluster(distinct, n, vecs=vecs)
     picks = []
     for g in groups:
         med = next((it for it in g["items"] if it.get("video_id") == g["medoid_id"]), g["items"][0])
@@ -1630,12 +1649,16 @@ def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: 
     lib_titles = [e.get("title") or "" for e in cat.values() if e.get("title")]
     # library rows first (in_library=True), then each source's distinct new candidates
     rows: List[Dict[str, Any]] = [{"title": t, "in_lib": True, "channel": ""} for t in lib_titles]
+    avail_vecs: List[Any] = []                       # each source's distinct vectors, already computed
     per_channel = []
     for ch, src in chans:
         cfree = bool(src.get("copyright_free")) if kind == "archive" else False
-        distinct, st, _ = _distinct_candidates(ch, catalog_dir, refresh=refresh, min_sec=min_sec, max_sec=max_sec,
-                                               kind=kind, copyright_free_only=copyright_free_only,
-                                               collection_free=cfree, cap=cap)
+        distinct, st, _lib, dvecs = _distinct_candidates(ch, catalog_dir, refresh=refresh, min_sec=min_sec,
+                                                         max_sec=max_sec, kind=kind,
+                                                         copyright_free_only=copyright_free_only,
+                                                         collection_free=cfree, cap=cap)
+        if dvecs is not None:
+            avail_vecs.append(dvecs)
         label = (src or {}).get("label") or ch
         per_channel.append({"channel": ch, "label": label, "available": len(distinct),
                             "total": st.get("total", 0), "cached": st.get("cached", ""),
@@ -1649,8 +1672,13 @@ def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: 
 
     if not k:
         k = max(8, min(60, round(len(rows) / 22) or 1))
-    vecs = _embed_titles([r["title"] for r in rows])
-    X = np.asarray(vecs, dtype=float)
+    # Only the LIBRARY rows still need embedding — they are ingested, so they are absent from the
+    # surveyed title index by construction. Each source's candidate vectors came back from
+    # _distinct_candidates already, so the available side costs nothing here.
+    lib_X = np.asarray(_embed_titles(lib_titles), dtype=np.float32) if lib_titles else None
+    parts = ([lib_X] if lib_X is not None else []) + avail_vecs
+    X = np.asarray(np.vstack(parts) if parts else np.empty((0, 1)), dtype=float)
+    assert len(X) == len(rows), f"vector/row misalignment: {len(X)} vs {len(rows)}"
     k = max(1, min(int(k), len(rows)))
     if k <= 1:
         labels = [0] * len(rows)

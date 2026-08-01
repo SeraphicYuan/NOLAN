@@ -175,3 +175,37 @@ def status(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
     p = _vec_file(catalog_dir)
     return {"surveyed": len(corpus), "indexed": fresh, "pending": len(corpus) - fresh,
             "built": bool(ids), "file": str(p), "bytes": p.stat().st_size if p.exists() else 0}
+
+
+def vectors_for(rows: List[Dict[str, Any]], catalog_dir: Optional[Path] = None):
+    """Row-aligned unit vectors for ``[{video_id, title, subject?}, …]``, REUSING the persisted index.
+
+    The 118 MB `title_vectors.npz` already holds an embedding for most surveyed titles, and the
+    clustering paths used to re-embed every one of them on every request — the index was built,
+    kept incremental, and then read by nothing but the topic search's tier 2. A stored vector is
+    reused only when the row's embed text still hashes to its stored signature, so an edited title
+    can never be clustered against a stale vector; everything else is embedded in ONE batch.
+
+    Returns ``(matrix, reused, embedded)`` — the counts are reported, never swallowed."""
+    import numpy as np
+    from nolan import transcript_lib as tl
+    ids, sigs, mat = load(catalog_dir)
+    pos = {v: i for i, v in enumerate(ids or [])}
+    out: List[Any] = [None] * len(rows)
+    miss: List[int] = []
+    for i, r in enumerate(rows):
+        vid = str(r.get("video_id") or "")
+        text = embed_text(r.get("title") or "", r.get("subject"))
+        if mat is not None and vid in pos and sigs.get(vid) == _sig(text):
+            out[i] = mat[pos[vid]]
+        else:
+            miss.append(i)
+    if miss:
+        fresh = np.asarray(tl._embed_titles([embed_text(rows[i].get("title") or "",
+                                                        rows[i].get("subject")) for i in miss]),
+                           dtype=np.float32)
+        for k, i in enumerate(miss):
+            out[i] = fresh[k]
+    if not rows:
+        return np.empty((0, 0), dtype=np.float32), 0, 0
+    return np.asarray(out, dtype=np.float32), len(rows) - len(miss), len(miss)
