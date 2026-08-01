@@ -62,6 +62,43 @@ from the registry, `author.py` delegation, `block_registry` / `style_contract` /
 classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
 honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
 
+## Five tabs that answered three questions (2026-08-01)
+
+"We have built lots of features and the UI is quite busy — I'm a bit lost." The page had five tabs,
+and three of them (Curate, Topic, Coverage) answered ONE question — what should I ingest next? —
+with three strategies, three private copies of the same length / copyright-free / source-family
+filters (28 input controls between them), and two separate source-family switches that could
+disagree. Meanwhile the Sources tab carried three near-identical add-boxes and, as its third card,
+the whole indexed-video library.
+
+Now four tabs, one per job: **Search** (find what's in the library) · **Discover** (what to ingest
+next) · **Videos** (the library itself) · **Sources** (the registry).
+
+**Discover** keeps the three strategies as an explicit switch — *Browse a source* / *Find a
+subject* / *Find gaps* — over ONE filter bar. The panels were not rewritten: the filter ACCESSORS
+were repointed (`cuMinSec` and friends now read `#df-*`), which moved every one of ~20 call sites at
+once, and the duplicated markup was deleted. One `setKind` drives `CU.kind` and `CV_KIND` together,
+so they can no longer disagree, and copyright-free only appears for families that can BE free.
+
+**Videos** is its own tab — browsing, filtering, captioning and deleting videos is not the same job
+as registering a source.
+
+**Sources** has one add box: a source-family switch changes the placeholder, the explanatory note,
+the copyright-free control and whether the "then ingest" row applies at all (an archive collection
+is registered and curated; there is no crawl-newest-N for it). YouTube channels can now be
+REGISTERED without crawling, which is what the button always implied.
+
+Coverage's drill-down is wired to the `detail` endpoint: each topic states its true size and *show
+all N →* fetches the rest. Live, the largest topic went from 6 shown to all 75.
+
+Search gained the source selector the scoping work enabled — and it is honest about the one mode
+that has no per-source scope, warning that visual search covers all sources rather than silently
+ignoring the selector.
+
+Verified in the browser end to end: every tab, all three strategies, the shared filter driving
+Curate and Coverage, the kind switch, the add box across all three families, the drill-down, and a
+scoped search returning only Prelinger rows. No console errors; 89 tests pass.
+
 ## Search that stays correct as the library grows, and a topic you could not open (2026-08-01)
 
 Two review findings, both backend, both fixed before the UI restructure that will surface them.
