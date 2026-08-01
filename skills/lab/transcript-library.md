@@ -87,6 +87,28 @@ reason on the said/shown blend.
 Rebuild the title index with `POST /api/transcripts/topic-index/build` or
 `transcript_vectors.build()`; it is incremental (each row carries a signature of its embed text).
 
+## The Sources tab shows TWO kinds of tile (`transcript_lib.sources_view`)
+
+- **managed** — what someone actually added (`sources.json`): a documentary channel, a
+  `youtube_cc` stock channel, an `archive` collection. Syncable, removable.
+- **derived** (`managed:false`, chipped *auto*) — a `channel` value that appears in `catalog.json`
+  but was never registered. Almost all of these come from **tier-3 global archive.org search**:
+  `archive_source.fetch_transcript` has no collection to attribute an item to, so it takes
+  `metadata.collection[0]`, and archive.org's first collection is frequently an aggregator or
+  inbox — `television_inbox`, `altcensored`, `mirrortube`, `fringe`, `cowmev`, `vhsvault_inbox`.
+  **A tile you don't recognize is an archive.org collection one of your topic hits happened to
+  live in, not a source anyone chose.** They are shown, not hidden, so the tab can't understate
+  what is indexed; a derived tile's `kind` is taken from its videos' catalog `kind`, never guessed
+  from the string (`FedFlix` and `PeriscopeFilm` are collections, not channels).
+
+Every tile carries `url` + `url_exact` from `transcript_lib.source_url()` — the collection page or
+the channel page, so an unfamiliar tile is one click from an answer. `url_exact:false` means the
+reference is a bare uploader NAME (yt-dlp's `channel` field, e.g. "Christian Sommer") with no
+resolvable channel URL, and the link degrades to a YouTube search rather than a guessed `/c/` 404.
+
+Known gap: ~60 stock-channel videos carry `channel: null` and therefore get NO tile — the tab
+undercounts by that much until the ingest backfills a channel for them.
+
 ## Growing the library
 
 - **By topic** (you know the subject): /transcripts → Topic tab → review → *Caption / ingest

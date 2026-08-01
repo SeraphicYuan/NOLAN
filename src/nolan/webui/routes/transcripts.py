@@ -425,22 +425,12 @@ def register(app, ctx):
     @app.get("/api/transcripts/sources")
     async def transcripts_sources():
         """The managed source channels + a live video count per source (recomputed from the catalog).
-        Channels that have indexed videos but were never formally added (e.g. pre-sidecar crawls) are
-        surfaced as `managed:false` derived tiles so the tab reflects reality and can't hide indexed work."""
+        Channels that have indexed videos but were never formally added (e.g. pre-sidecar crawls, and the
+        archive.org collections the GLOBAL tier pulled items from) are surfaced as `managed:false` derived
+        tiles so the tab reflects reality and can't hide indexed work. Each row carries `url`/`url_exact`
+        — the source's own page, so a tile you don't recognize is one click from an answer."""
         from nolan import transcript_lib as tl
-        srcs = tl.load_sources()
-        counts: dict = {}
-        for e in tl.load_catalog().values():
-            ch = e.get("channel")
-            if ch:
-                counts[ch] = counts.get(ch, 0) + 1
-        out = [{**s, "managed": True, "video_count": counts.get(ch, s.get("video_count", 0))}
-               for ch, s in srcs.items()]
-        for ch, n in counts.items():                                   # derive tiles for un-managed channels
-            if ch not in srcs:
-                out.append({"channel": ch, "label": ch, "managed": False,
-                            "last_crawled": None, "video_count": n})
-        out.sort(key=lambda s: (s.get("managed") is False, -(s.get("video_count") or 0)))
+        out = tl.sources_view()
         return {"sources": out, "count": len(out)}
 
     @app.delete("/api/transcripts/sources")

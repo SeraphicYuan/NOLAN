@@ -116,6 +116,73 @@ def upsert_source(channel: str, *, label: Optional[str] = None, last_crawled: Op
     p.write_text(json.dumps(srcs, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def source_url(ref: str, kind: str = "youtube") -> Tuple[str, bool]:
+    """``(url, exact)`` — where to send a click that wants to SEE this source.
+
+    ``exact=True`` is the source's own page: an archive.org collection, or a YouTube channel we hold a
+    URL / @handle / UC-id for. ``exact=False`` is a YouTube search fallback, used when the reference is a
+    bare uploader NAME (yt-dlp's ``channel`` metadata, e.g. "Christian Sommer") — guessing ``/c/<name>``
+    404s often enough that a search is the honest link. ``("", False)`` when there is nothing to open.
+    """
+    import re
+    ref = (ref or "").strip()
+    if not ref:
+        return ("", False)
+    if kind == "archive":
+        from nolan import archive_source as ar
+        return (f"https://archive.org/details/{ar.collection_ref(ref)}", True)
+    if ref.startswith(("http://", "https://")):
+        return (ref, True)
+    if ref.startswith("@"):
+        return (f"https://www.youtube.com/{ref}", True)
+    if re.fullmatch(r"UC[0-9A-Za-z_-]{22}", ref):
+        return (f"https://www.youtube.com/channel/{ref}", True)
+    low = ref.lower().lstrip("/")
+    if low.startswith(("youtube.com/", "www.youtube.com/", "m.youtube.com/", "youtu.be/")):
+        return ("https://" + ref.lstrip("/"), True)
+    from urllib.parse import quote_plus
+    return (f"https://www.youtube.com/results?search_query={quote_plus(ref)}", False)
+
+
+def sources_view(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """The Sources tab's rows: the managed sources, plus DERIVED tiles for channels that have indexed
+    videos but were never formally added (pre-sidecar crawls, and every archive.org item pulled by the
+    GLOBAL tier — its `channel` is the item's first archive collection, so tiles like `television_inbox`
+    or `altcensored` are collections we never added, not sources someone registered).
+
+    Each row carries a live ``video_count`` recomputed from the catalog and a ``url``/``url_exact`` link
+    to the source's own page. A derived row's ``kind`` comes from what its videos actually are (the
+    catalog's per-video ``kind``), not from guessing at the string.
+    """
+    from collections import Counter
+    srcs = load_sources(catalog_dir)
+    counts: Dict[str, int] = {}
+    kinds: Dict[str, Any] = {}
+    for e in load_catalog(catalog_dir).values():
+        ch = e.get("channel")
+        if not ch:
+            continue
+        counts[ch] = counts.get(ch, 0) + 1
+        if e.get("kind"):
+            kinds.setdefault(ch, Counter())[e["kind"]] += 1
+
+    def _row(base: Dict[str, Any], ch: str, kind: str) -> Dict[str, Any]:
+        url, exact = source_url(ch, kind)
+        return {**base, "kind": kind, "url": url, "url_exact": exact}
+
+    out = [_row({**s, "managed": True, "video_count": counts.get(ch, s.get("video_count", 0))},
+                ch, s.get("kind") or "youtube")
+           for ch, s in srcs.items()]
+    for ch, n in counts.items():                                   # derive tiles for un-managed channels
+        if ch in srcs:
+            continue
+        kind = kinds[ch].most_common(1)[0][0] if ch in kinds else "youtube"
+        out.append(_row({"channel": ch, "label": ch, "managed": False,
+                         "last_crawled": None, "video_count": n}, ch, kind))
+    out.sort(key=lambda s: (s.get("managed") is False, -(s.get("video_count") or 0)))
+    return out
+
+
 def remove_source(channel: str, catalog_dir: Optional[Path] = None) -> bool:
     """Drop a channel from the managed list (its already-indexed videos stay searchable)."""
     srcs = load_sources(catalog_dir)

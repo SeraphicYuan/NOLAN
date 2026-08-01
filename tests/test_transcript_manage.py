@@ -17,6 +17,41 @@ def test_sources_sidecar_roundtrip(tmp_path):
     assert tl.load_sources(tmp_path) == {}
 
 
+def test_source_url_resolves_every_reference_shape():
+    """Every Sources tile links somewhere real. Archive tiles → the collection page (the `altcensored` /
+    `television_inbox` class of tile, which is an archive.org collection the global tier pulled an item
+    from, NOT a source anyone added). YouTube tiles → whatever shape the reference is in. A bare uploader
+    NAME can't be resolved to a channel URL, so it degrades to a search and says so via exact=False."""
+    from nolan import transcript_lib as tl
+    assert tl.source_url("television_inbox", "archive") == ("https://archive.org/details/television_inbox", True)
+    assert tl.source_url("https://archive.org/details/prelinger", "archive")[0].endswith("/details/prelinger")
+    assert tl.source_url("https://www.youtube.com/bloomberg") == ("https://www.youtube.com/bloomberg", True)
+    assert tl.source_url("youtube.com/bloomberg") == ("https://youtube.com/bloomberg", True)
+    assert tl.source_url("@AmericanExperiencePBS") == ("https://www.youtube.com/@AmericanExperiencePBS", True)
+    assert tl.source_url("UC" + "a" * 22) == ("https://www.youtube.com/channel/UC" + "a" * 22, True)
+    url, exact = tl.source_url("Christian Sommer")                 # yt-dlp uploader name, not a handle
+    assert exact is False and "search_query=Christian+Sommer" in url
+    assert tl.source_url("") == ("", False)
+
+
+def test_sources_view_links_and_derives_kind_from_the_catalog(tmp_path):
+    """A derived tile's kind comes from what its videos ARE, so an archive collection can't be linked as a
+    YouTube channel just because its id looks like a word."""
+    from nolan import transcript_lib as tl
+    tl.upsert_source("prelinger", label="Prelinger", kind="archive", copyright_free=True, catalog_dir=tmp_path)
+    tl.upsert_source("https://www.youtube.com/bloomberg", label="Bloomberg", catalog_dir=tmp_path)
+    tl.record_transcript("p1", {"title": "A"}, 1, "prelinger", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("p2", {"title": "B"}, 1, "prelinger", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("t1", {"title": "C"}, 1, "television_inbox", kind="archive", catalog_dir=tmp_path)
+    rows = {r["channel"]: r for r in tl.sources_view(tmp_path)}
+    assert rows["prelinger"]["managed"] is True and rows["prelinger"]["video_count"] == 2
+    assert rows["prelinger"]["url"] == "https://archive.org/details/prelinger"
+    assert rows["https://www.youtube.com/bloomberg"]["video_count"] == 0     # no catalog rows -> live count
+    d = rows["television_inbox"]                                             # never added: derived tile
+    assert d["managed"] is False and d["kind"] == "archive" and d["url_exact"] is True
+    assert d["url"] == "https://archive.org/details/television_inbox"
+
+
 def test_record_transcript_stores_frame_count(tmp_path):
     from nolan import transcript_lib as tl
     tl.record_transcript("abc", {"title": "T", "url": "https://youtu.be/abc"}, 10, "Ch", frames=7, catalog_dir=tmp_path)

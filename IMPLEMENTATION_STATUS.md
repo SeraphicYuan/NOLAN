@@ -2,7 +2,35 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-25
+**Last Updated:** 2026-08-01
+
+## The Sources tab's mystery tiles, named and linked (2026-08-01)
+
+"Under Sources there are many sources I don't recognize — altcensored, television_inbox — what are
+these?" They are archive.org COLLECTIONS, and nobody added them. When the tier-3 global archive.org
+search lands an item, `archive_source.fetch_transcript` has no collection to attribute it to, so it
+takes `metadata.collection[0]` — and archive.org's first collection is very often an aggregator or
+inbox rather than the curated one you'd recognise. Those become `managed:false` derived tiles: 26 of
+the 31 tiles on the page, most of them holding one or two videos each.
+
+The page was right to show them (it can't hide indexed work) and wrong to show them mute. Every
+tile now carries `url` + `url_exact` from a new `transcript_lib.source_url()`, rendered as a
+clickable reference line under the label and an `↗ Open` button: archive collections resolve to
+`archive.org/details/<id>`, YouTube references to the channel for a URL / `@handle` / `UC…` id.
+A bare uploader NAME (yt-dlp's `channel` field — "Christian Sommer") has no resolvable channel
+page, so rather than guess a `/c/<name>` that 404s it degrades to a YouTube search and SAYS so
+(`url_exact:false`, a `🔎 Find` button instead of `↗ Open`). 30 exact + 1 search over the live
+library.
+
+The route's hand-rolled tile assembly moved into `transcript_lib.sources_view()` so it is testable
+without FastAPI, and a derived tile's `kind` now comes from what its videos actually ARE (the
+catalog's per-video `kind`) instead of being defaulted to youtube — otherwise `FedFlix` and
+`PeriscopeFilm`, which are collections, would have been linked as channels. Two tests in
+`tests/test_transcript_manage.py` pin every reference shape and the kind derivation.
+
+Two things found in passing and left alone, both noted in the skill: ~60 stock-channel videos carry
+`channel: null` and so get no tile at all (the tab undercounts by that much), and the shell's
+`.nolan-main a` rule paints every link accent — the new ref line out-specifies it to stay quiet.
 
 ## The thumbnail button, and a grid that stopped at 24 (2026-07-31)
 
