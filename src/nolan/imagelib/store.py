@@ -731,7 +731,12 @@ class ImageLibrary:
             if d.get("styles"):
                 patch["classification"] = ", ".join(d["styles"])
             if subject:
-                patch["tags"] = ", ".join(subject)
+                # `subject`, not `tags`. `tags` holds whatever keyword field the source
+                # published — for the three museums that is a VERBATIM copy of
+                # `classification` (measured: 100.0% of all three) — so writing themes there
+                # made one filterable column mean "medium" for 313,292 rows and "subject" for
+                # 11,197.
+                patch["subject"] = ", ".join(subject)
                 out["themes_seen"] += len(d.get("themes") or [])
             # The description is what BGE embeds, so the subject words have to reach it or the
             # themes would be filterable but not FINDABLE — an authored field with only half a
@@ -1136,10 +1141,25 @@ class ImageLibrary:
     _IDENT_BATCH = 128
 
     def flush_index(self) -> int:
-        """Embed and upsert everything buffered. Returns how many rows were written."""
+        """Embed and upsert everything buffered. Returns how many rows were written.
+
+        DE-DUPLICATED BY ID, LAST WINS. chroma requires ids to be unique WITHIN one upsert, and
+        the buffer can legitimately hold a row twice: `add_discovery` buffers it, then something
+        that rewrites its identity in the same window — the PDIA detail pass re-buffers every row
+        whose description it changed — buffers it again before the flush. The whole call then
+        raised, and the handler below logged it and returned 0, so ALL the rows in that batch
+        went missing from the identity index rather than just the repeat. Observed live:
+        "batched identity index failed for 4 rows: Expected IDs to be unique, found duplicates
+        of: 2, 1".
+
+        Last wins because the later buffering is the newer text — that is the whole reason
+        something re-buffered it.
+        """
         buf, self._ident_buf = self._ident_buf, []
         if not buf:
             return 0
+        by_id = {b[0]: b for b in buf}          # dict preserves insertion order; later overwrites
+        buf = list(by_id.values())
         try:
             self._disc_ident_coll().upsert(
                 ids=[b[0] for b in buf],

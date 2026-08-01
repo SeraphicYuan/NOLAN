@@ -190,7 +190,7 @@ def register(app, ctx):
                 d = _img_dict(a, score, scope, project)
                 d.update({"held": 0, "source_ref": a.source_ref, "creator": a.creator,
                           # the SUBJECT axis and the collection, both of which the card shows
-                          "tags": a.tags, "culture": a.culture,
+                          "subject": a.subject, "culture": a.culture,
                           "collection_id": a.collection_id,
                           "collection_title": _coll.get(a.collection_id),
                           "date_text": a.date_text, "institution": a.institution,

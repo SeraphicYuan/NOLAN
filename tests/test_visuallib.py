@@ -2238,28 +2238,61 @@ def test_enrichment_corrects_a_row_the_harvest_stamped_cc0(lib, monkeypatch):
     fixed = lib.catalog.get_by_ref("pdia:us1")
     assert "US ONLY" in fixed.license and "CC0" not in fixed.license
     assert fixed.institution == "Library of Congress", "the HOLDER, not the aggregator"
-    assert "The Future" in (fixed.tags or "")
+    assert "The Future" in (fixed.subject or "")
 
     # the unreadable one keeps what it had — never relabelled by a pass that could not read it
     left = lib.catalog.get_by_ref("pdia:odd")
     assert left.license == "CC0 (Public Domain Image Archive)"
 
 
+def test_a_row_buffered_twice_does_not_sink_its_whole_batch(lib):
+    """chroma requires ids unique WITHIN one upsert, and the buffer can hold a row twice —
+    `add_discovery` buffers it, then a pass that rewrites its identity re-buffers it before the
+    flush. The whole call raised, the handler logged and returned 0, and EVERY row in that batch
+    went missing from the identity index rather than just the repeat. Seen live as "batched
+    identity index failed for 4 rows: Expected IDs to be unique, found duplicates of: 2, 1"."""
+    a, _ = lib.add_discovery(source_ref="artic:dup", thumb_url="https://e/d.jpg", source="artic",
+                             title="First text", license="CC0", pixels=False)
+    b, _ = lib.add_discovery(source_ref="artic:other", thumb_url="https://e/o.jpg",
+                             source="artic", title="Another row", license="CC0", pixels=False)
+    lib.flush_index()
+
+    lib.catalog.update(a.id, title="Rewritten text")
+    lib._buffer_identity(lib.catalog.get(a.id))
+    lib._buffer_identity(lib.catalog.get(a.id))      # the same row, twice, in one batch
+    lib._buffer_identity(lib.catalog.get(b.id))
+    assert lib.flush_index() == 2, "the repeat collapses; the innocent row is NOT lost"
+
+    # and the LAST buffering won — it is the newer text, which is why something re-buffered it
+    assert [h.asset.id for h in lib.search_by_title("rewritten text", held=0)] == [a.id]
+
+
 def test_subject_is_finally_filterable(lib):
     """`classification` is a medium and `culture` is a place. Until PDIA's themes arrived nothing
     in this catalog could answer "pictures about ghosts" — and `tags` was populated but absent
     from FACET_LIKE, which is an authored field with no consumer."""
-    lib.add_discovery(source_ref="pdia:g", thumb_url="https://e/g.jpg", source="pdia",
-                      title="Night Parade", license="CC0", width=900, height=600, pixels=False,
-                      tier="curated", tags="Ghosts & Occult, yokai, demons, folklore")
-    lib.add_discovery(source_ref="pdia:f", thumb_url="https://e/f.jpg", source="pdia",
-                      title="Flying Machine", license="CC0", width=900, height=600, pixels=False,
-                      tier="curated", tags="The Future, retrofuturism, machines")
+    a, _ = lib.add_discovery(source_ref="pdia:g", thumb_url="https://e/g.jpg", source="pdia",
+                             title="Night Parade", license="CC0", width=900, height=600,
+                             pixels=False, tier="curated")
+    b, _ = lib.add_discovery(source_ref="pdia:f", thumb_url="https://e/f.jpg", source="pdia",
+                             title="Flying Machine", license="CC0", width=900, height=600,
+                             pixels=False, tier="curated")
+    lib.catalog.update(a.id, subject="Ghosts & Occult, yokai, demons, folklore")
+    lib.catalog.update(b.id, subject="The Future, retrofuturism, machines")
 
-    assert [a.title for a in lib.catalog.list(held=0, limit=9, tags="Ghosts")] == ["Night Parade"]
-    assert [a.title for a in lib.catalog.list(held=0, limit=9, tags="retrofuturism")] \
+    assert [x.title for x in lib.catalog.list(held=0, limit=9, subject="Ghosts")] \
+        == ["Night Parade"]
+    assert [x.title for x in lib.catalog.list(held=0, limit=9, subject="retrofuturism")] \
         == ["Flying Machine"]
-    assert "tags" in lib.catalog.FACET_LIKE
+    assert "subject" in lib.catalog.FACET_LIKE
+
+    # `tags` is deliberately NOT filterable. It holds whatever keyword field the source
+    # published, which for artic, Cleveland and the Met is a VERBATIM copy of `classification`
+    # (measured: 100.0% of all three) and for PDIA was themes. A filter is a promise about
+    # meaning, and that column cannot make one — so it stays as raw provenance and raises.
+    assert "tags" not in tuple(lib.catalog.FACET_LIKE) + tuple(lib.catalog.FACET_EXACT)
+    with pytest.raises(ValueError, match="not filterable"):
+        lib.catalog.list(held=0, limit=9, tags="Ghosts")
 
 
 def test_pdia_coverage_counts_every_collection_it_filed_into(lib, monkeypatch):

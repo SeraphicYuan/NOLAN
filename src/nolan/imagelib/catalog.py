@@ -173,6 +173,16 @@ _ASSET_MIGRATIONS = {
     # an anonymity placeholder — see `_is_anonymous`: "Unknown artist" is not an identity, and
     # 1,855 such rows would otherwise crowd the top of every artist list.
     "artist_key": "TEXT",
+    # WHAT THE PICTURE IS ABOUT. The catalog's only subject axis, and it needed its own column
+    # because `tags` was already doing two incompatible jobs — measured over the live corpus,
+    # `tags == classification` on 100.0% of artic, Cleveland and Met rows (a verbatim echo of a
+    # medium: "etching", "Vases") and on 0.0% of PDIA's, where it holds themes and keywords
+    # ("Ghosts & Occult", "yokai"). One filterable column meaning "medium" for 313,292 rows and
+    # "subject" for 11,197 answers a cross-source query incoherently.
+    #
+    # `tags` keeps holding whatever keyword field the source published — it is raw provenance —
+    # but it is no longer FILTERABLE, because a filter is a promise about meaning. `subject` is.
+    "subject": "TEXT",
     # The artist's movement, denormalised DOWN from `artists.movement` onto the row.
     # `_filter_sql` is the one WHERE-clause builder shared by list/count/facets, and teaching it a
     # join would change every caller; a column costs a backfill instead. It is DERIVED, so it goes
@@ -255,6 +265,7 @@ class Asset:
     culture: Optional[str] = None
     place: Optional[str] = None
     image_kind: Optional[str] = None
+    subject: Optional[str] = None
     artist_key: Optional[str] = None
     movement: Optional[str] = None
     year_from: Optional[int] = None
@@ -645,9 +656,10 @@ class AssetCatalog:
                     identity_source, description_source, thumb_path, thumb_url,
                     collection_id, regions,
                     medium, classification, department, culture, place, image_kind,
-                    artist_key, movement, year_from, year_to, caption_json, caption_schema)
+                    subject, artist_key, movement, year_from, year_to, caption_json,
+                    caption_schema)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-                           ?,?,?,?,?,?,?,?,?,?,?,?)""",
+                           ?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (asset.content_hash, asset.path, asset.url, asset.source,
                  asset.source_url, asset.license, asset.title, asset.description,
                  asset.width, asset.height, asset.bytes, asset.tags, asset.query,
@@ -657,7 +669,7 @@ class AssetCatalog:
                  asset.description_source, asset.thumb_path, asset.thumb_url,
                  asset.collection_id, asset.regions,
                  asset.medium, asset.classification, asset.department, asset.culture,
-                 asset.place, asset.image_kind, asset.artist_key, asset.movement,
+                 asset.place, asset.image_kind, asset.subject, asset.artist_key, asset.movement,
                  asset.year_from, asset.year_to,
                  asset.caption_json, asset.caption_schema),
             )
@@ -673,7 +685,7 @@ class AssetCatalog:
         "creator", "date_text", "institution", "identity_source", "description_source",
         "thumb_path", "thumb_url", "collection_id", "regions",
         "medium", "classification", "department", "culture", "place", "image_kind",
-        "artist_key", "movement",
+        "subject", "artist_key", "movement",
         "year_from", "year_to", "caption_json", "caption_schema"})
 
     def update(self, asset_id: int, **fields) -> None:
@@ -821,7 +833,7 @@ class AssetCatalog:
     # answer "pictures about ghosts". It was populated and unfilterable, which is the first
     # pitfall in the wiring checklist and was caught by the test written for the pass that fills
     # it — not by the pass itself.
-    FACET_LIKE = ("creator", "place", "medium", "title", "tags")
+    FACET_LIKE = ("creator", "place", "medium", "title", "subject")
 
     def _filter_sql(self, *, status=None, held=1, source=None, collection_id=None,
                     license_contains=None, year_from=None, year_to=None, **facets):

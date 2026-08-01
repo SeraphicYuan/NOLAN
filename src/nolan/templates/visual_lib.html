@@ -325,7 +325,7 @@
                    r.movement, r.place || r.culture, years]
         .filter(Boolean).map(function(v){
           return '<span class="badge fact">'+esc(String(v))+"</span>"; }).join("");
-      var subject = String(r.tags || "").split(/\s*,\s*/).filter(Boolean).slice(0, 4)
+      var subject = String(r.subject || "").split(/\s*,\s*/).filter(Boolean).slice(0, 4)
         .map(function(v){ return '<span class="badge subj">'+esc(v)+"</span>"; }).join("");
       var badges = rightsBadge(r.license)
         + (r.wikidata_qid ? '<span class="badge qid" title="linked to Wikidata">'+esc(r.wikidata_qid)+'</span>' : '')

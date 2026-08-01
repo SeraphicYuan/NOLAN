@@ -21,10 +21,10 @@ _VL_UA = "NOLAN-VisualLib/1.0"
 #   movement    Ukiyo-e | Impressionism | Baroque …      (asserted per artist)
 #   creator     contains-match on the catalog's spelling
 #   artist_key  exact, folded — what the picker's chips use
-#   culture / place / department / classification / medium / tags / title   contains or exact
+#   culture / place / department / classification / medium / subject / title  contains or exact
 #   year_from / year_to   an OVERLAPPING range, so 1830-1833 answers "1831"
 _VISUALLIB_FACETS = ("image_kind", "movement", "creator", "artist_key", "culture", "place",
-                     "department", "classification", "medium", "tags", "title",
+                     "department", "classification", "medium", "subject", "title",
                      "year_from", "year_to")
 
 
