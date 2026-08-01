@@ -129,9 +129,13 @@ dropdown, and the page's own Fetch is the promotion edge back.
 
 - **Search** — the routed query over not-held rows, each card carrying its score, institution,
   sticky rights, a QID badge where the source handed one over, and `Fetch`.
-- **Collections** — harvest form (source + optional Met department/theme + limit) and the
-  harvested table with per-collection coverage. Long by nature, so it is a background job with
-  progress, never a request.
+- **Sources** — harvest form (source + optional Met department/theme + limit) and the harvested
+  table with per-collection coverage. Long by nature, so it is a background job with progress,
+  never a request. Named **Sources**, not Collections: all three collections are currently
+  whole-source harvests, so the old label promised curation the tier does not have. The concept
+  survives — a collection is a **rights-and-provenance unit**, and when LoC lands its curated
+  collections each becomes a row here with its own rights. The table shows SOURCE and COLLECTION
+  as separate columns for exactly that reason, plus the upstream denominator beside the count.
 - **Coverage** — what the library actually knows, with the T2 caption batch. It states that
   catalog prose does not count as a caption, so a 0%-captioned collection reads as 0%.
 
@@ -308,11 +312,13 @@ because users usually know roughly what they want.
 
 Measured coverage, which decides what is a usable facet: **`image_kind` 100% / 14 values** and
 **`department` 100% / 30** are dropdowns; `classification` (100%, 555) and `place` (58%, 886) are
-type-ahead; `creator` (70%, 9,710) is search-then-filter; `culture` (42%) and `movement` (26%,
-via the artists join) are optional narrowing, never primary navigation.
+type-ahead; `creator` (70%, 8,604 folded) is search-then-filter PLUS the artist strip below;
+`culture` (42%) and `movement` (31% once denormalised) are optional narrowing, never primary
+navigation.
 
 - **Exact** match on catalog vocabularies (`image_kind`, `classification`, `department`,
-  `culture`); **contains** on long-tailed text (`creator`, `place`, `medium`, `title`).
+  `culture`, `artist_key`, `movement`); **contains** on long-tailed text (`creator`, `place`,
+  `medium`, `title`).
 - **An unknown filter key RAISES.** A silently-dropped filter returns a plausible wrong answer.
 - **Counts come from the same `_filter_sql` as the results**, so a facet can never promise rows
   the search will not deliver. A facet never narrows by itself, or every count would be its total.
@@ -324,6 +330,38 @@ via the artists join) are optional narrowing, never primary navigation.
   rows are excluded: "we don't know when" cannot answer "before 1850".
 - Filters are resolved to an **id set once** and intersected with all three channels — the vector
   stores cannot join against SQLite, and a per-channel filter would drift.
+
+### Browsing by ARTIST (`catalog.artist_facets`, `assets.artist_key`)
+
+The corpus's most natural way in, and the one a raw `GROUP BY creator` gets wrong. Attribution is
+**70% of rows / 8,604 folded artists**; the top 50 reach 23% of everything and the top 500 reach
+49%, but **55% of artists have exactly one work** — so it is a top-N strip plus a contains box,
+never a dropdown.
+
+`assets.artist_key` stores `folded_artist(creator)`, derived **in `catalog.add()`** so no write
+path can forget it. Two rules earned by measurement:
+
+- **Anonymity is NULL, not an artist.** "Unknown artist" (756 rows), "Artist unknown" (442),
+  "Unknown" (427) and "Unknown Maker" (126) would be four of the top six names. `_is_anonymous`
+  removes the anonymity words and asks what is left: nothing or a generic job title → NULL; a
+  residue that names a school → keep. That is what preserves "Unknown Florentine" and
+  "Ancient Greek" (an unsigned antiquity is still attributed) while dropping the placeholders.
+- **The chip's count is the click's result**, which is why it filters on `artist_key` (exact) and
+  not `creator` (contains) — "Bosch" is inside "Boschaert". Display name prefers a spelling with
+  **no parenthetical** over a more common one: Cleveland writes "Winslow Homer (American,
+  1836-1910)" and holds more of him than artic, so plain frequency put the biography on the chip
+  for three of the top twenty.
+
+`movement` is denormalised DOWN from `artists.movement` (`backfill_movements`) because
+`_filter_sql` is one shared WHERE-builder and teaching it a join would change every caller. It is
+therefore STALE-ABLE, so `enrich_artists` calls the backfill on its way out and `nolan images
+rederive` redoes it — a denormalised column with a stale consumer is the same bug as one with no
+consumer. Joining on the folded key rather than the raw name is worth **24,946 → 30,207 rows**.
+`normalise_movement` is not a `.lower()`: case merges only 5 of 106 strings, while the real mess
+is "aestheticism, tonalism" (two in one cell), "early photography / topographic" (one written
+three ways) and "none; primarily a documentarian" (not a movement). Take the first clause, refuse
+the non-answers, and resolve casing by vote **with capitalisation winning first** — movements are
+proper nouns, and lowercase "ukiyo-e" outvoted "Ukiyo-e" 14-10 on nothing but house style.
 
 ## Retrieval is ROUTED, not blended
 

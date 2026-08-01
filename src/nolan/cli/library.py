@@ -408,17 +408,27 @@ def images_dialect(collection, sample, scope, project):
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
 @click.option('--project', '-p', default=None)
 def images_rederive(collection, scope, project):
-    """Recompute `image_kind` from the catalog columns already on disk (no network, no model).
+    """Recompute every DERIVED catalog column from data already on disk (no network, no model).
 
-    Run this after changing the taxonomy rules. It also prints the FALLTHROUGH rate, because a
-    derivation whose `unknown` share nobody looks at is a silent cap.
+    `image_kind` from the classification vocabulary, `year_from`/`year_to` from the date prose,
+    `artist_key` from the creator string, and `movement` down from the artists table. Run it
+    after changing any of those rules. It prints the FALLTHROUGH rates, because a derivation
+    whose miss share nobody looks at is a silent cap.
     """
     lib = _open_library(scope, project)
     res = lib.rederive_kinds(collection_id=collection)
     for k, n in sorted(res["counts"].items(), key=lambda kv: -kv[1]):
         if n:
             click.echo(f"  {n:>7,} ({n / res['total'] * 100:>5.1f}%)  {k}")
-    click.echo(f"{res['changed']} rows updated; unknown rate {res['unknown_pct']}%")
+    mv = res.get("movement") or {}
+    click.echo(f"{res['changed']} rows updated; unknown kind {res['unknown_pct']}%, "
+               f"dated {res['dated_pct']}%, attributed {res['attributed_pct']}% "
+               f"({res['anonymous']:,} anonymous)")
+    # movement rows are counted SEPARATELY from `changed` (a different pass), so they are printed
+    # rather than folded in — a run that rewrote 30k movements must not report "0 rows updated".
+    click.echo(f"movement: {mv.get('covered', 0):,} rows over {mv.get('movements', 0)} movements "
+               f"from {mv.get('artists_with_movement', 0)} artists "
+               f"({mv.get('changed', 0):,} rewritten)")
 
 
 @images.command('collections')

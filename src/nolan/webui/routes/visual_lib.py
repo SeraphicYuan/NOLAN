@@ -78,7 +78,8 @@ def register(app, ctx):
     async def visuallib_facets(scope: str = "global", project: str = None,
                                image_kind: str = None, department: str = None,
                                creator: str = None, place: str = None,
-                               classification: str = None,
+                               classification: str = None, artist_key: str = None,
+                               movement: str = None,
                                year_from: int = None, year_to: int = None):
         """What can this search be narrowed by, and what does each choice cost?
 
@@ -86,20 +87,30 @@ def register(app, ctx):
         turns a 97,625-row ranking problem into a few-thousand-row one — and a count is what lets
         someone see that before clicking. They run through the same WHERE clause as the results,
         so a facet can never promise rows the search will not return.
+
+        `artists` is served separately from `facets` because it is not a dropdown: 8,604 names
+        with a 55% singleton tail cannot be a menu, so the UI spends it as a top-N browse strip
+        beside a contains-match box. See `catalog.artist_facets` for why a raw GROUP BY creator
+        is the wrong answer.
         """
         lib = _open(scope, project)
         f = {k: v for k, v in (("image_kind", image_kind), ("department", department),
                                ("creator", creator), ("place", place),
                                ("classification", classification),
+                               ("artist_key", artist_key), ("movement", movement),
                                ("year_from", year_from), ("year_to", year_to))
              if v not in (None, "")}
         try:
             out = {name: [{"value": v, "count": c}
                           for v, c in lib.catalog.facets(name, held=0, limit=30, **f)]
-                   for name in ("image_kind", "department", "classification", "place")}
+                   for name in ("image_kind", "department", "classification", "place",
+                                "movement")}
+            artists = [{"name": n, "key": k, "count": c}
+                       for n, k, c in lib.catalog.artist_facets(held=0, limit=24, **f)]
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
-        return {"total": lib.catalog.count("active", held=0, **f), "applied": f, "facets": out}
+        return {"total": lib.catalog.count("active", held=0, **f), "applied": f,
+                "facets": out, "artists": artists}
 
     @app.get("/api/visuallib/collections")
     async def visuallib_collections(scope: str = "global", project: str = None):

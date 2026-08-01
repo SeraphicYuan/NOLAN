@@ -1478,3 +1478,145 @@ def test_met_csv_absent_fails_loudly(tmp_path, monkeypatch):
     monkeypatch.setattr(H, "_met_csv_path", lambda: tmp_path / "nope.csv")
     with pytest.raises(FileNotFoundError, match="not downloaded yet"):
         H.met_public_domain_ids()
+
+
+# --- 13. browsing by artist and by movement ------------------------------------------------
+
+def _seed_artists(lib):
+    """The spellings a real corpus actually contains, including the ones that broke the naive
+    version: one painter written two ways by two institutions, and three flavours of anonymous."""
+    rows = [
+        # the annotated spelling deliberately OUTNUMBERS the clean one, as it does in the live
+        # corpus for Lepère, Homer and Gavarni — Cleveland annotates and holds more of them
+        ("a:1", "Nocturne in Black", "James McNeill Whistler"),
+        ("a:2", "The Falling Rocket", "James McNeill Whistler (American, 1834-1903)"),
+        ("a:3", "Arrangement in Grey", "James McNeill Whistler (American, 1834-1903)"),
+        ("a:4", "Sudden Shower", "Utagawa Hiroshige"),
+        ("a:5", "A Coverlet", "Unknown artist"),
+        ("a:6", "A Ewer", "Artist unknown"),
+        ("a:7", "A Reliquary", "Unknown"),
+        ("a:8", "A Panel", "Unknown Florentine"),
+        ("a:9", "An Amphora", "Ancient Greek"),
+    ]
+    for ref, title, creator in rows:
+        lib.add_discovery(source_ref=ref, thumb_url=f"https://e/{ref}.jpg", source="artic",
+                          title=title, creator=creator, license="CC0", pixels=False)
+
+
+def test_one_painter_spelled_three_ways_is_one_artist(lib):
+    """artic writes "James McNeill Whistler", Cleveland appends the nationality, and a third
+    catalog inverts the name. Without folding, the artist picker offers him three times and each
+    entry undercounts."""
+    _seed_artists(lib)
+    picked = {name: (key, n) for name, key, n in lib.catalog.artist_facets(held=0)}
+    assert picked["James McNeill Whistler"][1] == 3, picked
+    # A CLEAN spelling beats a POPULAR one. The annotated form is twice as common here, so a
+    # plain frequency vote would put "(American, 1834-1903)" on the chip — which is what it did
+    # for three of the live corpus's twenty biggest artists.
+    assert "James McNeill Whistler (American, 1834-1903)" not in picked
+
+
+def test_an_anonymous_attribution_is_not_an_artist(lib):
+    """"Unknown artist" (728 rows), "Artist unknown" (428) and "Unknown" (427) would otherwise be
+    three of the five biggest names in the picker, and none of them narrows to anything."""
+    _seed_artists(lib)
+    names = {name for name, _, _ in lib.catalog.artist_facets(held=0)}
+    assert not ({"Unknown artist", "Artist unknown", "Unknown"} & names), names
+    for ref in ("a:5", "a:6", "a:7"):
+        assert lib.catalog.get_by_ref(ref).artist_key is None
+
+    # ...but a school IS an identity, even when the hand is not named
+    assert "Unknown Florentine" in names, "a residue that names a school must survive"
+    assert "Ancient Greek" in names, "an unsigned antiquity is still attributed"
+
+
+def test_clicking_an_artist_returns_exactly_the_count_it_promised(lib):
+    """The chip shows a number; the click must deliver that number. It is why the picker filters
+    on the stored key and not on a contains-match — "Bosch" is inside "Boschaert"."""
+    _seed_artists(lib)
+    for name, key, count in lib.catalog.artist_facets(held=0):
+        got = lib.catalog.list(held=0, limit=99, artist_key=key)
+        assert len(got) == count, f"{name}: promised {count}, delivered {len(got)}"
+
+
+def test_artist_key_is_derived_on_insert_not_by_the_caller(lib):
+    """Three harvest adapters, promotion and the acquisition engine all write rows. The one that
+    forgets would produce a row invisible to the picker with no error to say so."""
+    lib.catalog.add(Asset(content_hash="h1", path="f/a.jpg", creator="Claude Monet"))
+    assert lib.catalog.get_by_hash("h1").artist_key == "claude monet"
+
+
+def test_movement_normalisation_refuses_the_non_answers(lib):
+    """The column was written by a model answering "what movement?", and models answer
+    generously. Case is the smallest problem — over the live table it merges only 5 of 106."""
+    from nolan.imagelib.artists import normalise_movement
+    assert normalise_movement("aestheticism, tonalism") == "aestheticism"
+    assert normalise_movement("early photography / topographic") == "early photography"
+    assert normalise_movement("Ukiyo-e") == "Ukiyo-e"          # casing is preserved here...
+    assert normalise_movement("none; primarily a documentarian") is None
+    assert normalise_movement("n/a") is None
+    assert normalise_movement("") is None
+    assert normalise_movement(None) is None
+    # a clause long enough to be a sentence is a description, not a movement name
+    assert normalise_movement("worked mainly in the manner of the later Venetian school") is None
+
+
+def test_movement_reaches_the_rows_and_picks_one_spelling(lib):
+    """`movement` lives on the artists table and the filter lives on assets, so it is copied
+    down. ...and THIS is where the casing is resolved: over the live table 14 artists wrote
+    "ukiyo-e" and 10 wrote "Ukiyo-e", which must be one facet entry, not two."""
+    from nolan.imagelib.catalog import Artist
+    _seed_artists(lib)
+    # lowercase OUTNUMBERS capitalised, exactly as it does live. It must still lose: a movement
+    # is a proper noun, and 2-vs-1 on a house style is not evidence about how it is spelled.
+    lib.catalog.upsert_artist(Artist(name="Utagawa Hiroshige", movement="ukiyo-e"))
+    lib.catalog.upsert_artist(Artist(name="Kitagawa Utamaro", movement="ukiyo-e"))
+    lib.catalog.upsert_artist(Artist(name="Katsushika Hokusai", movement="Ukiyo-e"))
+    # folded to Whistler by name order — the movement must reach all three of his rows
+    lib.catalog.upsert_artist(Artist(name="Whistler, James McNeill",
+                                     movement="aestheticism, tonalism"))
+
+    res = lib.backfill_movements()
+    assert res["covered"] == 4, res            # 3 Whistlers + 1 Hiroshige
+    assert dict(lib.catalog.facets("movement", held=0)) == {"aestheticism": 3, "Ukiyo-e": 1}, \
+        "one spelling wins, and it is the capitalised one"
+
+
+def test_learning_an_artist_pushes_the_movement_down_to_their_rows(lib):
+    """A denormalised column with a stale consumer is the same bug as one with no consumer: the
+    facet would keep reporting yesterday's coverage and the newly-learned artists would be
+    invisible to the filter that exists to find them."""
+    import asyncio
+
+    from nolan.imagelib.artists import enrich_artists
+    _seed_artists(lib)
+    assert all(a.movement is None for a in lib.catalog.list(held=0, limit=99))
+
+    class _LLM:
+        async def generate(self, prompt, system_prompt=None, **kw):
+            return ('{"recognised": true, "movement": "Aestheticism", "period": "Victorian", '
+                    '"style": "tonal", "subjects": "nocturnes", "palette": "grey"}')
+
+    # ONE call, bounded — enrichment spends calls on the creators covering the most rows, so this
+    # buys the artist written three ways, which is exactly the leverage the table exists for.
+    out = asyncio.run(enrich_artists(lib, limit=1, llm=_LLM(), model="test"))
+    assert out["learned"] == 1
+    assert out["movement_backfill"]["covered"] == 3, out
+    # all THREE spellings of him carry it, from the single call
+    assert [lib.catalog.get_by_ref(r).movement for r in ("a:1", "a:2", "a:3")] \
+        == ["Aestheticism"] * 3
+    assert lib.catalog.get_by_ref("a:4").movement is None, "nobody else was paid for"
+
+
+def test_a_rederive_repairs_artist_keys_written_before_the_column_existed(lib):
+    """97,610 rows predate the column. The pass that fills them in is the same one that already
+    recomputes kinds and dates — no re-crawl, no network."""
+    _seed_artists(lib)
+    lib.catalog.update_many({a.id: {"artist_key": None}
+                             for a in lib.catalog.list(held=0, limit=99)})
+    assert lib.catalog.artist_facets(held=0) == []
+
+    res = lib.rederive_kinds()
+    assert res["anonymous"] == 3, res          # the three flavours of "we don't know"
+    assert res["attributed"] == 6, res
+    assert len(lib.catalog.artist_facets(held=0)) == 4   # Whistler, Hiroshige, Florentine, Greek

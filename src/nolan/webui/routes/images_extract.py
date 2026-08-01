@@ -119,7 +119,8 @@ def register(app, ctx):
                                   use_clip: bool = False,
                                   image_kind: str = None, department: str = None,
                                   creator: str = None, place: str = None,
-                                  classification: str = None,
+                                  classification: str = None, artist_key: str = None,
+                                  movement: str = None,
                                   year_from: int = None, year_to: int = None):
         """Search the NOT-HELD tier (Visual Lib). A hit is a POINTER, not a file — its `raw`
         serves the 512px thumbnail we do hold, and `fetch` is what pulls the real image.
@@ -154,6 +155,7 @@ def register(app, ctx):
         facets = {kk: vv for kk, vv in (
             ("image_kind", image_kind), ("department", department), ("creator", creator),
             ("place", place), ("classification", classification),
+            ("artist_key", artist_key), ("movement", movement),
             ("year_from", year_from), ("year_to", year_to)) if vv not in (None, "")}
 
         def _do():
@@ -177,6 +179,7 @@ def register(app, ctx):
                           "wikidata_qid": a.wikidata_qid,
                           "image_kind": a.image_kind, "department": a.department,
                           "classification": a.classification, "place": a.place,
+                          "artist_key": a.artist_key, "movement": a.movement,
                           "year_from": a.year_from, "year_to": a.year_to,
                           "has_pixels": bool(a.thumb_path),
                           "captioned": bool(a.description_source

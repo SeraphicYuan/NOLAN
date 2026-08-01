@@ -4,6 +4,54 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## Browsing by ARTIST, and the tab that was lying about what it held (2026-07-31)
+
+Two questions, one answer: is `creator` worth a filter, and are our "collections" collections?
+
+**They are not.** All three are whole-source harvests, so the tab promised curation the tier does
+not have. But the concept is load-bearing — a collection carries `rights`, `copyright_free` and a
+single `collection_id` FK, and the invariant is that rights are sticky and inherit down. Author is
+ORTHOGONAL to that (a row has one source *and* one artist), so making author a collection would
+need a many-to-many or would break rights inheritance. Author is a FACET; provenance is a
+collection. The tab is now **Sources**, the table shows SOURCE and COLLECTION as separate columns
+with the upstream denominator beside the count, and the concept survives for LoC — whose curated
+collections genuinely assert rights per collection.
+
+**The artist picker.** Attribution is 70% of rows over 8,604 folded artists; top 50 reach 23% of
+the corpus, top 500 reach 49%, and **55% of artists have exactly one work** — so: a 24-chip strip
+plus a contains box, never a dropdown. `assets.artist_key` is derived in `catalog.add()` so no
+write path can forget it. Two rules the corpus forced:
+
+    "Unknown artist" 756 · "Artist unknown" 442 · "Unknown" 427 · "Unknown Maker" 126
+        -> four of the top six names in a naive picker, and none of them narrows to anything.
+           NULL. But "Unknown Florentine" (41) and "Ancient Greek" (618) SURVIVE — a residue
+           that names a school is an identity even when the hand is not named.
+
+    Cleveland writes "Winslow Homer (American, 1836-1910)" and holds more of him than artic
+        -> a plain frequency vote put the biography on the chip for three of the top twenty.
+           A clean spelling now beats a popular one.
+
+Measured after the backfill: **24/24 chips exact** — the count on the chip is the count the click
+returns, which is why it filters on `artist_key` (exact) and not `creator` (contains; "Bosch" is
+inside "Boschaert"). Live: clicking Hiroshige gives 1,746 and re-counts every other facet under it.
+
+**Movement**, denormalised down from `artists.movement` (`_filter_sql` is one shared WHERE-builder;
+a join would change every caller). Folding on the artist key rather than the raw name is worth
+24,946 → **30,207 rows / 69 movements**. `normalise_movement` is not a `.lower()` — case merges
+only 5 of 106 strings, while the real mess is "aestheticism, tonalism", "early photography /
+topographic" and "none; primarily a documentarian". Casing resolves by vote **with capitalisation
+winning first**: lowercase "ukiyo-e" outvoted "Ukiyo-e" 14-10 on nothing but house style, and the
+facet read as though one entry had been mis-entered.
+
+Because the column is derived it can go stale, so `enrich_artists` runs the backfill on its way
+out and `nolan images rederive` redoes it — a denormalised column with a stale consumer is the
+same bug as one with no consumer.
+
+Two defects caught by the tests I wrote for it: `normalise_movement("n/a")` split on the slash
+before the non-answer check and stored a movement named "n", and extending the display-rank tuple
+silently moved the artist's name from index 2 to 3 so the picker returned string lengths as names.
+Named recall unchanged at 92.9/100/100. Full suite 2,361 passed, 5 skipped.
+
 ## Facets — the filter changes the DENOMINATOR, and that is the whole trick (2026-07-31)
 
 Every retrieval improvement so far was a RANKING play: 97,610 rows, make the right one first.

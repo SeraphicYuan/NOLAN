@@ -551,21 +551,27 @@ class ImageLibrary:
         return out
 
     def rederive_kinds(self, *, collection_id: Optional[int] = None) -> dict:
-        """Recompute `image_kind` from columns already on disk. No network, no model.
+        """Recompute every DERIVED catalog column from data already on disk. No network, no model.
 
-        This is what makes the derivation safe to change. A caption is expensive to redo (the
+        This is what makes the derivations safe to change. A caption is expensive to redo (the
         reason `caption_schema` is versioned), but a bucket derived from the institution's own
         words costs one SQL pass — so the vocabulary can be corrected the moment a source turns
         out to catalogue garments as "Collar" and "Cap" rather than as textiles.
 
+        Four columns, one pass, because they share the expensive part (walking 97k rows):
+        `image_kind` from the classification vocabulary, `year_from`/`year_to` from the date
+        prose, and `artist_key` from the creator string. `movement` is derived too but needs the
+        artists table, so it delegates to `backfill_movements`.
+
         Returns the kind histogram INCLUDING `unknown`, because a derivation whose fallthrough
         rate nobody looks at is a silent cap.
         """
+        from nolan.imagelib.catalog import folded_artist
         from nolan.imagelib.dates import parse_years
         from nolan.imagelib.taxonomy import IMAGE_KINDS, image_kind as _kind
 
         counts = {k: 0 for k in IMAGE_KINDS}
-        changed = dated = undated = 0
+        changed = dated = undated = attributed = anonymous = 0
         patches: dict = {}
         for a in self.catalog.list(status="active", held=None,
                                    collection_id=collection_id, limit=1_000_000):
@@ -581,6 +587,13 @@ class ImageLibrary:
                     patch["year_from"], patch["year_to"] = yrs
             else:
                 undated += 1
+            ak = folded_artist(a.creator)
+            if ak:
+                attributed += 1
+            elif a.creator:
+                anonymous += 1           # a creator string that names no one — see _is_anonymous
+            if ak != (a.artist_key or None):
+                patch["artist_key"] = ak
             if patch:
                 patches[a.id] = patch
                 # ONE transaction per chunk, not per row — see `update_many`. Chunked rather than
@@ -589,11 +602,73 @@ class ImageLibrary:
                     changed += self.catalog.update_many(patches)
                     patches = {}
         changed += self.catalog.update_many(patches)
+        mv = self.backfill_movements(collection_id=collection_id)
         total = sum(counts.values()) or 1
         return {"counts": counts, "changed": changed, "total": total,
                 "unknown_pct": round(100.0 * counts["unknown"] / total, 1),
                 "dated": dated, "undated": undated,
-                "dated_pct": round(100.0 * dated / total, 1)}
+                "dated_pct": round(100.0 * dated / total, 1),
+                "attributed": attributed, "anonymous": anonymous,
+                "attributed_pct": round(100.0 * attributed / total, 1),
+                "movement": mv}
+
+    def backfill_movements(self, *, collection_id: Optional[int] = None) -> dict:
+        """Copy `artists.movement` down onto every row that artist made.
+
+        DERIVED AND THEREFORE STALE-ABLE: the artists table grows one LLM call at a time, so a
+        movement learned today belongs on rows harvested last week. Idempotent and cheap (one
+        catalog walk, no network), called by `rederive_kinds` and on the way out of
+        `enrich_artists` — which is what keeps the facet honest without anyone remembering to.
+
+        The join is on the FOLDED key, not the raw name: exact-name matching reaches 24,946 rows
+        where the folded key reaches 31,091, because Cleveland writes "Auguste Louis Lepère
+        (French, 1849-1918)" for artic's "Louis Auguste Lepère".
+
+        Normalisation is not a `.lower()`. Measured over the live table, 106 raw strings fold to
+        101 by case alone — the real mess is elsewhere: "aestheticism, tonalism" is two movements
+        in one cell, "early photography, topographical photography" and "early photography /
+        topographic" are the same one written twice, and "none; primarily a documentarian" is not
+        a movement at all. See `normalise_movement`.
+        """
+        from nolan.imagelib.artists import normalise_movement
+        from nolan.imagelib.catalog import artist_key
+
+        # key -> display form, picking the dominant original casing so the UI shows "Ukiyo-e" and
+        # "Dutch Golden Age" rather than the lowercased key used to group them.
+        by_key: "Dict[str, str]" = {}
+        votes: "Dict[str, Dict[str, int]]" = {}
+        for ar in self.catalog.list_artists(limit=100_000):
+            m = normalise_movement(ar.movement)
+            if not m:
+                continue
+            k = artist_key(ar.name)
+            if k:
+                by_key[k] = m
+            votes.setdefault(m.casefold(), {})
+            votes[m.casefold()][m] = votes[m.casefold()].get(m, 0) + 1
+        # CAPITALISATION WINS BEFORE POPULARITY. Movements are proper nouns, and every other
+        # entry in the facet is written that way — a bare vote gave "ukiyo-e" (14 artists) over
+        # "Ukiyo-e" (10) and the list read as though one entry had been mis-entered. 14-vs-10 is
+        # a coin flip on a house style, not evidence about how the movement is spelled.
+        display = {k: max(v.items(), key=lambda t: (t[0][:1].isupper(), t[1], -len(t[0])))[0]
+                   for k, v in votes.items()}
+
+        changed = covered = 0
+        patches: dict = {}
+        for a in self.catalog.list(status="active", held=None,
+                                   collection_id=collection_id, limit=1_000_000):
+            m = by_key.get(artist_key(a.creator)) if a.creator else None
+            m = display.get(m.casefold()) if m else None
+            if m:
+                covered += 1
+            if m != (a.movement or None):
+                patches[a.id] = {"movement": m}
+                if len(patches) >= 2000:
+                    changed += self.catalog.update_many(patches)
+                    patches = {}
+        changed += self.catalog.update_many(patches)
+        return {"changed": changed, "covered": covered,
+                "movements": len(display), "artists_with_movement": len(by_key)}
 
     def _fetch_thumb(self, source_ref: str, thumb_url: str) -> Path:
         """Download + shrink one thumbnail. Pure I/O, safe to run on a worker thread."""

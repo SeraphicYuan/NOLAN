@@ -58,7 +58,12 @@
 
     <div class="tabs">
       <div class="tab on" data-tab="search" onclick="showTab('search')">Search</div>
-      <div class="tab" data-tab="collections" onclick="showTab('collections')">Collections</div>
+      <!-- "Sources", not "Collections". Every row in that table is currently a WHOLE-SOURCE
+           harvest, so the old label promised curation the tier does not have. The underlying
+           concept stays: a collection is a rights-and-provenance unit, and when the Library of
+           Congress lands its curated collections (fsa-owi-black-and-white-negatives and the
+           rest) they become additional rows here, each with its own rights. -->
+      <div class="tab" data-tab="sources" onclick="showTab('sources')">Sources</div>
       <div class="tab" data-tab="coverage" onclick="showTab('coverage')">Coverage</div>
     </div>
 
@@ -80,6 +85,12 @@
           <select id="f-department" onchange="doSearch()"></select>
           <select id="f-classification" onchange="doSearch()"></select>
           <select id="f-place" onchange="doSearch()"></select>
+          <select id="f-movement" onchange="doSearch()"></select>
+          <!-- CONTAINS, not a dropdown: 8,604 artists with a 55% one-work tail is not a menu.
+               Typing narrows by substring so "monet" finds Claude Monet without knowing how his
+               catalog spells him; the strip below is the browse half of the same filter. -->
+          <input type="text" id="f-creator" placeholder="artist contains…" style="width:150px"
+                 onkeydown="if(event.key==='Enter')doSearch()">
           <input type="number" id="f-year_from" placeholder="from year" style="width:96px"
                  onkeydown="if(event.key==='Enter')doSearch()">
           <input type="number" id="f-year_to" placeholder="to year" style="width:88px"
@@ -90,6 +101,11 @@
           <button class="btn ghost mini" id="warmbtn" onclick="warmPage()"
                   title="Download and keep thumbnails for the results on screen (~48ms/row: 32 fetch + 16 gate). They persist, so each row is paid for once. No CLIP vector is computed — that is ~103ms/row and only matters for descriptive ranking; run `nolan images backfill` for that.">Get thumbnails</button>
         </div>
+        <!-- THE ARTIST STRIP — the browse surface this corpus most wants. Attribution is 70% of
+             rows and heavily concentrated (top 50 artists reach 23% of everything, top 500 reach
+             49%), so a two-dozen-name strip is a real way in. Clicking filters on the stored
+             `artist_key`, not a substring, so the count on the chip is exactly what comes back. -->
+        <div id="artists" class="row" style="margin-top:8px;gap:5px"></div>
         <!-- Retrieval is ROUTED, so say so: a named query is answered from the catalog's words,
              a look query by CLIP over the thumbnail. Users otherwise read a look-miss as "broken". -->
         <div class="dim" style="margin-top:7px">Naming a work searches the <b>catalog</b>; describing one searches the
@@ -101,10 +117,10 @@
       </div>
     </div>
 
-    <!-- ===== COLLECTIONS ===== -->
-    <div id="tab-collections" style="display:none">
+    <!-- ===== SOURCES ===== -->
+    <div id="tab-sources" style="display:none">
       <div class="card">
-        <b>Harvest a collection</b>
+        <b>Harvest from a source</b>
         <div class="dim" style="margin:4px 0 10px">One row per catalog record: identity, rights and a 512px
           thumbnail. Long by nature — ~900 Art Institute rows take ~25 minutes, and the Met costs an extra
           request per object — so it runs as a background job.</div>
@@ -120,11 +136,18 @@
       </div>
 
       <div class="card">
-        <b>Harvested collections</b>
-        <div class="dim" style="margin:4px 0 8px">Rights are asserted per collection and are sticky — a later
-          pass that knows nothing about them cannot overwrite them.</div>
+        <b>What has been harvested</b>
+        <!-- SOURCE and COLLECTION are different things and the table now says so in two columns.
+             A source is where records come from; a collection is one harvest unit from it, and
+             it is the collection — not the source — that carries rights. Today each source has
+             produced exactly one collection, which is precisely why the distinction was invisible
+             and the tab was misread. -->
+        <div class="dim" style="margin:4px 0 8px">A <b>source</b> is an institution's API. A <b>collection</b> is one
+          harvest from it — today one each, but a source can yield many (the Library of Congress asserts rights
+          per named collection). Rights live on the collection and are sticky: a later pass that knows nothing
+          about them cannot overwrite them.</div>
         <table id="ctable"><thead><tr>
-          <th>Collection</th><th>Indexed</th><th>Captioned</th><th>Rights</th><th>Last crawled</th>
+          <th>Source</th><th>Collection</th><th>Indexed</th><th>Captioned</th><th>Rights</th><th>Last crawled</th>
         </tr></thead><tbody></tbody></table>
       </div>
     </div>
@@ -156,10 +179,10 @@
 
     function showTab(t){
       document.querySelectorAll(".tab").forEach(function(x){ x.classList.toggle("on", x.dataset.tab===t); });
-      ["search","collections","coverage"].forEach(function(n){
+      ["search","sources","coverage"].forEach(function(n){
         $("#tab-"+n).style.display = (n===t) ? "block" : "none";
       });
-      if (t==="collections" || t==="coverage") loadCollections();
+      if (t==="sources" || t==="coverage") loadCollections();
     }
 
     // ---- search ------------------------------------------------------------------
@@ -189,8 +212,16 @@
       {id:"image_kind",     label:"Any kind"},
       {id:"department",     label:"Any department"},
       {id:"classification", label:"Any classification"},
-      {id:"place",          label:"Anywhere"}
+      {id:"place",          label:"Anywhere"},
+      // Reaches ~32% of rows (it comes from the artists table, which grows one LLM call at a
+      // time), so it NARROWS rather than ranks — and the label says "any" so an empty choice
+      // never reads as "no movement".
+      {id:"movement",       label:"Any movement"}
     ];
+    // Free-text and hidden narrowings that ride along with the dropdowns. `artist_key` has no
+    // control of its own — it is set by clicking a chip and cleared by Clear.
+    var TEXT_FACETS = ["creator", "year_from", "year_to"];
+    var artistKey = "";
 
     function facetParams(){
       var p = "";
@@ -198,18 +229,46 @@
         var v = $("#f-"+f.id).value;
         if (v) p += "&"+f.id+"="+encodeURIComponent(v);
       });
-      ["year_from","year_to"].forEach(function(k){
-        var v = $("#f-"+k).value;
+      TEXT_FACETS.forEach(function(k){
+        var v = $("#f-"+k).value.trim();
         if (v) p += "&"+k+"="+encodeURIComponent(v);
       });
+      if (artistKey) p += "&artist_key="+encodeURIComponent(artistKey);
       return p;
     }
 
     function clearFacets(){
       FACETS.forEach(function(f){ $("#f-"+f.id).value = ""; });
-      $("#f-year_from").value = ""; $("#f-year_to").value = "";
+      TEXT_FACETS.forEach(function(k){ $("#f-"+k).value = ""; });
+      artistKey = "";
       doSearch();
     }
+
+    // Pick an artist. The chip carries the KEY, so the filter is exact and the count on the chip
+    // is what the result set delivers — a contains-match could not promise that ("Bosch" is
+    // inside "Boschaert"). Clicking the selected artist again clears it.
+    function pickArtist(key){
+      artistKey = (artistKey === key) ? "" : key;
+      doSearch();
+    }
+
+    function renderArtists(list){
+      var el = $("#artists");
+      if (!list || !list.length){ el.innerHTML = ""; return; }
+      el.innerHTML = '<span class="dim" style="margin-right:2px">Artists:</span>'
+        + list.map(function(a){
+            var on = (a.key === artistKey);
+            return '<button class="btn ghost mini" data-akey="'+esc(a.key)+'"'
+              + (on ? ' style="border-color:var(--accent,#4f7cff);color:var(--text-primary)"' : '')
+              + ' title="'+esc(a.name)+' — '+a.count.toLocaleString()+' works'
+              + (on ? ' (click to clear)' : '')+'">'
+              + esc(a.name)+' <span class="dim">'+a.count.toLocaleString()+"</span></button>"; }).join("");
+    }
+
+    $("#artists").addEventListener("click", function(ev){
+      var b = ev.target.closest && ev.target.closest("[data-akey]");
+      if (b) pickArtist(b.dataset.akey);
+    });
 
     // Counts come from the SAME where-clause as the results, so a facet can never offer rows the
     // search will not return. Re-loaded after every search so each count reflects the filters
@@ -230,6 +289,7 @@
                 '<option value="'+esc(keep)+'" selected>'+esc(keep)+"</option>");
             }
           });
+          renderArtists(d.artists);
           return d.total;
         })
         .catch(function(){ return null; });
@@ -317,12 +377,19 @@
       fetch("/api/visuallib/collections").then(function(r){ return r.json(); }).then(function(d){
         var cols = d.collections || [];
         $("#ctable").querySelector("tbody").innerHTML = cols.length ? cols.map(function(c){
-          return "<tr><td><b>"+esc(c.title)+"</b><div class='dim'>"+esc(c.slug)+"</div></td>"
-            + "<td>"+c.indexed+"</td>"
+          var pct = (c.upstream_count ? Math.round(100*c.indexed/c.upstream_count) : null);
+          return "<tr><td><b>"+esc(c.source||"?")+"</b></td>"
+            + "<td>"+esc(c.title)+"<div class='dim'>"+esc(c.slug)+"</div></td>"
+            // The DENOMINATOR beside the numerator: "56,724" reads as complete, "56,724 of
+            // 62,035 (91%)" does not. A collection whose source cannot be asked how big it is
+            // shows the count alone rather than a guess.
+            + "<td>"+c.indexed.toLocaleString()
+            +   (c.upstream_count ? "<div class='dim'>of "+c.upstream_count.toLocaleString()
+                                    +" ("+pct+"%)</div>" : "")+"</td>"
             + "<td>"+c.described+" <span class='dim'>("+c.described_pct+"%)</span></td>"
             + "<td class='dim'>"+esc(c.rights||"?")+"</td>"
             + "<td class='dim'>"+esc((c.last_crawled||"never").replace("T"," ").slice(0,16))+"</td></tr>";
-        }).join("") : "<tr><td colspan='5' class='dim'>Nothing harvested yet.</td></tr>";
+        }).join("") : "<tr><td colspan='6' class='dim'>Nothing harvested yet.</td></tr>";
 
         var opts = '<option value="">All collections</option>' + cols.map(function(c){
           return '<option value="'+c.id+'">'+esc(c.title)+"</option>"; }).join("");

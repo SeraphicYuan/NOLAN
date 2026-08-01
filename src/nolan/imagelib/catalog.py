@@ -164,6 +164,20 @@ _ASSET_MIGRATIONS = {
     # exist yet, and an authored field with no consumer is the repo's most-repeated bug. The column
     # ships now only because adding one to a populated table is the expensive part.
     "regions": "TEXT",
+    # `creator` folded into a join key (see `artist_key`). STORED rather than computed per query
+    # for two reasons, both measured: an artist picker built on the raw column offers "James
+    # McNeill Whistler" and "James McNeill Whistler (American, 1834-1903)" as two artists (artic
+    # writes the bare name, Cleveland appends the nationality), and grouping 97k rows in Python on
+    # every facet request is work SQLite will do in an index scan. NULL where the creator string is
+    # an anonymity placeholder — see `_is_anonymous`: "Unknown artist" is not an identity, and
+    # 1,855 such rows would otherwise crowd the top of every artist list.
+    "artist_key": "TEXT",
+    # The artist's movement, denormalised DOWN from `artists.movement` onto the row.
+    # `_filter_sql` is the one WHERE-clause builder shared by list/count/facets, and teaching it a
+    # join would change every caller; a column costs a backfill instead. It is DERIVED, so it goes
+    # stale when `enrich_artists` learns about a new painter — `backfill_movements` is idempotent
+    # and re-runnable, and `enrich_artists` calls it on the way out.
+    "movement": "TEXT",
 }
 
 # Columns added to `collections` after its first release, same ALTER-on-open mechanism.
@@ -228,6 +242,8 @@ class Asset:
     culture: Optional[str] = None
     place: Optional[str] = None
     image_kind: Optional[str] = None
+    artist_key: Optional[str] = None
+    movement: Optional[str] = None
     year_from: Optional[int] = None
     year_to: Optional[int] = None
     caption_json: Optional[str] = None
@@ -299,6 +315,58 @@ def artist_key(name: Optional[str]) -> str:
     s = _re.sub(r"[^\w\s]", " ", s, flags=_re.UNICODE)
     s = _re.sub(r"\s+", " ", s).strip().casefold()
     return " ".join(sorted(s.split()))
+
+
+# Words a catalog uses to say IT DOES NOT KNOW, and the generic roles that survive removing them.
+# Measured over the corpus: 33 distinct anonymity-shaped creator strings covering 1,969 rows.
+_ANON_WORDS = frozenset({"unknown", "unidentified", "anonymous", "unattributed"})
+_GENERIC_ROLE = frozenset({
+    "artist", "artists", "maker", "makers", "photographer", "illuminator", "painter",
+    "sculptor", "designer", "author", "printer", "publisher", "craftsman", "workshop",
+    "manufacturer", "engraver", "draftsman", "weaver", "potter", "master"})
+
+
+def _is_anonymous(key: str) -> bool:
+    """Is this folded key a statement of ANONYMITY rather than an identity?
+
+    The distinction has to survive a real corpus, and the corpus makes it sharp. These are NOT
+    identities and must not head an artist list:
+
+        Unknown artist (728)   Artist unknown (428)   Unknown (427)
+        Unknown Maker (126)    Anonymous (102)        Unidentified Photographer (2)
+
+    These ARE, and dropping them would lose a genuinely useful narrowing:
+
+        Unknown Italian (41)   Unknown Florentine (13)   Unknown Genoese (12)
+
+    So the rule is not "contains the word unknown". It is: remove the anonymity words, and if
+    what remains is nothing or only a generic job title, there is no identity left. A residue
+    like "italian" or "florentine" IS one — the catalog is telling us a school even though it
+    cannot name a hand.
+
+    It runs on the KEY, after `artist_key` has stripped parentheticals, which is what saves
+    "Sakai Basai (Japanese, dates unknown)" and "Master Na Dat with the Mousetrap (Italian)"
+    from being read as anonymous.
+    """
+    words = [w for w in key.split() if w]
+    if not words:
+        return True
+    if not any(w in _ANON_WORDS for w in words):
+        return False
+    return all(w in _ANON_WORDS or w in _GENERIC_ROLE for w in words)
+
+
+def folded_artist(name: Optional[str]) -> Optional[str]:
+    """The value stored in `assets.artist_key`: a join key, or NULL for an anonymous attribution.
+
+    Separate from `artist_key` because the two answer different questions. `artist_key` asks
+    "which artists table row is this?" and is happy to key an anonymous group; this asks "is
+    there a person to filter by?" and must say no.
+    """
+    key = artist_key(name)
+    if not key or _is_anonymous(key):
+        return None
+    return key
 
 
 @dataclass
@@ -419,6 +487,11 @@ class AssetCatalog:
             self._conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_source_ref "
                                "ON assets(source_ref) WHERE source_ref IS NOT NULL")
             self._conn.execute("CREATE INDEX IF NOT EXISTS idx_assets_held ON assets(held)")
+            # The artist picker GROUPs BY this over the whole discovery tier on every facet
+            # request; without the index that is a full scan of 97k rows per keystroke-driven
+            # re-count.
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_assets_artist_key "
+                               "ON assets(artist_key) WHERE artist_key IS NOT NULL")
             self._conn.commit()
 
     def close(self) -> None:
@@ -435,6 +508,11 @@ class AssetCatalog:
             if existing:
                 return existing
         asset.added_at = asset.added_at or datetime.now(timezone.utc).isoformat()
+        # DERIVED HERE, not by the caller. Every write path (three harvest adapters, promotion,
+        # the acquisition engine) would otherwise have to remember, and the one that forgets
+        # produces a row invisible to the artist picker with no error to say so.
+        if asset.artist_key is None:
+            asset.artist_key = folded_artist(asset.creator)
         with self._lock:
             cur = self._conn.execute(
                 """INSERT INTO assets
@@ -444,9 +522,9 @@ class AssetCatalog:
                     identity_source, description_source, thumb_path, thumb_url,
                     collection_id, regions,
                     medium, classification, department, culture, place, image_kind,
-                    year_from, year_to, caption_json, caption_schema)
+                    artist_key, movement, year_from, year_to, caption_json, caption_schema)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-                           ?,?,?,?,?,?,?,?,?,?)""",
+                           ?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (asset.content_hash, asset.path, asset.url, asset.source,
                  asset.source_url, asset.license, asset.title, asset.description,
                  asset.width, asset.height, asset.bytes, asset.tags, asset.query,
@@ -456,7 +534,8 @@ class AssetCatalog:
                  asset.description_source, asset.thumb_path, asset.thumb_url,
                  asset.collection_id, asset.regions,
                  asset.medium, asset.classification, asset.department, asset.culture,
-                 asset.place, asset.image_kind, asset.year_from, asset.year_to,
+                 asset.place, asset.image_kind, asset.artist_key, asset.movement,
+                 asset.year_from, asset.year_to,
                  asset.caption_json, asset.caption_schema),
             )
             self._conn.commit()
@@ -471,6 +550,7 @@ class AssetCatalog:
         "creator", "date_text", "institution", "identity_source", "description_source",
         "thumb_path", "thumb_url", "collection_id", "regions",
         "medium", "classification", "department", "culture", "place", "image_kind",
+        "artist_key", "movement",
         "year_from", "year_to", "caption_json", "caption_schema"})
 
     def update(self, asset_id: int, **fields) -> None:
@@ -597,7 +677,14 @@ class AssetCatalog:
     # Fields a caller may narrow on. EXACT match, because these are catalog vocabularies rather
     # than free text — `image_kind` has 14 values, `department` 30. `creator`/`place`/`medium`
     # are matched as a CONTAINS, because they are long-tailed and nobody types them exactly.
-    FACET_EXACT = ("image_kind", "classification", "department", "culture")
+    # `artist_key` is EXACT while `creator` is CONTAINS, and both exist on purpose: typing "monet"
+    # should find Claude Monet without knowing how his catalog spells him, but CLICKING an artist
+    # must return exactly the count the picker promised — and a contains-match on a short name
+    # cannot ("Millet" is inside "Jean-François Millet" and also inside nothing else, but "Bosch"
+    # is inside "Bosch" and "Boschaert"). Same reason `movement` is exact: it is a stored
+    # vocabulary, not free text.
+    FACET_EXACT = ("image_kind", "classification", "department", "culture",
+                   "artist_key", "movement")
     FACET_LIKE = ("creator", "place", "medium", "title")
 
     def _filter_sql(self, *, status=None, held=1, source=None, collection_id=None,
@@ -701,6 +788,51 @@ class AssetCatalog:
         with self._lock:
             rows = self._conn.execute(sql, [*params, int(limit)]).fetchall()
         return [(r["v"], int(r["c"])) for r in rows]
+
+    def artist_facets(self, *, status: Optional[str] = "active", held: Optional[int] = 0,
+                      limit: int = 40, **filters) -> List[Tuple[str, str, int]]:
+        """`(display_name, artist_key, count)` for the artists in the current result set.
+
+        This is the browse surface the corpus most wants and least supports by default. The
+        distribution is why it needs its own method rather than `facets("creator")`:
+
+            8,604 artists over 68,376 attributed rows (70% of the corpus)
+            top 50 reach 23% of all rows, top 500 reach 49%
+            4,726 artists — 55% of them — have exactly ONE work
+
+        So a dropdown is out, and a raw GROUP BY creator is worse than useless at the top, where
+        it offers "Unknown artist", "Artist unknown" and "Unknown" as three of the five biggest
+        names. Grouping on the stored key fixes both: anonymity is already NULL, and the
+        institutional spellings of one person have already collapsed.
+
+        The DISPLAY name is a raw spelling from the group, not the key — nobody wants to click
+        "hiroshige utagawa". Which spelling is chosen matters, and popularity alone gets it wrong:
+        Cleveland writes "Auguste Louis Lepère (French, 1849-1918)" and holds more of him than
+        artic, so the most common spelling for three of the top twenty artists was the one with
+        the biography bolted on. A parenthetical is a catalog's annotation, not part of the name,
+        so a clean spelling wins over a popular one; only then does frequency, and then length,
+        decide. The count is the whole group's either way.
+        """
+        filters.pop("artist_key", None)         # a facet never narrows by itself
+        where, params = self._filter_sql(status=status, held=held, **filters)
+        with self._lock:
+            rows = self._conn.execute(
+                f"""SELECT artist_key k, creator v, COUNT(*) c FROM assets WHERE {where}
+                    AND artist_key IS NOT NULL AND creator IS NOT NULL
+                    GROUP BY artist_key, creator""", params).fetchall()
+        totals: "Dict[str, int]" = {}
+        best: "Dict[str, Tuple[int, int, str]]" = {}
+        for r in rows:
+            k, v, c = r["k"], r["v"], int(r["c"])
+            totals[k] = totals.get(k, 0) + c
+            rank = ("(" in v, -c, len(v), v)   # clean, then common, then short, then stable
+            if k not in best or rank < best[k]:
+                best[k] = rank
+        # `[-1]` and not `[2]`: the name is the LAST element of the rank tuple, so extending the
+        # ranking cannot silently start returning a tiebreak field as the display name.
+        out = [(best[k][-1], k, n) for k, n in totals.items()]
+        out.sort(key=lambda t: (-t[2], t[0]))
+        return out[:int(limit)]
 
     def count(self, status: Optional[str] = None, *, held: Optional[int] = None,
               collection_id: Optional[int] = None, **facets) -> int:

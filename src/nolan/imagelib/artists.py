@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from nolan.imagelib.catalog import Artist, artist_key
@@ -78,6 +79,51 @@ def _clean(v: Any) -> Optional[str]:
     if not s or s.lower() in {"null", "none", "n/a", "na", "unknown", "unclear", "-"}:
         return None
     return s
+
+
+# Separators a model reaches for when it wants to give more than one answer in a one-answer field.
+_MOVEMENT_SPLIT = re.compile(r"\s*[,;/]\s*|\s+(?:and|&)\s+", re.I)
+# Non-answers that survived `_clean` because they are phrased as prose rather than as a null.
+_MOVEMENT_NONVALUE = re.compile(
+    r"^(none|n/?a|unknown|unclear|various|multiple|no\s+(?:known|particular|specific)\b|"
+    r"not\s+(?:applicable|associated)\b)", re.I)
+
+
+def normalise_movement(raw: Optional[str]) -> Optional[str]:
+    """One movement, or None — the canonical form stored in `assets.movement`.
+
+    The field was written by a model answering "what movement?", and models answer that question
+    generously. Over the live table, 106 distinct strings for 188 artists, of which case is the
+    SMALLEST problem (it merges only 5). The rest:
+
+        "aestheticism, tonalism"                          -> two movements in a one-movement cell
+        "early photography, topographical photography"  \\
+        "early photography / topographic"                >- one movement, written three ways
+        "early photography"                             /
+        "none; primarily a documentarian"                 -> not a movement at all
+
+    So: take the FIRST clause (the primary attribution — a model lists the strongest first), and
+    refuse the non-answers. Taking the first loses Whistler's tonalism, which is a real loss and
+    the honest trade for a facet whose counts add up; a multi-valued movement needs its own table,
+    not a comma.
+
+    Case is preserved here. `backfill_movements` groups on the casefolded form and writes back the
+    dominant spelling, so "ukiyo-e" (14 artists) and "Ukiyo-e" (10) become one facet entry without
+    this function having to guess whether "Dutch Golden Age" wants title case.
+    """
+    s = (raw or "").strip()
+    if not s:
+        return None
+    # The WHOLE string is tested for a non-answer before it is split, because the separators
+    # overlap: "n/a" splits into "n", which no longer looks like a refusal and would be stored as
+    # a movement named "n".
+    if _MOVEMENT_NONVALUE.match(s):
+        return None
+    first = _MOVEMENT_SPLIT.split(s)[0].strip(" .;:-—")
+    if not first or _MOVEMENT_NONVALUE.match(first):
+        return None
+    # A clause long enough to be a sentence is a description, not a movement name.
+    return first if len(first) <= 48 and len(first.split()) <= 5 else None
 
 
 async def enrich_artists(library, *, limit: int = 25, llm=None, model: str = "llm",
@@ -145,6 +191,12 @@ async def enrich_artists(library, *, limit: int = 25, llm=None, model: str = "ll
             progress(out)
 
     out["leverage"] = round(out["rows_covered"] / out["learned"], 1) if out["learned"] else 0.0
+    # Push what was just learned DOWN onto the rows. `assets.movement` is a denormalised copy, so
+    # without this the facet keeps reporting yesterday's coverage and the new artists are
+    # invisible to the filter that exists to find them — an authored field with a stale consumer,
+    # which is the same bug as one with no consumer. Idempotent; skipped when nothing was learned.
+    if out["learned"]:
+        out["movement_backfill"] = library.backfill_movements(collection_id=collection_id)
     return out
 
 
