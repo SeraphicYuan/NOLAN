@@ -40,8 +40,10 @@ def register(app, ctx):
     job_manager = ctx.job_manager
 
     def _open(scope, project):
-        from nolan.imagelib import ImageLibrary
-        return ImageLibrary(scope=scope or "global", project=(project or None))
+        # SHARED per process — see `shared_library`. Rebuilding it per request reloaded CLIP and
+        # re-opened chroma every time.
+        from nolan.imagelib import shared_library
+        return shared_library(scope=scope or "global", project=(project or None))
 
     @app.get("/visual-lib", response_class=HTMLResponse)
     async def visual_lib_page():

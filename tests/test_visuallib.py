@@ -863,6 +863,52 @@ def test_catalog_columns_are_finally_filterable(lib):
                                 image_kind="print", place="Japan")) == 2
 
 
+def test_the_library_is_shared_per_scope_not_rebuilt(tmp_path):
+    """REGRESSION, and the worst defect this tier has had.
+
+    The hub built a new ImageLibrary on every request, so each search reloaded CLIP (~150 MB) and
+    re-opened chroma's HNSW indexes. At 1,091 rows nobody noticed. At 97,610 a single
+    /api/images/discover took **90 seconds**, against 2.4 s for the same search on a reused
+    instance — the retrieval was never slow, the setup was, and it was paid per keystroke.
+    """
+    from nolan.imagelib import shared_library
+    a = shared_library(base_dir=tmp_path)
+    b = shared_library(base_dir=tmp_path)
+    assert a is b, "a second call must reuse the instance, not rebuild it"
+    assert shared_library(base_dir=tmp_path / "other") is not a, "different scopes stay separate"
+
+
+def test_the_shared_cache_is_keyed_on_the_RESOLVED_path(tmp_path, monkeypatch):
+    """REGRESSION. Keyed on (scope, project) it ignored a redirected `library_paths`, so a caller
+    asking for "global" got whichever directory the first caller happened to open — which handed
+    two hub tests the previous test's tmp library."""
+    import nolan.imagelib.store as store_mod
+    from nolan.imagelib import reset_shared_libraries, shared_library
+
+    reset_shared_libraries()
+    one, two = tmp_path / "one", tmp_path / "two"
+    monkeypatch.setattr(store_mod, "library_paths", lambda *a, **k: one)
+    a = shared_library("global")
+    monkeypatch.setattr(store_mod, "library_paths", lambda *a, **k: two)
+    b = shared_library("global")
+    assert a is not b, "a redirected library_paths must produce a different instance"
+    assert Path(b.base).resolve() == two.resolve()
+    reset_shared_libraries()
+
+
+def test_the_hub_routes_use_the_shared_library():
+    """Grep-enforced, because this is invisible until it is slow: a route that constructs
+    ImageLibrary directly reintroduces the 90-second search without failing any test."""
+    from pathlib import Path as _P
+    root = _P(__file__).resolve().parents[1] / "src" / "nolan" / "webui" / "routes"
+    for name in ("images_extract.py", "visual_lib.py"):
+        src = (root / name).read_text(encoding="utf-8")
+        assert "shared_library" in src, f"{name} must open the library via shared_library()"
+        assert "return ImageLibrary(" not in src, (
+            f"{name} constructs ImageLibrary per call — that reloads CLIP and chroma every "
+            f"request")
+
+
 def test_every_asset_field_survives_a_round_trip(tmp_path):
     """REGRESSION, and a guard for a whole bug CLASS. `year_from`/`year_to` were added to the
     migrations, the dataclass and the updatable set — but not to the INSERT column list, so the

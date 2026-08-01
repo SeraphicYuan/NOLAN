@@ -52,6 +52,44 @@ def _distinctive_tokens(text: str) -> List[str]:
             if len(t) > 1 and t not in _STOP]
 
 
+_SHARED: Dict[tuple, "ImageLibrary"] = {}
+
+
+def shared_library(scope: str = "global", project: Optional[str] = None,
+                   base_dir: Optional[Path] = None) -> "ImageLibrary":
+    """A PROCESS-WIDE ImageLibrary per scope. Build it once; never per request.
+
+    An ImageLibrary is expensive to construct and cheap to keep: it owns a `ClipEmbedder` (a
+    ~150 MB model loaded on first use) and a `chromadb.PersistentClient` (which opens the store
+    and its HNSW indexes). Constructing one per call re-pays both.
+
+    THE INCIDENT: the hub's `_open_imagelib` did exactly that, and at 1,091 rows nobody noticed.
+    At 97,610 rows a single `/api/images/discover` request took **90 seconds** — while the same
+    search against a reused library took **2.4 s**. The search was never slow; the setup was, and
+    it was being paid on every keystroke.
+
+    Long-lived by design, because the hub is one process and chroma's PersistentClient assumes
+    single-process ownership anyway. Callers that genuinely need an isolated instance (tests, a
+    throwaway scope) construct `ImageLibrary` directly.
+    """
+    # Keyed on the RESOLVED directory, not on (scope, project). Two scopes pointing at one
+    # directory are one library — and, more practically, `library_paths` is patchable, so a key
+    # that ignored the resolved path would hand a test the instance a previous test built
+    # against a different tmp dir. Caught exactly that way.
+    base = Path(base_dir) if base_dir else library_paths(scope, project)
+    key = str(Path(base).resolve())
+    lib = _SHARED.get(key)
+    if lib is None:
+        lib = ImageLibrary(scope=scope, project=project, base_dir=base)
+        _SHARED[key] = lib
+    return lib
+
+
+def reset_shared_libraries() -> None:
+    """Drop the process-wide cache. For tests and for a scope whose files moved underneath it."""
+    _SHARED.clear()
+
+
 def library_paths(scope: str = "global", project: Optional[str] = None) -> Path:
     """Resolve the ABSOLUTE base directory for a library scope, anchored to the repo root.
 
@@ -1023,10 +1061,10 @@ class ImageLibrary:
         """
         n = self.catalog.count("active", held=0, collection_id=collection_id)
         described = self.catalog.described_count(held=0, collection_id=collection_id)
-        with_pixels = sum(
-            1 for a in self.catalog.list(status="active", held=0,
-                                         collection_id=collection_id, limit=1_000_000)
-            if a.thumb_path)
+        # COUNT in SQL, never a Python scan. The first version of this materialised every
+        # discovery row as an Asset object just to test `thumb_path` — 2.1 s at 97,610 rows, paid
+        # on EVERY search, because the hub calls discovery_stats to render the result footer.
+        with_pixels = self.catalog.count_with_pixels(held=0, collection_id=collection_id)
         return {"discovery": n, "held": self.catalog.count("active", held=1),
                 "described": described,
                 "described_pct": round(100.0 * described / n, 1) if n else 0.0,
@@ -1075,18 +1113,35 @@ class ImageLibrary:
         qset = set(_distinctive_tokens(query))
         if not qset:
             return []
-        hits: List[LibraryHit] = []
-        for a in self.catalog.list(status="active", held=held, collection_id=collection_id):
-            if license_contains and (license_contains.lower() not in (a.license or "").lower()):
+        # PRE-FILTER IN SQL. Scoring is `|title ∩ query| / |title|`, so a title can only clear
+        # `min_cover` if it shares at least one distinctive token with the query — which means
+        # SQLite can throw away the rows that share none before Python ever builds an Asset.
+        #
+        # This method's own docstring predicted the failure ("a full scan over the not-held rows
+        # — fine at 10^3-10^4, and the place to add an FTS5 index beyond that") and the corpus
+        # crossed it: at 97,610 rows the scan was 2.35 s of a 2.43 s search. The prediction was
+        # right about where and slightly wrong about what — a LIKE pre-filter recovers most of it
+        # without the schema cost of FTS5, and FTS5 remains the answer if this grows again.
+        scored: List[tuple] = []
+        for aid, title, lic in self.catalog.title_candidates(
+                sorted(qset), status="active", held=held, collection_id=collection_id):
+            if license_contains and (license_contains.lower() not in (lic or "").lower()):
                 continue
-            htok = _distinctive_tokens(a.title or "")
+            htok = _distinctive_tokens(title or "")
             if not htok:
                 continue
             cover = sum(1 for t in htok if t in qset) / len(htok)
             if cover >= min_cover:
-                hits.append(LibraryHit(asset=a, score=round(cover, 4)))
-        hits.sort(key=lambda h: h.score, reverse=True)
-        return hits[:k]
+                scored.append((cover, aid))
+        if not scored:
+            return []
+        scored.sort(key=lambda p: p[0], reverse=True)
+        top = scored[:k]
+        # Hydrate ONLY the winners. Scoring ran on three columns; a full Asset is built for the
+        # handful that survived, not for every title that shared a word with the query.
+        assets = self.catalog.get_many([aid for _, aid in top])
+        return [LibraryHit(asset=assets[aid], score=round(cover, 4))
+                for cover, aid in top if aid in assets]
 
     def search_by_description(self, query: str, *, k: int = 12,
                               license_contains: Optional[str] = None) -> List[LibraryHit]:

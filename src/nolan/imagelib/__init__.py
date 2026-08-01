@@ -23,10 +23,12 @@ space) power semantic text->image search via ChromaDB.
 from nolan.imagelib.catalog import Asset, AssetCatalog, Collection
 from nolan.imagelib.embeddings import ClipEmbedder
 from nolan.imagelib.store import (
-    ImageLibrary, LibraryHit, library_paths, promote_to_global, search_all,
+    ImageLibrary, LibraryHit, library_paths, promote_to_global, reset_shared_libraries,
+    search_all, shared_library,
 )
 
 __all__ = [
     "Asset", "AssetCatalog", "ClipEmbedder", "Collection",
-    "ImageLibrary", "LibraryHit", "library_paths", "promote_to_global", "search_all",
+    "ImageLibrary", "LibraryHit", "library_paths", "promote_to_global",
+    "reset_shared_libraries", "search_all", "shared_library",
 ]

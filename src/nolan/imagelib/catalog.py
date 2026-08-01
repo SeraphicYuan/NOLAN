@@ -620,6 +620,52 @@ class AssetCatalog:
             sql += " AND year_from IS NOT NULL AND year_from <= ?"; params.append(int(year_to))
         return sql, params
 
+    def title_candidates(self, tokens: "List[str]", *, status: Optional[str] = "active",
+                         held: Optional[int] = 1, collection_id: Optional[int] = None
+                         ) -> List[Tuple[int, str, Optional[str]]]:
+        """`(id, title, license)` for every row whose title contains one of `tokens`.
+
+        Title-cover scoring is `|title ∩ query| / |title|`, so a title sharing NO query token
+        scores zero and can never clear the threshold. Letting SQLite discard those is the whole
+        win: the caller used to materialise all 97,610 rows as Asset objects to find a handful.
+
+        Returns TUPLES, not Assets, and does NOT truncate — both on purpose. A first version
+        returned full rows under a LIMIT, and the limit lost a right answer: "El Greco The
+        Assumption of the Virgin" shares "virgin" with a great many titles, so the cut dropped
+        the target and its named recall@1 fell from rank 1 to rank 4. Scoring three columns is
+        cheap enough that the cap is unnecessary, and the caller hydrates only the top k.
+
+        Deliberately a LIKE-OR rather than FTS5: no second table to keep in sync with a catalog
+        four passes already write to. If this grows again, FTS5 is the next step — not a limit.
+        """
+        toks = [t for t in tokens if t][:24]      # a pathological query must not build 500 ORs
+        if not toks:
+            return []
+        where, params = self._filter_sql(status=status, held=held,
+                                         collection_id=collection_id)
+        ors = " OR ".join("LOWER(title) LIKE ?" for _ in toks)
+        params = [*params, *(f"%{t.lower()}%" for t in toks)]
+        with self._lock:
+            # `id DESC` is not cosmetic. Cover scores tie constantly (a museum holds several
+            # impressions of one print), Python's sort is stable, and the caller used to inherit
+            # this order from `catalog.list`. Returning rowid order instead silently flipped
+            # every tie-break and cost named recall.
+            rows = self._conn.execute(
+                f"SELECT id, title, license FROM assets WHERE {where} "
+                f"AND title IS NOT NULL AND ({ors}) ORDER BY id DESC", params).fetchall()
+        return [(int(r["id"]), r["title"], r["license"]) for r in rows]
+
+    def count_with_pixels(self, *, held: Optional[int] = 0,
+                          collection_id: Optional[int] = None) -> int:
+        """How many rows have their thumbnail — the Phase-B coverage numerator, in SQL."""
+        where, params = self._filter_sql(status="active", held=held,
+                                         collection_id=collection_id)
+        with self._lock:
+            row = self._conn.execute(
+                f"SELECT COUNT(*) c FROM assets WHERE {where} "
+                f"AND thumb_path IS NOT NULL AND TRIM(thumb_path)<>''", params).fetchone()
+        return int(row["c"])
+
     def facets(self, field: str, *, status: Optional[str] = "active", held: Optional[int] = 0,
                limit: int = 40, **filters) -> List[Tuple[str, int]]:
         """Value → count for one field, UNDER the currently active filters.

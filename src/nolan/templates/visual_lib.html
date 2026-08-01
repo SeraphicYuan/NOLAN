@@ -71,10 +71,27 @@
           <select id="collection"><option value="">All collections</option></select>
           <button class="btn" onclick="doSearch()">Search</button>
         </div>
+        <!-- FACETS. A filter changes the DENOMINATOR, not the ranking: "a great wave" over 97,610
+             rows returns a 1927 lithograph and an 1857 photograph first, because both are
+             legitimately called The Wave; narrowed to Japanese prints, Hokusai takes 1-2-3. The
+             COUNTS are the point — they say what a choice costs before it is made. -->
+        <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">
+          <select id="f-image_kind" onchange="doSearch()"></select>
+          <select id="f-department" onchange="doSearch()"></select>
+          <select id="f-classification" onchange="doSearch()"></select>
+          <select id="f-place" onchange="doSearch()"></select>
+          <input type="number" id="f-year_from" placeholder="from year" style="width:96px"
+                 onkeydown="if(event.key==='Enter')doSearch()">
+          <input type="number" id="f-year_to" placeholder="to year" style="width:88px"
+                 onkeydown="if(event.key==='Enter')doSearch()">
+          <button class="btn ghost mini" onclick="clearFacets()">Clear</button>
+        </div>
         <!-- Retrieval is ROUTED, so say so: a named query is answered from the catalog's words,
              a look query by CLIP over the thumbnail. Users otherwise read a look-miss as "broken". -->
         <div class="dim" style="margin-top:7px">Naming a work searches the <b>catalog</b>; describing one searches the
-          <b>pictures</b>. Both work — describing is where this beats keyword search.</div>
+          <b>pictures</b>. Both work — describing is where this beats keyword search.
+          Filters narrow first, so a search runs against a far smaller set. Leave the box empty to
+          just <b>browse</b> a filtered slice.</div>
         <div id="meta" class="dim" style="margin-top:8px"></div>
         <div id="grid" class="grid"></div>
       </div>
@@ -162,22 +179,79 @@
         + '</div></div>';
     }
 
+    // The facet fields, in the order they narrow most usefully. `image_kind` and `department`
+    // are 100% populated with tiny vocabularies; `classification` and `place` are longer-tailed.
+    var FACETS = [
+      {id:"image_kind",     label:"Any kind"},
+      {id:"department",     label:"Any department"},
+      {id:"classification", label:"Any classification"},
+      {id:"place",          label:"Anywhere"}
+    ];
+
+    function facetParams(){
+      var p = "";
+      FACETS.forEach(function(f){
+        var v = $("#f-"+f.id).value;
+        if (v) p += "&"+f.id+"="+encodeURIComponent(v);
+      });
+      ["year_from","year_to"].forEach(function(k){
+        var v = $("#f-"+k).value;
+        if (v) p += "&"+k+"="+encodeURIComponent(v);
+      });
+      return p;
+    }
+
+    function clearFacets(){
+      FACETS.forEach(function(f){ $("#f-"+f.id).value = ""; });
+      $("#f-year_from").value = ""; $("#f-year_to").value = "";
+      doSearch();
+    }
+
+    // Counts come from the SAME where-clause as the results, so a facet can never offer rows the
+    // search will not return. Re-loaded after every search so each count reflects the filters
+    // already applied — that is what makes combinations legible instead of guesswork.
+    function loadFacets(){
+      return fetch("/api/visuallib/facets?scope=global"+facetParams())
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          FACETS.forEach(function(f){
+            var sel = $("#f-"+f.id), keep = sel.value;
+            var rows = (d.facets && d.facets[f.id]) || [];
+            sel.innerHTML = '<option value="">'+f.label+"</option>"
+              + rows.map(function(o){
+                  return '<option value="'+esc(o.value)+'"'+(o.value===keep?" selected":"")+">"
+                       + esc(o.value)+" ("+o.count.toLocaleString()+")</option>"; }).join("");
+            if (keep && sel.value !== keep) {   // the active choice must survive a re-count even
+              sel.insertAdjacentHTML("beforeend",  // when the narrowed set no longer offers it
+                '<option value="'+esc(keep)+'" selected>'+esc(keep)+"</option>");
+            }
+          });
+          return d.total;
+        })
+        .catch(function(){ return null; });
+    }
+
     function doSearch(){
       var q = $("#q").value.trim();
       var cid = $("#collection").value;
       $("#meta").textContent = "Loading…";
       // ONE owner for row-level search: `/api/images/discover` acts on catalog rows, so it lives
       // with the other row endpoints rather than being duplicated under this page's namespace.
-      fetch("/api/images/discover?scope=global&q="+encodeURIComponent(q)+(cid?("&collection_id="+cid):""))
+      fetch("/api/images/discover?scope=global&q="+encodeURIComponent(q)
+            +(cid?("&collection_id="+cid):"")+facetParams())
         .then(function(r){ return r.json(); })
         .then(function(d){
           var res = d.results || [];
           $("#grid").innerHTML = res.map(tile).join("")
-            || '<div class="dim">Nothing indexed yet — harvest a collection first.</div>';
+            || '<div class="dim">No rows match. Widen a filter, or harvest a collection first.</div>';
           var st = d.stats || {};
-          $("#meta").innerHTML = res.length + (q ? " result(s) for “"+esc(q)+"”" : " newest")
-            + ' · <span class="dim">'+(st.discovery||0)+" indexed, "+(st.described_pct||0)
-            + "% captioned, "+(st.held||0)+" held</span>";
+          return loadFacets().then(function(total){
+            $("#meta").innerHTML = res.length + (q ? " result(s) for “"+esc(q)+"”" : " shown")
+              + (total !== null ? ' of <b>'+total.toLocaleString()+"</b> matching" : "")
+              + ' · <span class="dim">'+(st.discovery||0)+" indexed, "
+              + (st.pixels_pct||0)+"% with pixels, "+(st.described_pct||0)
+              + "% captioned, "+(st.held||0)+" held</span>";
+          });
         })
         .catch(function(e){ $("#meta").textContent = "Error: "+e.message; });
     }

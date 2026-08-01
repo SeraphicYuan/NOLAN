@@ -73,8 +73,11 @@ def register(app, ctx):
         return "<h1>images.html not found</h1>"
 
     def _open_imagelib(scope: str, project: Optional[str]):
-        from nolan.imagelib import ImageLibrary
-        return ImageLibrary(scope=scope or "global", project=(project or None))
+        # SHARED, not per request. This used to build a new ImageLibrary every call, which meant
+        # reloading CLIP and re-opening chroma each time: 90 s per search at 97,610 rows against
+        # 2.4 s with a reused instance. The search was never the slow part.
+        from nolan.imagelib import shared_library
+        return shared_library(scope=scope or "global", project=(project or None))
 
     def _img_dict(asset, score, scope, project):
         return {
