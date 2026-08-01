@@ -113,18 +113,49 @@ def register(app, ctx):
                 "facets": out, "artists": artists}
 
     @app.get("/api/visuallib/collections")
-    async def visuallib_collections(scope: str = "global", project: str = None):
+    async def visuallib_collections(scope: str = "global", project: str = None,
+                                    q: str = None, source: str = None,
+                                    limit: int = 400, curated_only: bool = False):
         """Every harvested collection with its OWN coverage — the T0 tier, browsable before any
-        member is captioned."""
+        member is captioned.
+
+        COUNTS COME FROM ONE GROUPED QUERY. This used to call `discovery_stats(collection_id=…)`
+        per collection, which was invisible at four collections and cost **119 seconds** at 581
+        — the Public Domain Image Archive alone contributes 577, because it is the first source
+        that yields many collections from a single crawl. Same query, one pass, 248 ms.
+
+        `q` filters by title/slug and `curated_only` drops the whole-source harvest rows, which
+        is what the Collections tab wants: a curated set someone chose, not "everything Cleveland
+        has".
+        """
         lib = _open(scope, project)
+        counts = lib.catalog.collection_counts(held=0)
         out = []
+        needle = (q or "").strip().lower()
         for c in lib.catalog.list_collections():
-            st = lib.discovery_stats(collection_id=c.id)
+            got = counts.get(c.id or -1, {"indexed": 0, "described": 0})
+            if source and c.source != source:
+                continue
+            if needle and needle not in f"{c.title} {c.slug}".lower():
+                continue
+            # A whole-source harvest is not a curated collection, and `upstream_count` is the
+            # clean tell: only a source-wide crawl is in a position to know how big the source
+            # is, so a curated set never has one. That separates "Aubrey Beardsley" (74 pictures
+            # someone chose) from "Cleveland Museum of Art — CC0 artworks" (everything they have)
+            # and from the `pdia-uncollected` fallback, which is a harvest bucket wearing a
+            # collection's clothes.
+            curated = c.upstream_count is None
+            if curated_only and not curated:
+                continue
             d = c.to_dict()
-            d.update({"indexed": st["discovery"], "described": st["described"],
-                      "described_pct": st["described_pct"]})
+            n = got["indexed"] or 0
+            d.update({"indexed": n, "described": got["described"],
+                      "described_pct": round(100.0 * got["described"] / n, 1) if n else 0.0,
+                      "curated": bool(curated)})
             out.append(d)
-        return {"collections": out, "stats": lib.discovery_stats()}
+        out.sort(key=lambda d: -d["indexed"])
+        return {"collections": out[:max(1, int(limit))], "total": len(out),
+                "stats": lib.discovery_stats()}
 
     @app.post("/api/visuallib/harvest")
     async def visuallib_harvest(body: dict = Body(...)):

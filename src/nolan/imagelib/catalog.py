@@ -936,6 +936,33 @@ class AssetCatalog:
         out.sort(key=lambda t: (-t[2], t[0]))
         return out[:int(limit)]
 
+    def collection_counts(self, *, held: Optional[int] = 0) -> "Dict[int, Dict[str, int]]":
+        """`{collection_id: {"indexed": n, "described": n}}` for EVERY collection, in one pass.
+
+        Replaces a `discovery_stats(collection_id=...)` per collection, which was fine at four
+        collections and catastrophic at 581: measured on the live catalog, the per-collection
+        loop took **118,858 ms** against **248 ms** for this — 479x, and the Sources tab was
+        already spending two minutes on it before anything was built on top.
+
+        The Public Domain Image Archive is what changed the arithmetic. It is the first source
+        that yields many collections from one crawl (577 of them), so anything that was O(one
+        query per collection) silently became O(577).
+        """
+        sql = """SELECT collection_id AS cid, COUNT(*) AS n,
+                        SUM(CASE WHEN description_source IS NOT NULL
+                                  AND description_source <> 'catalog' THEN 1 ELSE 0 END) AS d
+                 FROM assets
+                 WHERE status='active' AND collection_id IS NOT NULL"""
+        params: List[Any] = []
+        if held is not None:
+            sql += " AND held=?"
+            params.append(int(held))
+        sql += " GROUP BY collection_id"
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return {int(r["cid"]): {"indexed": int(r["n"]), "described": int(r["d"] or 0)}
+                for r in rows}
+
     def count(self, status: Optional[str] = None, *, held: Optional[int] = None,
               collection_id: Optional[int] = None, **facets) -> int:
         where, params = self._filter_sql(status=status, held=held,

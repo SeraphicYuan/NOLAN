@@ -1851,6 +1851,46 @@ def test_the_curated_tier_waives_the_floor_but_never_the_rights(lib):
                           width=455, height=761, pixels=False, tier="curated")
 
 
+def test_collection_counts_are_one_query_not_one_per_collection(lib):
+    """Invisible at four collections, catastrophic at 581. Measured on the live catalog, counting
+    per collection took 118,858 ms against 248 ms for one grouped pass — and the Sources tab was
+    already paying it. PDIA is what changed the arithmetic: it is the first source that yields
+    many collections from one crawl, contributing 577 on its own."""
+    from nolan.imagelib import Collection
+
+    for i in range(5):
+        c = lib.upsert_collection(Collection(slug=f"c{i}", source="pdia", title=f"Set {i}"))
+        for j in range(i + 1):
+            lib.add_discovery(source_ref=f"pdia:{i}-{j}", thumb_url=f"https://e/{i}{j}.jpg",
+                              source="pdia", title=f"Plate {i}-{j}", license="CC0",
+                              collection_id=c.id, pixels=False, tier="curated")
+
+    counts = lib.catalog.collection_counts(held=0)
+    assert len(counts) == 5
+    by_slug = {c.slug: counts.get(c.id, {}).get("indexed", 0)
+               for c in lib.catalog.list_collections()}
+    assert by_slug == {"c0": 1, "c1": 2, "c2": 3, "c3": 4, "c4": 5}
+    # ...and it agrees with the per-collection count it replaced, or the speed-up is a lie
+    for c in lib.catalog.list_collections():
+        assert counts.get(c.id, {}).get("indexed", 0) == \
+            lib.catalog.count("active", held=0, collection_id=c.id)
+
+
+def test_a_whole_source_harvest_is_not_a_curated_collection(lib):
+    """"Aubrey Beardsley" (74 pictures someone chose) and "Cleveland Museum of Art — CC0
+    artworks" (everything they hold) are different kinds of thing, and only one belongs in a
+    Collections tab. `upstream_count` is the clean tell: only a source-wide crawl is in a
+    position to know how big the source is."""
+    from nolan.imagelib import Collection
+
+    whole = lib.upsert_collection(Collection(slug="cleveland-cc0", source="cleveland",
+                                             title="Cleveland — CC0", upstream_count=41477))
+    curated = lib.upsert_collection(Collection(slug="pdia-beardsley", source="pdia",
+                                               title="Aubrey Beardsley"))
+    assert whole.upstream_count is not None, "a whole-source harvest knows the source's size"
+    assert curated.upstream_count is None, "a curated set does not"
+
+
 def test_pdia_rights_take_the_more_restrictive_of_two_claims():
     """The site frames itself as entirely public domain. MEASURED over 120 random rows, it is
     not: underlying pd-worldwide 80% / pd-us 10% / pd-50-years 1.7% / no-known-restrictions 2.5%,

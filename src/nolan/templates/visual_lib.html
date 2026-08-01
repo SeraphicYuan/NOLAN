@@ -63,6 +63,11 @@
            concept stays: a collection is a rights-and-provenance unit, and when the Library of
            Congress lands its curated collections (fsa-owi-black-and-white-negatives and the
            rest) they become additional rows here, each with its own rights. -->
+      <!-- CURATED sets, as distinct from Sources. A source is an institution's API; a collection
+           is a set somebody CHOSE — "Aubrey Beardsley", "Fungi of Shropshire". Until the Public
+           Domain Image Archive arrived every collection was a whole-source harvest and this tab
+           would have been a duplicate of Sources; there are now 577 real ones. -->
+      <div class="tab" data-tab="collections" onclick="showTab('collections')">Collections</div>
       <div class="tab" data-tab="sources" onclick="showTab('sources')">Sources</div>
       <div class="tab" data-tab="coverage" onclick="showTab('coverage')">Coverage</div>
     </div>
@@ -120,6 +125,27 @@
         <div class="row" style="margin-top:14px;justify-content:center">
           <button class="btn ghost" id="morebtn" style="display:none" onclick="loadMore()"></button>
         </div>
+      </div>
+    </div>
+
+    <!-- ===== COLLECTIONS ===== -->
+    <div id="tab-collections" style="display:none">
+      <div class="card">
+        <b>Curated collections</b>
+        <div class="dim" style="margin:4px 0 10px">A set somebody <b>chose</b> — not everything an
+          institution holds. Median size is 12 pictures, so a collection is a starting point rather
+          than a corpus. Clicking one filters the Search grid to it.</div>
+        <div class="row">
+          <input type="text" id="colq" placeholder="filter collections by name…" style="flex:1;min-width:220px"
+                 onkeydown="if(event.key==='Enter')loadCuratedCollections()">
+          <button class="btn" onclick="loadCuratedCollections()">Filter</button>
+          <label class="dim" style="display:flex;align-items:center;gap:5px">
+            <input type="checkbox" id="colcurated" checked onchange="loadCuratedCollections()">
+            curated only
+          </label>
+        </div>
+        <div id="colmeta" class="dim" style="margin-top:8px"></div>
+        <div id="collist" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))"></div>
       </div>
     </div>
 
@@ -185,11 +211,63 @@
 
     function showTab(t){
       document.querySelectorAll(".tab").forEach(function(x){ x.classList.toggle("on", x.dataset.tab===t); });
-      ["search","sources","coverage"].forEach(function(n){
+      ["search","collections","sources","coverage"].forEach(function(n){
         $("#tab-"+n).style.display = (n===t) ? "block" : "none";
       });
       if (t==="sources" || t==="coverage") loadCollections();
+      if (t==="collections") loadCuratedCollections();
     }
+
+    // ---- curated collections -----------------------------------------------------
+    // Counts come from ONE grouped query server-side. The per-collection version cost 119
+    // SECONDS at 581 collections — invisible when there were four, and the Public Domain Image
+    // Archive contributes 577 on its own.
+    function loadCuratedCollections(){
+      var q = $("#colq").value.trim(), only = $("#colcurated").checked;
+      $("#colmeta").textContent = "Loading…";
+      fetch("/api/visuallib/collections?scope=global&limit=400"
+            + (q ? "&q="+encodeURIComponent(q) : "")
+            + (only ? "&curated_only=1" : ""))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var cols = d.collections || [];
+          $("#colmeta").innerHTML = cols.length + " shown of <b>" + (d.total||0) + "</b>"
+            + (only ? " curated collections" : " collections");
+          $("#collist").innerHTML = cols.map(function(c){
+            return '<div class="tile" style="padding:11px"><div class="body" style="padding:0">'
+              + '<div class="ttl">'+esc(c.title||c.slug)+"</div>"
+              + '<div class="who">'+esc(c.source||"")+" · "+(c.indexed||0).toLocaleString()+" pictures</div>"
+              + (c.description ? '<div class="dim" style="margin-top:5px">'
+                                 + esc(String(c.description).slice(0,150))
+                                 + (String(c.description).length>150?"…":"") + "</div>" : "")
+              + '<div class="actions" style="margin-top:8px">'
+              +   (c.url ? '<a class="dim" href="'+esc(c.url)+'" target="_blank" rel="noopener">source ↗</a>' : '<span></span>')
+              +   '<button class="btn mini" data-cid="'+c.id+'">Browse</button>'
+              + "</div></div></div>";
+          }).join("") || '<div class="dim">No collections match.</div>';
+        })
+        .catch(function(e){ $("#colmeta").textContent = "Error: "+e.message; });
+    }
+
+    // Browsing a collection is the SAME search grid narrowed, not a second results view — one
+    // place where Fetch, warming and paging already work.
+    $("#collist").addEventListener("click", function(ev){
+      var b = ev.target.closest && ev.target.closest("[data-cid]");
+      if (!b) return;
+      var sel = $("#collection"), cid = b.dataset.cid;
+      // The dropdown deliberately lists only the four whole-source collections — 577 curated
+      // sets with a median size of 12 is not a picker. So a curated one is INSERTED when
+      // chosen; without this, setting .value on a missing option silently does nothing and the
+      // grid would show the unfiltered library while claiming to show a collection.
+      if (!Array.prototype.some.call(sel.options, function(o){ return o.value === cid; })) {
+        var t = b.closest(".tile").querySelector(".ttl").textContent;
+        sel.insertAdjacentHTML("beforeend", '<option value="'+esc(cid)+'">'+esc(t)+"</option>");
+      }
+      sel.value = cid;
+      $("#q").value = "";
+      clearFacets();
+      showTab("search");
+    });
 
     // ---- search ------------------------------------------------------------------
     function tile(r){
@@ -432,8 +510,12 @@
             + "<td class='dim'>"+esc((c.last_crawled||"never").replace("T"," ").slice(0,16))+"</td></tr>";
         }).join("") : "<tr><td colspan='6' class='dim'>Nothing harvested yet.</td></tr>";
 
-        var opts = '<option value="">All collections</option>' + cols.map(function(c){
-          return '<option value="'+c.id+'">'+esc(c.title)+"</option>"; }).join("");
+        // WHOLE-SOURCE collections only. 577 curated sets with a median size of 12 would make
+        // this dropdown a wall of names nobody can scan; the Collections tab is how you reach
+        // those, and picking one there inserts its option here.
+        var opts = '<option value="">All collections</option>'
+          + cols.filter(function(c){ return !c.curated; }).map(function(c){
+              return '<option value="'+c.id+'">'+esc(c.title)+"</option>"; }).join("");
         ["#collection", "#capcoll"].forEach(function(sel){
           var el = $(sel), keep = el.value; el.innerHTML = opts; el.value = keep;
         });
