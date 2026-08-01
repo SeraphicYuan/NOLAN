@@ -1107,10 +1107,15 @@ def _pdia_title_from_slug(slug: str) -> str:
 
 
 def _pdia_text(s: str) -> str:
-    s = re.sub(r"<[^>]+>", " ", s or "")
-    for a, b in (("&amp;", "&"), ("&#39;", "'"), ("&quot;", '"'), ("&nbsp;", " ")):
-        s = s.replace(a, b)
-    return re.sub(r"\s+", " ", s).strip()
+    """Tags out, entities decoded, whitespace collapsed.
+
+    `html.unescape` rather than a hand-written table of four entities: the first version missed
+    `&#x27;` and shipped "Library of Congress&#x27; Photochrom Prints" into a collection
+    description. A table of the entities you happened to think of is a table that is wrong the
+    first time a page uses hex escaping.
+    """
+    import html as _html
+    return re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", s or ""))).strip()
 
 
 # The rights vocabulary, keyed by the ANCHOR FRAGMENT rather than the display text. PDIA links
@@ -1156,6 +1161,11 @@ _PDIA_DIGITAL = {
     # A COPYLEFT OBLIGATION. Usable, but it propagates to whatever it is used in — never CC0.
     "share-alike": ("share-alike required on the digital copy", False),
     "unclear": ("digital rights UNCLEAR", False),
+    # 873 rows (~8%). "The source states there is no known copyright" is an absence of
+    # knowledge, not a waiver — nobody has asserted anything, which is a weaker position than
+    # `no-additional-rights` and must not be read as CC0.
+    "no-known-copyright": ("no KNOWN copyright — not an assertion that rights were waived",
+                           False),
 }
 
 
@@ -1215,10 +1225,21 @@ def pdia_detail(uuid: str, *, client=None) -> Dict[str, Any]:
         out[key] = _pdia_text(m.group(1)) or None if m else None
     for key, box in (("underlying_rights", "Underlying Rights"),
                      ("digital_rights", "Digital Rights")):
+        # The fragment is the canonical code, but it is SOMETIMES EMPTY: 873 of 11,197 rows link
+        # to `/rights-labelling-on-our-site#` with the label only in the anchor text ("No Known
+        # Copyright"). Requiring one character there returned None for all of them, which the
+        # pass then reported as unreadable — correctly refusing to relabel, but for a state the
+        # site does describe. So fall back to slugifying the display text.
         m = re.search(
             rf"<h3[^>]*>\s*{box}\s*</h3>.*?"
-            rf'href="/rights-labelling-on-our-site#([a-z0-9-]+)"', html, re.S)
-        out[key] = m.group(1) if m else None
+            rf'href="/rights-labelling-on-our-site#([a-z0-9-]*)"[^>]*>(.*?)</a>', html, re.S)
+        if not m:
+            out[key] = None
+            continue
+        code = m.group(1)
+        if not code:
+            code = re.sub(r"[^a-z0-9]+", "-", _pdia_text(m.group(2)).lower()).strip("-") or None
+        out[key] = code
     # /galleries/style/<slug>, /galleries/themes/<slug>, /galleries/tags/<slug> — these are also
     # live gallery endpoints, so a single theme can be crawled on its own if it is ever wanted.
     for key, path in (("styles", "style"), ("themes", "themes"), ("tags", "tags")):
@@ -1262,6 +1283,56 @@ def pdia_details(uuids: "List[str]", *, workers: int = 4,
                 out[got["uuid"]] = got
             if progress:
                 progress(len(out))
+    return out
+
+
+PDR_SITE = "https://publicdomainreview.org"
+# NOTE: there is deliberately no "first paragraph of the essay" fallback here. A first version
+# took one, and blacklisting page furniture turned out to be a losing game with an endless
+# supply: the nav, then the donation appeal ("kept alive by reader donations"), then the footer's
+# company registration ("registered in the UK as a Community Interest Company (#11386184)"). Two
+# of the first six collections were described as one of those, and the counts said 6 of 6
+# succeeded — it was only visible by reading the output.
+#
+# `<meta name="description">` is written by the editors, is one sentence, and is either there or
+# not. When it is absent the collection keeps NO description and the pass reports it, because an
+# absent description is honest and a fabricated one is a caption nobody wrote.
+
+
+def pdr_collection_page(url: str, *, client=None) -> Dict[str, Optional[str]]:
+    """Title and blurb for a Public Domain Review collection — the ESSAY behind a curated set.
+
+    The collections live on the sister site, not on PDIA, which is why they cost a second host.
+    Each is a ~490 KB Gatsby page carrying a full essay, and the whole essay is the wrong thing
+    to store: it would bloat every collection row and bury the one sentence that actually
+    describes the set. `<meta name="description">` is that sentence, written by the editors —
+
+        "A bone-chilling book of woodblock prints, depicting a parade of demons, by Kawanabe
+         Kyōsai, the bad boy of 19th-century Japanese art."
+
+    — so it leads, and the essay's opening paragraph follows it for context. Both are capped.
+    """
+    import httpx
+
+    owns = client is None
+    c = client or httpx.Client(headers={"User-Agent": _UA}, timeout=45.0,
+                               follow_redirects=True)
+    try:
+        html = c.get(url).text
+    finally:
+        if owns:
+            c.close()
+
+    out: Dict[str, Optional[str]] = {"title": None, "description": None}
+    m = re.search(r'<meta[^>]+(?:name="description"|property="og:description")[^>]+'
+                  r'content="([^"]*)"', html)
+    blurb = _pdia_text(m.group(1)) if m else ""
+    m = re.search(r'<meta[^>]+property="og:title"[^>]+content="([^"]*)"', html) \
+        or re.search(r"<title[^>]*>(.*?)</title>", html, re.S)
+    if m:
+        out["title"] = _pdia_text(m.group(1)).split(" – The Public Domain Review")[0] or None
+
+    out["description"] = blurb[:1200] or None
     return out
 
 

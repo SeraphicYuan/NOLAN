@@ -722,6 +722,75 @@ class ImageLibrary:
         if progress:
             progress(out)
 
+    def enrich_pdia_collections(self, *, limit: int = 600, workers: int = 4,
+                                progress=None) -> dict:
+        """Give each curated PDIA collection its real title and the editors' blurb.
+
+        TWO REQUESTS PER COLLECTION, NOT PER IMAGE. The Public Domain Review URL appears only on
+        an image's own page, so this samples ONE member per collection to learn it, then fetches
+        the essay once. For 577 collections that is ~1,154 requests instead of re-walking 11,197
+        — and it is the dedup you get for free by keying on the collection rather than the row.
+
+        Idempotent: a collection that already has a description is skipped, so this can be run in
+        slices and re-run after a new harvest without re-fetching what it already knows.
+        `upsert_collection` is rights-sticky, so nothing here can disturb the CC0 assertion.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        from nolan.imagelib import Collection
+        from nolan.imagelib.harvest import pdia_detail, pdr_collection_page
+
+        todo = [c for c in self.catalog.list_collections()
+                if c.source == "pdia" and c.upstream_count is None and not c.description][:limit]
+        out = {"attempted": len(todo), "described": 0, "no_pdr_link": 0, "errors": 0,
+               "reasons": []}
+        if not todo:
+            return out
+
+        counts = self.catalog.collection_counts(held=0)
+
+        def _one(c):
+            try:
+                # one member is enough to learn where the collection lives
+                rows = self.catalog.list(status="active", held=0, limit=1, collection_id=c.id)
+                if not rows:
+                    return c, None, "no members"
+                uuid = (rows[0].source_ref or "").split(":", 1)[-1]
+                det = pdia_detail(uuid)
+                url = det.get("collection_url")
+                if not url:
+                    return c, None, "no PDR link on the member page"
+                page = pdr_collection_page(url)
+                return c, {"url": url, "title": det.get("collection_title") or page.get("title"),
+                           "description": page.get("description")}, None
+            except Exception as e:
+                return c, None, f"{type(e).__name__}: {e}"
+
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+            for c, got, err in pool.map(_one, todo):
+                if err or not got:
+                    if err == "no PDR link on the member page":
+                        out["no_pdr_link"] += 1
+                    else:
+                        out["errors"] += 1
+                    if len(out["reasons"]) < 12:
+                        out["reasons"].append(f"{c.slug}: {err or 'nothing returned'}")
+                    continue
+                if not got.get("description"):
+                    out["no_pdr_link"] += 1
+                    continue
+                self.upsert_collection(Collection(
+                    slug=c.slug, source="pdia",
+                    # The harvest guessed a title from the slug; the real one is better and this
+                    # is where it lands.
+                    title=got.get("title") or c.title,
+                    description=got["description"], url=got["url"]))
+                out["described"] += 1
+                if progress:
+                    progress(out)
+        out["collections_total"] = len(counts)
+        return out
+
     def backfill_movements(self, *, collection_id: Optional[int] = None) -> dict:
         """Copy `artists.movement` down onto every row that artist made.
 
