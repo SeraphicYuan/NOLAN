@@ -1,0 +1,628 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "fourier-epicycle-chain",
+  "title": "Fourier epicycles as dependency-driven motion",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "Explain a Fourier sum as a connected chain of rotating vectors whose endpoint traces a curve.",
+    "audience": "students who know sine and cosine",
+    "script_policy": "locked",
+    "target_duration_seconds": 10.7
+  },
+  "math_ledger": {
+    "claims": [],
+    "formulas": [
+      {
+        "id": "formula.fourier-sum",
+        "latex_parts": [
+          "z(t)",
+          "=",
+          "\\sum_{n\\in\\{1,3,5\\}} a_n e^{int}"
+        ],
+        "plain_language": "Three odd harmonics form one endpoint path.",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_fourier.wav",
+    "utterances": [
+      {
+        "id": "f1",
+        "text": "Start with one rotating vector then attach faster smaller vectors and watch their shared endpoint draw a richer curve",
+        "words": [
+          {
+            "word": "Start",
+            "start_seconds": 0.0,
+            "end_seconds": 0.34
+          },
+          {
+            "word": "with",
+            "start_seconds": 0.41,
+            "end_seconds": 0.75
+          },
+          {
+            "word": "one",
+            "start_seconds": 0.82,
+            "end_seconds": 1.16
+          },
+          {
+            "word": "rotating",
+            "start_seconds": 1.23,
+            "end_seconds": 1.57
+          },
+          {
+            "word": "vector",
+            "start_seconds": 1.64,
+            "end_seconds": 1.98
+          },
+          {
+            "word": "then",
+            "start_seconds": 2.05,
+            "end_seconds": 2.39
+          },
+          {
+            "word": "attach",
+            "start_seconds": 2.46,
+            "end_seconds": 2.8
+          },
+          {
+            "word": "faster",
+            "start_seconds": 2.87,
+            "end_seconds": 3.21
+          },
+          {
+            "word": "smaller",
+            "start_seconds": 3.28,
+            "end_seconds": 3.62
+          },
+          {
+            "word": "vectors",
+            "start_seconds": 3.69,
+            "end_seconds": 4.03
+          },
+          {
+            "word": "and",
+            "start_seconds": 4.1,
+            "end_seconds": 4.44
+          },
+          {
+            "word": "watch",
+            "start_seconds": 4.51,
+            "end_seconds": 4.85
+          },
+          {
+            "word": "their",
+            "start_seconds": 4.92,
+            "end_seconds": 5.26
+          },
+          {
+            "word": "shared",
+            "start_seconds": 5.33,
+            "end_seconds": 5.67
+          },
+          {
+            "word": "endpoint",
+            "start_seconds": 5.74,
+            "end_seconds": 6.08
+          },
+          {
+            "word": "draw",
+            "start_seconds": 6.15,
+            "end_seconds": 6.49
+          },
+          {
+            "word": "a",
+            "start_seconds": 6.56,
+            "end_seconds": 6.9
+          },
+          {
+            "word": "richer",
+            "start_seconds": 6.97,
+            "end_seconds": 7.31
+          },
+          {
+            "word": "curve",
+            "start_seconds": 7.38,
+            "end_seconds": 7.72
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "fourier-night",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#0d1117",
+        "foreground": "#f4f0e6",
+        "muted": "#77838e"
+      },
+      "semantic_colors": {
+        "primary": "#4aa7a1",
+        "changing": "#f0765b",
+        "fixed": "#72a1db",
+        "secondary": "#e0b65c",
+        "positive": "#78c879"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 52,
+        "body_size": 27,
+        "math_size": 48
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "epicycles",
+      "title": "Build the chain",
+      "learning_objective": "See how dependent rotating vectors form one trace.",
+      "narration_utterance_id": "f1",
+      "duration_seconds": 10.7,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "trackers": [
+          {
+            "id": "phase",
+            "initial_value": 0.0
+          }
+        ],
+        "objects": [
+          {
+            "id": "title",
+            "position": [
+              0.0,
+              3.18,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "text",
+            "text": "Fourier motion is a chain of rotating vectors",
+            "role": "foreground",
+            "font_size": 42,
+            "font": null,
+            "max_width": 11.5,
+            "weight": "bold"
+          },
+          {
+            "id": "formula",
+            "position": [
+              3.8,
+              2.1,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "math_tex",
+            "formula_id": "formula.fourier-sum",
+            "latex_parts": [
+              "z(t)",
+              "=",
+              "\\sum_{n\\in\\{1,3,5\\}} a_n e^{int}"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "foreground"
+            ],
+            "font_size": 38,
+            "max_width": 5.4
+          },
+          {
+            "id": "p0",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "tracked_point",
+            "tracker": "phase",
+            "x": "-2.4",
+            "y": "-0.25",
+            "z": "0",
+            "role": "muted",
+            "radius": 0.06,
+            "assertion_time_values": [],
+            "maximum_absolute_coordinate": null
+          },
+          {
+            "id": "orbit1",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "orbit_circle",
+            "center_object": "p0",
+            "radius": 1.45,
+            "role": "muted",
+            "stroke_width": 2.0,
+            "opacity": 0.45
+          },
+          {
+            "id": "p1",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "tracked_point",
+            "tracker": "phase",
+            "x": "-2.4 + 1.45*cos(t)",
+            "y": "-0.25 + 1.45*sin(t)",
+            "z": "0",
+            "role": "changing",
+            "radius": 0.08,
+            "assertion_time_values": [
+              0.0,
+              3.141592653589793,
+              6.283185307179586
+            ],
+            "maximum_absolute_coordinate": 6.0
+          },
+          {
+            "id": "v1",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "connector",
+            "start_object": "p0",
+            "end_object": "p1",
+            "arrow": true,
+            "role": "changing",
+            "stroke_width": 5.0,
+            "buff": 0.0
+          },
+          {
+            "id": "orbit2",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "orbit_circle",
+            "center_object": "p1",
+            "radius": 0.72,
+            "role": "muted",
+            "stroke_width": 2.0,
+            "opacity": 0.4
+          },
+          {
+            "id": "p2",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "tracked_point",
+            "tracker": "phase",
+            "x": "-2.4 + 1.45*cos(t) + 0.72*cos(3*t)",
+            "y": "-0.25 + 1.45*sin(t) + 0.72*sin(3*t)",
+            "z": "0",
+            "role": "fixed",
+            "radius": 0.08,
+            "assertion_time_values": [
+              0.0,
+              3.141592653589793,
+              6.283185307179586
+            ],
+            "maximum_absolute_coordinate": 6.0
+          },
+          {
+            "id": "v2",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "connector",
+            "start_object": "p1",
+            "end_object": "p2",
+            "arrow": true,
+            "role": "fixed",
+            "stroke_width": 5.0,
+            "buff": 0.0
+          },
+          {
+            "id": "orbit3",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "orbit_circle",
+            "center_object": "p2",
+            "radius": 0.42,
+            "role": "muted",
+            "stroke_width": 2.0,
+            "opacity": 0.35
+          },
+          {
+            "id": "p3",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "tracked_point",
+            "tracker": "phase",
+            "x": "-2.4 + 1.45*cos(t) + 0.72*cos(3*t) + 0.42*cos(5*t)",
+            "y": "-0.25 + 1.45*sin(t) + 0.72*sin(3*t) + 0.42*sin(5*t)",
+            "z": "0",
+            "role": "positive",
+            "radius": 0.1,
+            "assertion_time_values": [
+              0.0,
+              3.141592653589793,
+              6.283185307179586
+            ],
+            "maximum_absolute_coordinate": 6.0
+          },
+          {
+            "id": "v3",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "connector",
+            "start_object": "p2",
+            "end_object": "p3",
+            "arrow": true,
+            "role": "secondary",
+            "stroke_width": 5.0,
+            "buff": 0.0
+          },
+          {
+            "id": "endpoint.trace",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "trace",
+            "target": "p3",
+            "role": "positive",
+            "stroke_width": 4.0,
+            "start_value": 0.0,
+            "end_value": 12.566370614359172,
+            "sample_count": 480
+          },
+          {
+            "id": "caption",
+            "position": [
+              0.0,
+              -3.25,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "text",
+            "text": "Every endpoint becomes the next vector's center.",
+            "role": "muted",
+            "font_size": 24,
+            "font": null,
+            "max_width": 11.0,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "headline",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "f1",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.5,
+                "type": "create",
+                "target": "title",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "first-vector",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "f1",
+              "word_index": 2,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "p0",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "orbit1",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "p1",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "v1",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "second-vector",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "f1",
+              "word_index": 5,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "orbit2",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "p2",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "v2",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "third-vector",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "f1",
+              "word_index": 8,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "orbit3",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "p3",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "v3",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "formula-and-caption",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "f1",
+              "word_index": 11,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.55,
+                "type": "create",
+                "target": "formula",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.55,
+                "type": "create",
+                "target": "caption",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "draw-curve",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "f1",
+              "word_index": 14,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 4.0,
+                "type": "create",
+                "target": "endpoint.trace",
+                "animation": "create"
+              },
+              {
+                "run_time": 4.0,
+                "type": "animate_tracker",
+                "tracker": "phase",
+                "end_value": 12.566370614359172,
+                "rate_func": "linear"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 1280,
+    "pixel_height": 720,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 31
+  }
+}

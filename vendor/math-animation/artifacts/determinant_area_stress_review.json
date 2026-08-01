@@ -1,0 +1,668 @@
+{
+  "schema_version": "math-animation.review.v2",
+  "status": "passed",
+  "clips": [
+    {
+      "beat_id": "area-triples",
+      "decoder": "passed",
+      "declared_duration_seconds": 7.084666666666666,
+      "media_duration_seconds": 7.041667,
+      "media": {
+        "duration_seconds": 7.041667,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 960,
+        "height": 540,
+        "frame_rate": 24.0,
+        "frame_count": 169,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "triple.show-unit",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "triple.show-matrix",
+          "desired_seconds": 0.9573873873873873,
+          "output_frame": 23,
+          "quantized_seconds": 0.9583333333333334,
+          "absolute_error_seconds": 0.0009459459459461028,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "triple.apply-matrix",
+          "desired_seconds": 3.255117117117117,
+          "output_frame": 78,
+          "quantized_seconds": 3.25,
+          "absolute_error_seconds": 0.005117117117117154,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "triple.explain-result",
+          "desired_seconds": 5.696454954954955,
+          "output_frame": 137,
+          "quantized_seconds": 5.708333333333333,
+          "absolute_error_seconds": 0.011878378378377796,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/area-triples/000-opening.png",
+          "metrics": {
+            "luma_stddev": 1.91381082097156,
+            "foreground_fraction": 0.007864583333333333
+          }
+        },
+        {
+          "id": "triple.show-unit.stable",
+          "time_seconds": 0.8500000000000001,
+          "kind": "stable",
+          "path": "review/frames/area-triples/001-triple.show-unit.stable.png",
+          "metrics": {
+            "luma_stddev": 10.19814453426626,
+            "foreground_fraction": 0.05267361111111111
+          }
+        },
+        {
+          "id": "triple.show-unit.motion-a",
+          "time_seconds": 0.2,
+          "kind": "motion-a",
+          "motion_group": "triple.show-unit",
+          "path": "review/frames/area-triples/002-triple.show-unit.motion-a.png",
+          "metrics": {
+            "luma_stddev": 2.1022375482088536,
+            "foreground_fraction": 0.010225694444444445
+          }
+        },
+        {
+          "id": "triple.show-unit.motion-b",
+          "time_seconds": 0.6000000000000001,
+          "kind": "motion-b",
+          "motion_group": "triple.show-unit",
+          "path": "review/frames/area-triples/003-triple.show-unit.motion-b.png",
+          "metrics": {
+            "luma_stddev": 9.634132482302089,
+            "foreground_fraction": 0.052395833333333336
+          }
+        },
+        {
+          "id": "triple.show-matrix.stable",
+          "time_seconds": 1.7573873873873873,
+          "kind": "stable",
+          "path": "review/frames/area-triples/004-triple.show-matrix.stable.png",
+          "metrics": {
+            "luma_stddev": 12.156775552188876,
+            "foreground_fraction": 0.058298611111111114
+          }
+        },
+        {
+          "id": "triple.show-matrix.motion-a",
+          "time_seconds": 1.1448873873873873,
+          "kind": "motion-a",
+          "motion_group": "triple.show-matrix",
+          "path": "review/frames/area-triples/005-triple.show-matrix.motion-a.png",
+          "metrics": {
+            "luma_stddev": 11.160131890775604,
+            "foreground_fraction": 0.05559027777777778
+          }
+        },
+        {
+          "id": "triple.show-matrix.motion-b",
+          "time_seconds": 1.5198873873873873,
+          "kind": "motion-b",
+          "motion_group": "triple.show-matrix",
+          "path": "review/frames/area-triples/006-triple.show-matrix.motion-b.png",
+          "metrics": {
+            "luma_stddev": 12.210915055113489,
+            "foreground_fraction": 0.058472222222222224
+          }
+        },
+        {
+          "id": "triple.apply-matrix.stable",
+          "time_seconds": 4.805117117117117,
+          "kind": "stable",
+          "path": "review/frames/area-triples/007-triple.apply-matrix.stable.png",
+          "metrics": {
+            "luma_stddev": 15.775736766710752,
+            "foreground_fraction": 0.12567708333333333
+          }
+        },
+        {
+          "id": "triple.apply-matrix.motion-a",
+          "time_seconds": 3.630117117117117,
+          "kind": "motion-a",
+          "motion_group": "triple.apply-matrix",
+          "path": "review/frames/area-triples/008-triple.apply-matrix.motion-a.png",
+          "metrics": {
+            "luma_stddev": 12.219882459299257,
+            "foreground_fraction": 0.06329861111111111
+          }
+        },
+        {
+          "id": "triple.apply-matrix.motion-b",
+          "time_seconds": 4.380117117117117,
+          "kind": "motion-b",
+          "motion_group": "triple.apply-matrix",
+          "path": "review/frames/area-triples/009-triple.apply-matrix.motion-b.png",
+          "metrics": {
+            "luma_stddev": 15.370545380953248,
+            "foreground_fraction": 0.11982638888888889
+          }
+        },
+        {
+          "id": "triple.explain-result.stable",
+          "time_seconds": 6.446454954954955,
+          "kind": "stable",
+          "path": "review/frames/area-triples/010-triple.explain-result.stable.png",
+          "metrics": {
+            "luma_stddev": 17.13950502250357,
+            "foreground_fraction": 0.130625
+          }
+        },
+        {
+          "id": "triple.explain-result.motion-a",
+          "time_seconds": 5.871454954954955,
+          "kind": "motion-a",
+          "motion_group": "triple.explain-result",
+          "path": "review/frames/area-triples/011-triple.explain-result.motion-a.png",
+          "metrics": {
+            "luma_stddev": 15.791143690813321,
+            "foreground_fraction": 0.12671875
+          }
+        },
+        {
+          "id": "triple.explain-result.motion-b",
+          "time_seconds": 6.221454954954956,
+          "kind": "motion-b",
+          "motion_group": "triple.explain-result",
+          "path": "review/frames/area-triples/012-triple.explain-result.motion-b.png",
+          "metrics": {
+            "luma_stddev": 17.09186178289889,
+            "foreground_fraction": 0.13072916666666667
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 6.958333666666667,
+          "expect_blank": false,
+          "path": "review/frames/area-triples/013-closing.png",
+          "metrics": {
+            "luma_stddev": 17.138906992809094,
+            "foreground_fraction": 0.130625
+          }
+        }
+      ],
+      "contact_sheet": "review/area-triples.contact-sheet.png"
+    },
+    {
+      "beat_id": "orientation-flips",
+      "decoder": "passed",
+      "declared_duration_seconds": 6.688791666666671,
+      "media_duration_seconds": 6.666667,
+      "media": {
+        "duration_seconds": 6.666667,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 960,
+        "height": 540,
+        "frame_rate": 24.0,
+        "frame_count": 160,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "flip.show-shape",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "flip.show-matrix",
+          "desired_seconds": 2.4459014303482602,
+          "output_frame": 59,
+          "quantized_seconds": 2.4583333333333335,
+          "absolute_error_seconds": 0.01243190298507324,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "flip.reflect",
+          "desired_seconds": 3.793643034825874,
+          "output_frame": 91,
+          "quantized_seconds": 3.7916666666666665,
+          "absolute_error_seconds": 0.001976368159207542,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "flip.explain-result",
+          "desired_seconds": 5.890129975124382,
+          "output_frame": 141,
+          "quantized_seconds": 5.875,
+          "absolute_error_seconds": 0.015129975124382078,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/orientation-flips/000-opening.png",
+          "metrics": {
+            "luma_stddev": 2.009553044603933,
+            "foreground_fraction": 0.007864583333333333
+          }
+        },
+        {
+          "id": "flip.show-shape.stable",
+          "time_seconds": 0.8500000000000001,
+          "kind": "stable",
+          "path": "review/frames/orientation-flips/001-flip.show-shape.stable.png",
+          "metrics": {
+            "luma_stddev": 10.833985839560931,
+            "foreground_fraction": 0.044131944444444446
+          }
+        },
+        {
+          "id": "flip.show-shape.motion-a",
+          "time_seconds": 0.2,
+          "kind": "motion-a",
+          "motion_group": "flip.show-shape",
+          "path": "review/frames/orientation-flips/002-flip.show-shape.motion-a.png",
+          "metrics": {
+            "luma_stddev": 2.2731639531429475,
+            "foreground_fraction": 0.010694444444444444
+          }
+        },
+        {
+          "id": "flip.show-shape.motion-b",
+          "time_seconds": 0.6000000000000001,
+          "kind": "motion-b",
+          "motion_group": "flip.show-shape",
+          "path": "review/frames/orientation-flips/003-flip.show-shape.motion-b.png",
+          "metrics": {
+            "luma_stddev": 10.269570561244569,
+            "foreground_fraction": 0.043958333333333335
+          }
+        },
+        {
+          "id": "flip.show-matrix.stable",
+          "time_seconds": 3.24590143034826,
+          "kind": "stable",
+          "path": "review/frames/orientation-flips/004-flip.show-matrix.stable.png",
+          "metrics": {
+            "luma_stddev": 12.806650914199066,
+            "foreground_fraction": 0.05017361111111111
+          }
+        },
+        {
+          "id": "flip.show-matrix.motion-a",
+          "time_seconds": 2.6334014303482602,
+          "kind": "motion-a",
+          "motion_group": "flip.show-matrix",
+          "path": "review/frames/orientation-flips/005-flip.show-matrix.motion-a.png",
+          "metrics": {
+            "luma_stddev": 11.70740265239651,
+            "foreground_fraction": 0.046996527777777776
+          }
+        },
+        {
+          "id": "flip.show-matrix.motion-b",
+          "time_seconds": 3.0084014303482602,
+          "kind": "motion-b",
+          "motion_group": "flip.show-matrix",
+          "path": "review/frames/orientation-flips/006-flip.show-matrix.motion-b.png",
+          "metrics": {
+            "luma_stddev": 12.72888609484915,
+            "foreground_fraction": 0.05029513888888889
+          }
+        },
+        {
+          "id": "flip.reflect.stable",
+          "time_seconds": 5.243643034825873,
+          "kind": "stable",
+          "path": "review/frames/orientation-flips/007-flip.reflect.stable.png",
+          "metrics": {
+            "luma_stddev": 11.965955645524224,
+            "foreground_fraction": 0.046059027777777775
+          }
+        },
+        {
+          "id": "flip.reflect.motion-a",
+          "time_seconds": 4.143643034825874,
+          "kind": "motion-a",
+          "motion_group": "flip.reflect",
+          "path": "review/frames/orientation-flips/008-flip.reflect.motion-a.png",
+          "metrics": {
+            "luma_stddev": 11.946753350917376,
+            "foreground_fraction": 0.04567708333333333
+          }
+        },
+        {
+          "id": "flip.reflect.motion-b",
+          "time_seconds": 4.843643034825874,
+          "kind": "motion-b",
+          "motion_group": "flip.reflect",
+          "path": "review/frames/orientation-flips/009-flip.reflect.motion-b.png",
+          "metrics": {
+            "luma_stddev": 11.467725410870377,
+            "foreground_fraction": 0.043020833333333335
+          }
+        },
+        {
+          "id": "flip.explain-result.stable",
+          "time_seconds": 6.583333666666667,
+          "kind": "stable",
+          "path": "review/frames/orientation-flips/010-flip.explain-result.stable.png",
+          "metrics": {
+            "luma_stddev": 14.947238122934456,
+            "foreground_fraction": 0.05706597222222222
+          }
+        },
+        {
+          "id": "flip.explain-result.motion-a",
+          "time_seconds": 6.065129975124382,
+          "kind": "motion-a",
+          "motion_group": "flip.explain-result",
+          "path": "review/frames/orientation-flips/011-flip.explain-result.motion-a.png",
+          "metrics": {
+            "luma_stddev": 12.00288242833812,
+            "foreground_fraction": 0.048003472222222225
+          }
+        },
+        {
+          "id": "flip.explain-result.motion-b",
+          "time_seconds": 6.4151299751243815,
+          "kind": "motion-b",
+          "motion_group": "flip.explain-result",
+          "path": "review/frames/orientation-flips/012-flip.explain-result.motion-b.png",
+          "metrics": {
+            "luma_stddev": 14.72671139629954,
+            "foreground_fraction": 0.0571875
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 6.583333666666667,
+          "expect_blank": false,
+          "path": "review/frames/orientation-flips/013-closing.png",
+          "metrics": {
+            "luma_stddev": 14.947238122934456,
+            "foreground_fraction": 0.05706597222222222
+          }
+        }
+      ],
+      "contact_sheet": "review/orientation-flips.contact-sheet.png"
+    },
+    {
+      "beat_id": "area-collapses",
+      "decoder": "passed",
+      "declared_duration_seconds": 8.198041666666672,
+      "media_duration_seconds": 8.166667,
+      "media": {
+        "duration_seconds": 8.166667,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 960,
+        "height": 540,
+        "frame_rate": 24.0,
+        "frame_count": 196,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "collapse.show-square",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "collapse.show-matrix",
+          "desired_seconds": 1.269374193548387,
+          "output_frame": 30,
+          "quantized_seconds": 1.25,
+          "absolute_error_seconds": 0.019374193548387098,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "collapse.flatten",
+          "desired_seconds": 2.856091935483871,
+          "output_frame": 69,
+          "quantized_seconds": 2.875,
+          "absolute_error_seconds": 0.01890806451612903,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "collapse.explain-result",
+          "desired_seconds": 4.760153225806459,
+          "output_frame": 114,
+          "quantized_seconds": 4.75,
+          "absolute_error_seconds": 0.010153225806458721,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "collapse.generalize",
+          "desired_seconds": 5.976636827956998,
+          "output_frame": 143,
+          "quantized_seconds": 5.958333333333333,
+          "absolute_error_seconds": 0.018303494623665095,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/area-collapses/000-opening.png",
+          "metrics": {
+            "luma_stddev": 1.9136191911475986,
+            "foreground_fraction": 0.007864583333333333
+          }
+        },
+        {
+          "id": "collapse.show-square.stable",
+          "time_seconds": 0.8500000000000001,
+          "kind": "stable",
+          "path": "review/frames/area-collapses/001-collapse.show-square.stable.png",
+          "metrics": {
+            "luma_stddev": 10.113297715799815,
+            "foreground_fraction": 0.050208333333333334
+          }
+        },
+        {
+          "id": "collapse.show-square.motion-a",
+          "time_seconds": 0.2,
+          "kind": "motion-a",
+          "motion_group": "collapse.show-square",
+          "path": "review/frames/area-collapses/002-collapse.show-square.motion-a.png",
+          "metrics": {
+            "luma_stddev": 2.099388712109948,
+            "foreground_fraction": 0.010225694444444445
+          }
+        },
+        {
+          "id": "collapse.show-square.motion-b",
+          "time_seconds": 0.6000000000000001,
+          "kind": "motion-b",
+          "motion_group": "collapse.show-square",
+          "path": "review/frames/area-collapses/003-collapse.show-square.motion-b.png",
+          "metrics": {
+            "luma_stddev": 9.544265940964289,
+            "foreground_fraction": 0.05001736111111111
+          }
+        },
+        {
+          "id": "collapse.show-matrix.stable",
+          "time_seconds": 2.069374193548387,
+          "kind": "stable",
+          "path": "review/frames/area-collapses/004-collapse.show-matrix.stable.png",
+          "metrics": {
+            "luma_stddev": 11.971749994671036,
+            "foreground_fraction": 0.05541666666666667
+          }
+        },
+        {
+          "id": "collapse.show-matrix.motion-a",
+          "time_seconds": 1.456874193548387,
+          "kind": "motion-a",
+          "motion_group": "collapse.show-matrix",
+          "path": "review/frames/area-collapses/005-collapse.show-matrix.motion-a.png",
+          "metrics": {
+            "luma_stddev": 10.736726568726615,
+            "foreground_fraction": 0.05154513888888889
+          }
+        },
+        {
+          "id": "collapse.show-matrix.motion-b",
+          "time_seconds": 1.831874193548387,
+          "kind": "motion-b",
+          "motion_group": "collapse.show-matrix",
+          "path": "review/frames/area-collapses/006-collapse.show-matrix.motion-b.png",
+          "metrics": {
+            "luma_stddev": 11.801864977211624,
+            "foreground_fraction": 0.05572916666666667
+          }
+        },
+        {
+          "id": "collapse.flatten.stable",
+          "time_seconds": 4.406091935483871,
+          "kind": "stable",
+          "path": "review/frames/area-collapses/007-collapse.flatten.stable.png",
+          "metrics": {
+            "luma_stddev": 8.477412463304875,
+            "foreground_fraction": 0.021302083333333333
+          }
+        },
+        {
+          "id": "collapse.flatten.motion-a",
+          "time_seconds": 3.231091935483871,
+          "kind": "motion-a",
+          "motion_group": "collapse.flatten",
+          "path": "review/frames/area-collapses/008-collapse.flatten.motion-a.png",
+          "metrics": {
+            "luma_stddev": 11.704120351023903,
+            "foreground_fraction": 0.054149305555555555
+          }
+        },
+        {
+          "id": "collapse.flatten.motion-b",
+          "time_seconds": 3.981091935483871,
+          "kind": "motion-b",
+          "motion_group": "collapse.flatten",
+          "path": "review/frames/area-collapses/009-collapse.flatten.motion-b.png",
+          "metrics": {
+            "luma_stddev": 10.601840817227844,
+            "foreground_fraction": 0.025694444444444443
+          }
+        },
+        {
+          "id": "collapse.explain-result.stable",
+          "time_seconds": 5.510153225806459,
+          "kind": "stable",
+          "path": "review/frames/area-collapses/010-collapse.explain-result.stable.png",
+          "metrics": {
+            "luma_stddev": 11.358938621941332,
+            "foreground_fraction": 0.029635416666666668
+          }
+        },
+        {
+          "id": "collapse.explain-result.motion-a",
+          "time_seconds": 4.9351532258064585,
+          "kind": "motion-a",
+          "motion_group": "collapse.explain-result",
+          "path": "review/frames/area-collapses/011-collapse.explain-result.motion-a.png",
+          "metrics": {
+            "luma_stddev": 8.512574536557219,
+            "foreground_fraction": 0.02296875
+          }
+        },
+        {
+          "id": "collapse.explain-result.motion-b",
+          "time_seconds": 5.285153225806459,
+          "kind": "motion-b",
+          "motion_group": "collapse.explain-result",
+          "path": "review/frames/area-collapses/012-collapse.explain-result.motion-b.png",
+          "metrics": {
+            "luma_stddev": 11.111061150383543,
+            "foreground_fraction": 0.029635416666666668
+          }
+        },
+        {
+          "id": "collapse.generalize.stable",
+          "time_seconds": 7.026636827956998,
+          "kind": "stable",
+          "path": "review/frames/area-collapses/013-collapse.generalize.stable.png",
+          "metrics": {
+            "luma_stddev": 11.92528715240838,
+            "foreground_fraction": 0.03276041666666667
+          }
+        },
+        {
+          "id": "collapse.generalize.motion-a",
+          "time_seconds": 6.226636827956998,
+          "kind": "motion-a",
+          "motion_group": "collapse.generalize",
+          "path": "review/frames/area-collapses/014-collapse.generalize.motion-a.png",
+          "metrics": {
+            "luma_stddev": 11.2253763788232,
+            "foreground_fraction": 0.03017361111111111
+          }
+        },
+        {
+          "id": "collapse.generalize.motion-b",
+          "time_seconds": 6.726636827956998,
+          "kind": "motion-b",
+          "motion_group": "collapse.generalize",
+          "path": "review/frames/area-collapses/015-collapse.generalize.motion-b.png",
+          "metrics": {
+            "luma_stddev": 11.82228292331631,
+            "foreground_fraction": 0.03274305555555555
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 8.083333666666666,
+          "expect_blank": false,
+          "path": "review/frames/area-collapses/016-closing.png",
+          "metrics": {
+            "luma_stddev": 11.920417506282519,
+            "foreground_fraction": 0.03276041666666667
+          }
+        }
+      ],
+      "contact_sheet": "review/area-collapses.contact-sheet.png"
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "diagnostics": [],
+  "final_video_decoder": {
+    "status": "passed"
+  },
+  "final_video_media": {
+    "duration_seconds": 22.875,
+    "video_codec": "h264",
+    "pixel_format": "yuv420p",
+    "width": 960,
+    "height": 540,
+    "frame_rate": 24.0,
+    "frame_count": 549,
+    "audio_streams": [
+      {
+        "codec": "aac",
+        "sample_rate": "24000",
+        "channels": 1
+      }
+    ]
+  }
+}

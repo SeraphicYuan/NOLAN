@@ -1,0 +1,199 @@
+{
+  "format": "1920x1080",
+  "frames": [
+    {
+      "id": "01-vertex",
+      "dur": 19.5,
+      "theme": "highlighter-editorial",
+      "scenes": [
+        {
+          "id": "s1",
+          "type": "math",
+          "anchor": "where it turns",
+          "data": {
+            "template": "function_plot",
+            "objective": "Show where the parabola turns",
+            "kicker": "PART ONE",
+            "caption": "the curve turns at its lowest point",
+            "formulas": [],
+            "params": {
+              "expression": "0.25*x**2 - 3",
+              "x_range": [
+                -5,
+                5,
+                1
+              ],
+              "y_range": [
+                -4,
+                4,
+                1
+              ],
+              "role": "changing"
+            },
+            "ground": {
+              "kind": "video",
+              "src": "assets/math/01-vertex.s1.45d282d7307f.mp4"
+            },
+            "_math": {
+              "engine": "math-animation",
+              "template": "function_plot",
+              "project_sha256": "45d282d7307f",
+              "beat_id": "01-vertex.s1",
+              "formulas": [],
+              "claims": {},
+              "cached": true
+            }
+          },
+          "start": 0.0,
+          "dur": 3.21
+        },
+        {
+          "id": "s2",
+          "type": "math",
+          "anchor": "standard form",
+          "data": {
+            "template": "equation_sequence",
+            "objective": "Derive the vertex form",
+            "kicker": "COMPLETING THE SQUARE",
+            "caption": "the vertex appears as a single number",
+            "formulas": [
+              {
+                "latex": "y=x^2-6x+5",
+                "says": "standard form"
+              },
+              {
+                "latex": "y=(x^2-6x+9)-9+5",
+                "says": "add and subtract nine"
+              },
+              {
+                "latex": "y=(x-3)^2-4",
+                "says": "vertex form"
+              }
+            ],
+            "params": {
+              "steps": [
+                0,
+                1,
+                2
+              ],
+              "at": [
+                "complete the square",
+                "the vertex appears"
+              ]
+            },
+            "ground": {
+              "kind": "video",
+              "src": "assets/math/01-vertex.s2.97790c4bf47d.mp4"
+            },
+            "_math": {
+              "engine": "math-animation",
+              "template": "equation_sequence",
+              "project_sha256": "97790c4bf47d",
+              "beat_id": "01-vertex.s2",
+              "formulas": [
+                "y=x^2-6x+5",
+                "y=(x^2-6x+9)-9+5",
+                "y=(x-3)^2-4"
+              ],
+              "claims": {
+                "c00": "assumed",
+                "c01": "assumed",
+                "c02": "assumed"
+              },
+              "cached": true
+            }
+          },
+          "start": 3.21,
+          "dur": 7.49
+        },
+        {
+          "id": "s3",
+          "type": "math",
+          "anchor": "side by side",
+          "data": {
+            "template": "concept_comparison",
+            "objective": "Same curve, two forms",
+            "formulas": [
+              {
+                "latex": "y=x^2-6x+5",
+                "says": "standard form"
+              },
+              {
+                "latex": "y=(x-3)^2-4",
+                "says": "vertex form"
+              }
+            ],
+            "params": {
+              "left": 0,
+              "right": 1,
+              "left_label": "standard",
+              "right_label": "vertex"
+            },
+            "ground": {
+              "kind": "video",
+              "src": "assets/math/01-vertex.s3.c83059d319aa.mp4"
+            },
+            "_math": {
+              "engine": "math-animation",
+              "template": "concept_comparison",
+              "project_sha256": "c83059d319aa",
+              "beat_id": "01-vertex.s3",
+              "formulas": [
+                "y=x^2-6x+5",
+                "y=(x-3)^2-4"
+              ],
+              "claims": {
+                "c00": "assumed",
+                "c01": "assumed"
+              },
+              "cached": true
+            }
+          },
+          "start": 10.7,
+          "dur": 4.49
+        },
+        {
+          "id": "s4",
+          "type": "math",
+          "anchor": "number line",
+          "data": {
+            "template": "number_line",
+            "objective": "Locate the roots",
+            "source": "roots of y = x^2 - 6x + 5",
+            "formulas": [],
+            "params": {
+              "values": [
+                1.0,
+                5.0
+              ],
+              "labels": [
+                "1",
+                "5"
+              ],
+              "x_range": [
+                -1,
+                7,
+                1
+              ]
+            },
+            "ground": {
+              "kind": "video",
+              "src": "assets/math/01-vertex.s4.2831cbfcadd6.mp4"
+            },
+            "_math": {
+              "engine": "math-animation",
+              "template": "number_line",
+              "project_sha256": "2831cbfcadd6",
+              "beat_id": "01-vertex.s4",
+              "formulas": [],
+              "claims": {},
+              "cached": true
+            }
+          },
+          "start": 15.19,
+          "dur": 4.31
+        }
+      ]
+    }
+  ]
+}

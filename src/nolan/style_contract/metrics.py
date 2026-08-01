@@ -29,6 +29,11 @@ BLOCK_FAMILY: Dict[str, str] = {
     # tier-2 extension blocks — were absent, so every scene using one silently counted as "text" and
     # dropped out of dataviz_share (test_block_family_covers_the_catalog has been red since they shipped)
     "stream": "dataviz", "bar_race": "dataviz", "data_table": "dataviz", "trajectory": "dataviz",
+    # math is `dataviz`, not `media`, even though it paints a full-frame video ground: the family
+    # names what KIND of block this is, and a Manim derivation is a constructed explanatory visual,
+    # not photography. Its video-ness is already reported separately by `scene_media`, so
+    # video_share/coverage count it without the family having to lie about what it is.
+    "math": "dataviz",
     "collage": "media", "gallery": "media", "carousel": "media", "linedraw": "media",
     "comparison": "media", "newshead": "media", "social_card": "media", "spotlight": "media",
     "detail_zoom": "media", "hero": "media", "annotate": "media", "layout": "media",
@@ -139,6 +144,11 @@ def scene_media(block: str, data: dict) -> str:
         return "image"
     if block == "social_card":
         return "image" if (data.get("avatar") or data.get("image")) else "none"
+    if block == "math":                           # a full-frame Manim clip, root-mounted as a video ground
+        # Not via _GROUND_BLOCKS: the math composer paints no ground of its own (see
+        # nolan/block_registry.py). Before resolution there is no `ground` yet — an unresolved math
+        # scene is honestly "none", because at that moment nothing is on screen.
+        return "video" if (data.get("ground") or {}).get("kind") == "video" else "none"
     if block == "document":                       # a document shows a real PAGE image (data.source) → grounded
         return "image" if data.get("source") else "none"
     if block == "raw":                            # bespoke HTML — best-effort substring scan
@@ -161,6 +171,10 @@ def scene_asset_srcs(block: str, data: dict) -> List[str]:
             out.append(g["src"])
     elif block == "newshead" and data.get("image"):
         out.append(data["image"])
+    elif block == "math":                         # the rendered Manim clip this scene grounds on
+        ground = data.get("ground") or {}
+        if ground.get("kind") == "video" and ground.get("src"):
+            out.append(ground["src"])
     elif block == "document":                     # the page image(s) the document grounds on
         src = data.get("source")
         for s in (src if isinstance(src, list) else [src]):

@@ -1,0 +1,40 @@
+{
+  "schema_version": "math-animation.expanded-planning.v1",
+  "planner_id": "heuristic-expanded-v1",
+  "request_sha256": "082da3e2a2d9bc046772c4e31c0eb55b4ae2f2ea77accfbc5851cc29727797c3",
+  "project_sha256": "1a957174ae5a7daec1a840ae0f70573ca9d8815f0b2dfa0d7266c38a7e9df782",
+  "beats": [
+    {
+      "beat_id": "beat-001",
+      "source_text": "Derive the vertex form step by step: $y=x^2-6x+5$, then $y=(x^2-6x+9)-9+5$, and finally $y=(x-3)^2-4$.",
+      "selected_template": "equation_sequence",
+      "teaching_strategy": "procedural",
+      "learning_goal": "Derive the vertex form step b...",
+      "rationale": "Three or more authored formulas and sequential language match progressive equation disclosure.",
+      "confidence": 0.95,
+      "formula_ids": [
+        "formula.001.01",
+        "formula.001.02",
+        "formula.001.03"
+      ]
+    },
+    {
+      "beat_id": "beat-002",
+      "source_text": "Compare standard form $y=x^2-6x+5$ with vertex form $y=(x-3)^2-4$; they describe the same parabola, but vertex form reveals the turning point.",
+      "selected_template": "concept_comparison",
+      "teaching_strategy": "comparison",
+      "learning_goal": "Compare standard form equatio...",
+      "rationale": "Two authored formulas and comparison language match the responsive comparison template.",
+      "confidence": 0.94,
+      "formula_ids": [
+        "formula.002.01",
+        "formula.002.02"
+      ]
+    }
+  ],
+  "template_counts": {
+    "concept_comparison": 1,
+    "equation_sequence": 1
+  },
+  "custom_python_requests": []
+}

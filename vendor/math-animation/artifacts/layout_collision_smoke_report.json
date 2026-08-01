@@ -1,0 +1,75 @@
+{
+  "schema_version": "math-animation.layout-collision-smoke.v1",
+  "status": "passed",
+  "run_dir": "/tmp/math-animation-layout-collision-final-20260731/20260731-023713-layout-collision-smoke",
+  "caught_colliding_beat": true,
+  "separated_false_positive": false,
+  "collision_diagnostics": [
+    {
+      "schema_version": "math-animation.diagnostic.v1",
+      "id": "diag-ebc9492c8215",
+      "code": "text_overflow",
+      "severity": "warning",
+      "stage": "review",
+      "message": "rendered probe colliding/colliding.show.stable shows a likely visual collision between 'colliding.left' and 'colliding.right'",
+      "beat_id": "colliding",
+      "object_id": "colliding.left",
+      "cue_id": "colliding.show.stable",
+      "evidence": {
+        "kind": "visual_collision",
+        "object_ids": [
+          "colliding.left",
+          "colliding.right"
+        ],
+        "frame_path": "review/frames/colliding/001-colliding.show.stable.png",
+        "collision_type": "insufficient_horizontal_separation",
+        "overlap_ratio": 0.057007988380537354,
+        "horizontal_gap": 0.3488000000000002,
+        "vertical_gap": 0.0,
+        "intersection": [
+          0.052000000000000046,
+          -0.42500000000000004,
+          -0.2968000000000002,
+          0.42500000000000004
+        ],
+        "first_box": {
+          "object_id": "colliding.left",
+          "bounds": [
+            -4.7032,
+            -0.42500000000000004,
+            -0.2968000000000002,
+            0.42500000000000004
+          ],
+          "center": [
+            -2.5,
+            0.0
+          ],
+          "width": 4.4064,
+          "height": 0.8500000000000001
+        },
+        "second_box": {
+          "object_id": "colliding.right",
+          "bounds": [
+            0.052000000000000046,
+            -0.42500000000000004,
+            4.948,
+            0.42500000000000004
+          ],
+          "center": [
+            2.5,
+            0.0
+          ],
+          "width": 4.896000000000001,
+          "height": 0.8500000000000001
+        },
+        "intersection_foreground_fraction": 0.0
+      },
+      "suggested_repairs": [
+        "reposition_object",
+        "set_max_width"
+      ],
+      "repairable": false
+    }
+  ],
+  "review_status": "passed_with_warnings"
+}

@@ -200,6 +200,20 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                 print(f"▶ documents\n  resolved {ndoc} document/split_view scene(s) → page source + region rects")
         except Exception as e:
             raise RuntimeError(f"hf-finish: document resolution failed — {type(e).__name__}: {e}") from e
+        # MATH binding: compile every `math` scene's typed template + formula ledger into a Manim clip
+        # (in the essay's own theme, at the scene's exact narration window) and stamp it as that scene's
+        # video ground — BEFORE recompose, alongside the dataset and document sources. Carries its own
+        # HARD gate: the whole set is built and provenance-checked before ANY of them renders, so a
+        # formula that traces to nothing costs milliseconds instead of minutes of Manim.
+        try:
+            from .math_source import resolve_math_scenes
+            nmath = resolve_math_scenes(comp)
+            if nmath:
+                print(f"▶ math\n  resolved {nmath} math scene(s) → Manim clips mounted as video grounds")
+        except RuntimeError:
+            raise                                          # the math gate / a render failure: already loud
+        except Exception as e:
+            raise RuntimeError(f"hf-finish: math resolution failed — {type(e).__name__}: {e}") from e
     # 2b · advisory (⑨): the reliever exists but wasn't in the loop — surface long static holds so the
     #      author can `nolan.hyperframes.relieve` them (or accept), instead of finding them post-render.
     if not dry_run:

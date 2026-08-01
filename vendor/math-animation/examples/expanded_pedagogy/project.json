@@ -1,0 +1,661 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "expanded-pedagogy-benchmark",
+  "title": "Expanded planning and pedagogy benchmark",
+  "request": {
+    "source_kind": "script",
+    "content": "Derive the solution step by step: $3x+5=20$, then $3x=15$, and finally $x=5$.\n\nCompare $y=x^2$ versus $y=2x^2$ and explain the difference.",
+    "audience": "introductory algebra learners",
+    "script_policy": "review",
+    "target_duration_seconds": 10.954999999999998
+  },
+  "math_ledger": {
+    "claims": [
+      {
+        "id": "claim.001.01",
+        "statement": "The authored script asserts $3x+5=20$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 1"
+        ]
+      },
+      {
+        "id": "claim.001.02",
+        "statement": "The authored script asserts $3x=15$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 1"
+        ]
+      },
+      {
+        "id": "claim.001.03",
+        "statement": "The authored script asserts $x=5$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 1"
+        ]
+      },
+      {
+        "id": "claim.002.01",
+        "statement": "The authored script asserts $y=x^2$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 2"
+        ]
+      },
+      {
+        "id": "claim.002.02",
+        "statement": "The authored script asserts $y=2x^2$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 2"
+        ]
+      }
+    ],
+    "formulas": [
+      {
+        "id": "formula.001.01",
+        "latex_parts": [
+          "3x+5=20"
+        ],
+        "plain_language": "Derive the solution step by s...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.001.02",
+        "latex_parts": [
+          "3x=15"
+        ],
+        "plain_language": "Derive the solution step by s...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.001.03",
+        "latex_parts": [
+          "x=5"
+        ],
+        "plain_language": "Derive the solution step by s...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.002.01",
+        "latex_parts": [
+          "y=x^2"
+        ],
+        "plain_language": "Compare equation versus equat...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.002.02",
+        "latex_parts": [
+          "y=2x^2"
+        ],
+        "plain_language": "Compare equation versus equat...",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_expanded_pedagogy.wav",
+    "utterances": [
+      {
+        "id": "derive.words",
+        "text": "Derive the solution step by step. Start with three x plus five equals twenty, then isolate three x, and finally obtain x equals five.",
+        "words": [
+          {
+            "word": "Derive",
+            "start_seconds": 0.0,
+            "end_seconds": 0.19
+          },
+          {
+            "word": "the",
+            "start_seconds": 0.225,
+            "end_seconds": 0.415
+          },
+          {
+            "word": "solution",
+            "start_seconds": 0.45,
+            "end_seconds": 0.64
+          },
+          {
+            "word": "step",
+            "start_seconds": 0.675,
+            "end_seconds": 0.865
+          },
+          {
+            "word": "by",
+            "start_seconds": 0.9,
+            "end_seconds": 1.09
+          },
+          {
+            "word": "step.",
+            "start_seconds": 1.125,
+            "end_seconds": 1.315
+          },
+          {
+            "word": "Start",
+            "start_seconds": 1.35,
+            "end_seconds": 1.54
+          },
+          {
+            "word": "with",
+            "start_seconds": 1.575,
+            "end_seconds": 1.765
+          },
+          {
+            "word": "three",
+            "start_seconds": 1.8,
+            "end_seconds": 1.99
+          },
+          {
+            "word": "x",
+            "start_seconds": 2.025,
+            "end_seconds": 2.215
+          },
+          {
+            "word": "plus",
+            "start_seconds": 2.25,
+            "end_seconds": 2.44
+          },
+          {
+            "word": "five",
+            "start_seconds": 2.475,
+            "end_seconds": 2.665
+          },
+          {
+            "word": "equals",
+            "start_seconds": 2.7,
+            "end_seconds": 2.89
+          },
+          {
+            "word": "twenty,",
+            "start_seconds": 2.925,
+            "end_seconds": 3.115
+          },
+          {
+            "word": "then",
+            "start_seconds": 3.15,
+            "end_seconds": 3.34
+          },
+          {
+            "word": "isolate",
+            "start_seconds": 3.375,
+            "end_seconds": 3.565
+          },
+          {
+            "word": "three",
+            "start_seconds": 3.6,
+            "end_seconds": 3.79
+          },
+          {
+            "word": "x,",
+            "start_seconds": 3.825,
+            "end_seconds": 4.015
+          },
+          {
+            "word": "and",
+            "start_seconds": 4.05,
+            "end_seconds": 4.24
+          },
+          {
+            "word": "finally",
+            "start_seconds": 4.275,
+            "end_seconds": 4.465
+          },
+          {
+            "word": "obtain",
+            "start_seconds": 4.5,
+            "end_seconds": 4.69
+          },
+          {
+            "word": "x",
+            "start_seconds": 4.725,
+            "end_seconds": 4.915
+          },
+          {
+            "word": "equals",
+            "start_seconds": 4.95,
+            "end_seconds": 5.14
+          },
+          {
+            "word": "five.",
+            "start_seconds": 5.175,
+            "end_seconds": 5.365
+          }
+        ]
+      },
+      {
+        "id": "compare.words",
+        "text": "Compare y equals x squared versus y equals two x squared. The second parabola is vertically stretched, so it grows faster away from the origin.",
+        "words": [
+          {
+            "word": "Compare",
+            "start_seconds": 5.815,
+            "end_seconds": 6.005
+          },
+          {
+            "word": "y",
+            "start_seconds": 6.04,
+            "end_seconds": 6.23
+          },
+          {
+            "word": "equals",
+            "start_seconds": 6.265,
+            "end_seconds": 6.455
+          },
+          {
+            "word": "x",
+            "start_seconds": 6.49,
+            "end_seconds": 6.68
+          },
+          {
+            "word": "squared",
+            "start_seconds": 6.715,
+            "end_seconds": 6.905
+          },
+          {
+            "word": "versus",
+            "start_seconds": 6.94,
+            "end_seconds": 7.13
+          },
+          {
+            "word": "y",
+            "start_seconds": 7.165,
+            "end_seconds": 7.355
+          },
+          {
+            "word": "equals",
+            "start_seconds": 7.39,
+            "end_seconds": 7.58
+          },
+          {
+            "word": "two",
+            "start_seconds": 7.615,
+            "end_seconds": 7.805
+          },
+          {
+            "word": "x",
+            "start_seconds": 7.84,
+            "end_seconds": 8.03
+          },
+          {
+            "word": "squared.",
+            "start_seconds": 8.065,
+            "end_seconds": 8.255
+          },
+          {
+            "word": "The",
+            "start_seconds": 8.29,
+            "end_seconds": 8.48
+          },
+          {
+            "word": "second",
+            "start_seconds": 8.515,
+            "end_seconds": 8.705
+          },
+          {
+            "word": "parabola",
+            "start_seconds": 8.74,
+            "end_seconds": 8.93
+          },
+          {
+            "word": "is",
+            "start_seconds": 8.965,
+            "end_seconds": 9.155
+          },
+          {
+            "word": "vertically",
+            "start_seconds": 9.19,
+            "end_seconds": 9.38
+          },
+          {
+            "word": "stretched,",
+            "start_seconds": 9.415,
+            "end_seconds": 9.605
+          },
+          {
+            "word": "so",
+            "start_seconds": 9.64,
+            "end_seconds": 9.83
+          },
+          {
+            "word": "it",
+            "start_seconds": 9.865,
+            "end_seconds": 10.055
+          },
+          {
+            "word": "grows",
+            "start_seconds": 10.09,
+            "end_seconds": 10.28
+          },
+          {
+            "word": "faster",
+            "start_seconds": 10.315,
+            "end_seconds": 10.505
+          },
+          {
+            "word": "away",
+            "start_seconds": 10.54,
+            "end_seconds": 10.73
+          },
+          {
+            "word": "from",
+            "start_seconds": 10.765,
+            "end_seconds": 10.955
+          },
+          {
+            "word": "the",
+            "start_seconds": 10.99,
+            "end_seconds": 11.18
+          },
+          {
+            "word": "origin.",
+            "start_seconds": 11.215,
+            "end_seconds": 11.405
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "expanded-pedagogy",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#0b1220",
+        "foreground": "#f5f1e8",
+        "muted": "#8f9aaa"
+      },
+      "semantic_colors": {
+        "primary": "#55c2b5",
+        "changing": "#f08a66",
+        "fixed": "#72a7e8"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 40,
+        "body_size": 23,
+        "math_size": 46
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "beat-001",
+      "title": "Derive the solution step by s...",
+      "learning_objective": "Derive the solution step by s...",
+      "narration_utterance_id": "derive.words",
+      "duration_seconds": 5.365,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "beat-001.sequence.formula",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "math_tex",
+            "formula_id": "formula.001.01",
+            "latex_parts": [
+              "3x+5=20"
+            ],
+            "part_roles": [],
+            "font_size": 76,
+            "max_width": 8.5
+          }
+        ],
+        "cues": [
+          {
+            "id": "beat-001.sequence.show",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "beat-001.sequence.formula",
+                "animation": "write"
+              }
+            ]
+          },
+          {
+            "id": "beat-001.sequence.step-01",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "transform_math",
+                "target": "beat-001.sequence.formula",
+                "formula_id": "formula.001.02",
+                "latex_parts": [
+                  "3x=15"
+                ],
+                "part_roles": [],
+                "rate_func": "smooth"
+              }
+            ]
+          },
+          {
+            "id": "beat-001.sequence.step-02",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "transform_math",
+                "target": "beat-001.sequence.formula",
+                "formula_id": "formula.001.03",
+                "latex_parts": [
+                  "x=5"
+                ],
+                "part_roles": [],
+                "rate_func": "smooth"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "beat-002",
+      "title": "Compare equation versus equat...",
+      "learning_objective": "Compare equation versus equat...",
+      "narration_utterance_id": "compare.words",
+      "duration_seconds": 5.589999999999999,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "beat-002.comparison.left",
+            "position": [
+              -3.4,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "portrait": {
+                "position": [
+                  0.0,
+                  1.2,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "math_tex",
+            "formula_id": "formula.002.01",
+            "latex_parts": [
+              "y=x^2"
+            ],
+            "part_roles": [],
+            "font_size": 68,
+            "max_width": 5.0
+          },
+          {
+            "id": "beat-002.comparison.right",
+            "position": [
+              3.4,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "portrait": {
+                "position": [
+                  0.0,
+                  -1.2,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "math_tex",
+            "formula_id": "formula.002.02",
+            "latex_parts": [
+              "y=2x^2"
+            ],
+            "part_roles": [],
+            "font_size": 68,
+            "max_width": 5.0
+          },
+          {
+            "id": "beat-002.comparison.left.label",
+            "position": [
+              -3.4,
+              -0.9,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.55,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "text",
+            "text": "First form",
+            "role": "foreground",
+            "font_size": 28,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          },
+          {
+            "id": "beat-002.comparison.right.label",
+            "position": [
+              3.4,
+              -0.9,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "portrait": {
+                "position": [
+                  0.0,
+                  -1.85,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "text",
+            "text": "Second form",
+            "role": "foreground",
+            "font_size": 28,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "beat-002.comparison.show",
+            "start_at": null,
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 1.0,
+                "type": "create",
+                "target": "beat-002.comparison.left",
+                "animation": "write"
+              },
+              {
+                "run_time": 1.0,
+                "type": "create",
+                "target": "beat-002.comparison.right",
+                "animation": "write"
+              },
+              {
+                "run_time": 1.0,
+                "type": "create",
+                "target": "beat-002.comparison.left.label",
+                "animation": "write"
+              },
+              {
+                "run_time": 1.0,
+                "type": "create",
+                "target": "beat-002.comparison.right.label",
+                "animation": "write"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 640,
+    "pixel_height": 360,
+    "frame_rate": 15,
+    "transparent": false,
+    "seed": 107
+  }
+}

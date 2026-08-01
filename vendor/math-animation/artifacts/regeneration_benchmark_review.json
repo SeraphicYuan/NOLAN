@@ -1,0 +1,241 @@
+{
+  "schema_version": "math-animation.review.v2",
+  "status": "passed",
+  "clips": [
+    {
+      "beat_id": "control",
+      "decoder": "passed",
+      "declared_duration_seconds": 1.41,
+      "media_duration_seconds": 1.466667,
+      "media": {
+        "duration_seconds": 1.466667,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 640,
+        "height": 360,
+        "frame_rate": 15.0,
+        "frame_count": 22,
+        "audio_streams": []
+      },
+      "cue_timing": [],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/control/000-opening.png",
+          "metrics": {
+            "luma_stddev": 2.3076790340584403,
+            "foreground_fraction": 0.0007638888888888889
+          }
+        },
+        {
+          "id": "control.reveal.stable",
+          "time_seconds": 0.7000000000000001,
+          "kind": "stable",
+          "path": "review/frames/control/001-control.reveal.stable.png",
+          "metrics": {
+            "luma_stddev": 3.919617371685755,
+            "foreground_fraction": 0.005572916666666667
+          }
+        },
+        {
+          "id": "control.reveal.motion-a",
+          "time_seconds": 0.1375,
+          "kind": "motion-a",
+          "motion_group": "control.reveal",
+          "path": "review/frames/control/002-control.reveal.motion-a.png",
+          "metrics": {
+            "luma_stddev": 3.424991077378445,
+            "foreground_fraction": 0.0033333333333333335
+          }
+        },
+        {
+          "id": "control.reveal.motion-b",
+          "time_seconds": 0.41250000000000003,
+          "kind": "motion-b",
+          "motion_group": "control.reveal",
+          "path": "review/frames/control/003-control.reveal.motion-b.png",
+          "metrics": {
+            "luma_stddev": 3.872985642995289,
+            "foreground_fraction": 0.005503472222222222
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 1.3099999999999998,
+          "expect_blank": true,
+          "path": "review/frames/control/004-closing.png",
+          "metrics": {
+            "luma_stddev": 0.2744348288362027,
+            "foreground_fraction": 0.0
+          }
+        }
+      ],
+      "contact_sheet": "review/control.contact-sheet.png"
+    },
+    {
+      "beat_id": "blank-balance",
+      "decoder": "passed",
+      "declared_duration_seconds": 1.6999999999999997,
+      "media_duration_seconds": 1.8,
+      "media": {
+        "duration_seconds": 1.8,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 640,
+        "height": 360,
+        "frame_rate": 15.0,
+        "frame_count": 27,
+        "audio_streams": []
+      },
+      "cue_timing": [],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/blank-balance/000-opening.png",
+          "metrics": {
+            "luma_stddev": 3.597472881246278,
+            "foreground_fraction": 0.001267361111111111
+          }
+        },
+        {
+          "id": "blank-balance.equation_reveal.stable",
+          "time_seconds": 0.694,
+          "kind": "stable",
+          "path": "review/frames/blank-balance/001-blank-balance.equation_reveal.stable.png",
+          "metrics": {
+            "luma_stddev": 6.168946612143166,
+            "foreground_fraction": 0.010416666666666666
+          }
+        },
+        {
+          "id": "blank-balance.equation_reveal.motion-a",
+          "time_seconds": 0.13599999999999998,
+          "kind": "motion-a",
+          "motion_group": "blank-balance.equation_reveal",
+          "path": "review/frames/blank-balance/002-blank-balance.equation_reveal.motion-a.png",
+          "metrics": {
+            "luma_stddev": 4.241322724460557,
+            "foreground_fraction": 0.00390625
+          }
+        },
+        {
+          "id": "blank-balance.equation_reveal.motion-b",
+          "time_seconds": 0.4079999999999999,
+          "kind": "motion-b",
+          "motion_group": "blank-balance.equation_reveal",
+          "path": "review/frames/blank-balance/003-blank-balance.equation_reveal.motion-b.png",
+          "metrics": {
+            "luma_stddev": 6.035128737872223,
+            "foreground_fraction": 0.0103125
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 1.5999999999999996,
+          "expect_blank": true,
+          "path": "review/frames/blank-balance/004-closing.png",
+          "metrics": {
+            "luma_stddev": 1.9967100855582034,
+            "foreground_fraction": 0.006579861111111111
+          }
+        }
+      ],
+      "contact_sheet": "review/blank-balance.contact-sheet.png"
+    },
+    {
+      "beat_id": "frozen-identity",
+      "decoder": "passed",
+      "declared_duration_seconds": 1.7000000000000002,
+      "media_duration_seconds": 1.8,
+      "media": {
+        "duration_seconds": 1.8,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 640,
+        "height": 360,
+        "frame_rate": 15.0,
+        "frame_count": 27,
+        "audio_streams": []
+      },
+      "cue_timing": [],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/frozen-identity/000-opening.png",
+          "metrics": {
+            "luma_stddev": 3.6219294555442834,
+            "foreground_fraction": 0.0018229166666666667
+          }
+        },
+        {
+          "id": "frozen-identity.equation_reveal.stable",
+          "time_seconds": 0.6940000000000001,
+          "kind": "stable",
+          "path": "review/frames/frozen-identity/001-frozen-identity.equation_reveal.stable.png",
+          "metrics": {
+            "luma_stddev": 7.076184802757048,
+            "foreground_fraction": 0.012100694444444445
+          }
+        },
+        {
+          "id": "frozen-identity.equation_reveal.motion-a",
+          "time_seconds": 0.136,
+          "kind": "motion-a",
+          "motion_group": "frozen-identity.equation_reveal",
+          "path": "review/frames/frozen-identity/002-frozen-identity.equation_reveal.motion-a.png",
+          "metrics": {
+            "luma_stddev": 4.846374844734474,
+            "foreground_fraction": 0.006232638888888889
+          }
+        },
+        {
+          "id": "frozen-identity.equation_reveal.motion-b",
+          "time_seconds": 0.40800000000000003,
+          "kind": "motion-b",
+          "motion_group": "frozen-identity.equation_reveal",
+          "path": "review/frames/frozen-identity/003-frozen-identity.equation_reveal.motion-b.png",
+          "metrics": {
+            "luma_stddev": 7.180028285825233,
+            "foreground_fraction": 0.012274305555555556
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 1.6,
+          "expect_blank": true,
+          "path": "review/frames/frozen-identity/004-closing.png",
+          "metrics": {
+            "luma_stddev": 2.3041761355642714,
+            "foreground_fraction": 0.00796875
+          }
+        }
+      ],
+      "contact_sheet": "review/frozen-identity.contact-sheet.png"
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "diagnostics": [],
+  "final_video_decoder": {
+    "status": "passed"
+  },
+  "final_video_media": {
+    "duration_seconds": 5.866667,
+    "video_codec": "h264",
+    "pixel_format": "yuv420p",
+    "width": 640,
+    "height": 360,
+    "frame_rate": 15.0,
+    "frame_count": 88,
+    "audio_streams": [
+      {
+        "codec": "aac",
+        "sample_rate": "24000",
+        "channels": 1
+      }
+    ]
+  }
+}

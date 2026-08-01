@@ -1,0 +1,40 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "equation-smoke",
+  "title": "Equation Render Smoke Test",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "Reveal the mass-energy equivalence equation.",
+    "audience": "general",
+    "script_policy": "locked",
+    "target_duration_seconds": 3.5
+  },
+  "beats": [
+    {
+      "id": "equation",
+      "title": "Mass and energy",
+      "learning_objective": "Verify addressable LaTeX rendering.",
+      "duration_seconds": 3.5,
+      "blocks": [
+        {
+          "id": "equation.reveal",
+          "type": "equation_reveal",
+          "latex_parts": ["E", "=", "m", "c^2"],
+          "part_roles": ["primary", "foreground", "changing", "fixed"],
+          "caption": "Mass and energy are two forms of the same quantity.",
+          "run_time": 1.5,
+          "hold_seconds": 1.4
+        }
+      ]
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 1280,
+    "pixel_height": 720,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 17
+  }
+}

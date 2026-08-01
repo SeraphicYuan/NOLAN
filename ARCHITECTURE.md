@@ -142,6 +142,33 @@ ONE LLM call per person), and the VLM caption (`imagelib/caption.py`,
 DEPICTED. Every NUMBER comes from `nolan/pixels.py`; every LOCATION from
 `nolan/regions.py`. **The model names, a detector localises.**
 
+## Typed sources (what a scene is BUILT FROM)
+
+Four typed inputs, all provenance-gated, all resolved in the finish DAG after word-sync and
+before recompose — so a scene's window and word timings are final and the composed HTML has
+not been built yet:
+
+| source | authored as | resolves to | its gate |
+|---|---|---|---|
+| media | `data.ground` / pool | a staged image or clip | `asset_gate` (acquisition doors) |
+| data | `data.dataset` + `query` + `encode` | real cells + `value_source` | number-provenance (HARD) |
+| document | `data.document` + `page`/`region` | page source + rects | un-ingested reference raises |
+| **math** | `data.template` + `params` + `formulas` | a **Manim clip** as that scene's video ground | math-provenance (HARD) |
+
+**Math** (`src/nolan/mathanim/`, engine vendored at `vendor/math-animation/`) is how NOLAN puts
+real mathematics on screen — a derivation, a plotted function, a 3D surface. Nine typed templates
+plus a bespoke `SceneProgram` IR; `custom_scene` (arbitrary Python) is refused by name. Every
+displayed formula is an INDEX into the scene's own `data.formulas` ledger, and a bespoke program's
+`latex_parts` are walked and matched against it, so a formula on screen always traces to one the
+author wrote down. The whole set is gated before ANY of it renders.
+
+Manim + LaTeX live in a SEPARATE conda env (`D:\env\mas`) — installing them beside the pipeline
+lands numpy 2.5.1 / Pillow 12.3.0, outside NOLAN's pins. Everything except the render subprocess
+runs in-process with pydantic alone. `scene.dur` becomes the beat duration and the compiler pads
+to exactly that (refusing when the animation needs more), so math clips are frame-exact and opt
+OUT of `heal_video_freezes` — its boomerang would play a derivation backwards. Skill:
+`organ.math-animation`.
+
 ## Motif layer (stateful infographics)
 
 `nolan/motion/motifs.py` — the reference-video "home base" device: ONE

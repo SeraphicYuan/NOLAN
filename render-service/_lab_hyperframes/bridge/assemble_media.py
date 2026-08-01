@@ -162,21 +162,39 @@ def collect_video_grounds(comp_dir: Path):
     return clips
 
 
+# Clips this guard must not touch. A MATH clip is a Manim render of a derivation: its frames are an
+# ARGUMENT in order, and the heal below is a boomerang (forward, then reversed) — it would play the
+# derivation backwards, which is worse than the freeze it fixes. It also cannot be short: the math
+# compiler pads every scene to exactly its narration window and refuses to compile when the animation
+# needs more (compiler.py / scene_compiler.py), and `nolan.mathanim.resolve` verifies the rendered
+# duration against that window and RAISES on a mismatch. So a short math clip is a broken promise to
+# surface, never a hole to paper over. (docs/WIRING_CHECKLIST.md #7: a new step type touches every
+# registry that classifies steps — this is one of them.)
+_NO_HEAL_PREFIXES = ("assets/math/",)
+
+
+def _healable(src: str) -> bool:
+    return not str(src).replace("\\", "/").startswith(_NO_HEAL_PREFIXES)
+
+
 def heal_video_freezes(comp_dir: Path, clips, tol: float = 0.15):
     """PRE-RENDER freeze guard. A video ground shorter than its scene window FREEZES on its last frame
     for the remainder — hf_qa catches this, but only AFTER a full render. The mismatch is knowable here
     from metadata alone (clip container duration vs the scene window), so auto-heal it now: gentle
     slow-mo for a small shortfall, loop-to-fill when the clip is far too short. Mutates clips[].src to
     point at the healed file; reports every heal (and loudly flags anything it can't fix). No-op if the
-    probe is unavailable."""
+    probe is unavailable. Clips under `_NO_HEAL_PREFIXES` are skipped — see the note above."""
     try:
         from nolan.hf_qa import probe, _ffmpeg
     except Exception:
         print("  (freeze-heal skipped — nolan.hf_qa unavailable)")
         return clips
     ff = _ffmpeg()
-    healed = failed = 0
+    healed = failed = skipped = 0
     for c in clips:
+        if not _healable(c["src"]):
+            skipped += 1
+            continue
         src = Path(c["src"])
         p = src if src.is_absolute() else (comp_dir / src)
         if not p.exists():
@@ -221,8 +239,9 @@ def heal_video_freezes(comp_dir: Path, clips, tol: float = 0.15):
             out.unlink(missing_ok=True)
             failed += 1
             print(f"  ⚠ freeze-heal FAILED {p.name} ({actual:.1f}s < {window:.1f}s) — WILL FREEZE; swap a longer clip")
-    if healed or failed:
-        print(f"freeze guard (pre-render): healed {healed}, unresolved {failed}")
+    if healed or failed or skipped:
+        note = f", {skipped} exact-duration clip(s) skipped" if skipped else ""
+        print(f"freeze guard (pre-render): healed {healed}, unresolved {failed}{note}")
     return clips
 
 

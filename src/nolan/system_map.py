@@ -244,11 +244,13 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
                         ("src/nolan/hyperframes/sound.py", "apply_scene_sfx"),
                         ("src/nolan/hyperframes/sfx_mix.py", "def sfx_mix")],
     },
-    "sources": {   # typed inputs a scene is BUILT FROM: media / data / document (all provenance-gated)
+    "sources": {   # typed inputs a scene is BUILT FROM: media / data / document / math (all provenance-gated)
         "authored_by": [("src/nolan/data/resolve.py", "resolve_datasets_in_spec"),
-                        ("render-service/_lab_hyperframes/bridge/resolve_doc_annotations.py", "_bind_document")],
+                        ("render-service/_lab_hyperframes/bridge/resolve_doc_annotations.py", "_bind_document"),
+                        ("render-service/_lab_hyperframes/bridge/author.py", "_math_errors")],
         "executed_by": [("src/nolan/data/registry.py", "def load_dataset"),
-                        ("src/nolan/document/registry.py", "def load_document")],
+                        ("src/nolan/document/registry.py", "def load_document"),
+                        ("src/nolan/mathanim/resolve.py", "def resolve_math")],
     },
 }
 
@@ -333,6 +335,12 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
         ("src/nolan/document/registry.py", "load_document",
          "the document source is provenance-gated: an un-ingested / un-sourced reference raises, so a "
          "region a block targets always traces to a real page (the B-P1 analogue of the number gate)"),
+        ("src/nolan/mathanim/registry.py", "TEMPLATES",
+         "the ONE math-template vocabulary — the authoring gate, the catalog entry, the adapter and "
+         "the skill all read it, so an agent cannot author a template the resolver does not build"),
+        ("render-service/_lab_hyperframes/bridge/catalog.json", "equation_sequence",
+         "the authoring catalog carries the registry-GENERATED math template list, so an agent "
+         "discovers every one of them (and what each is not for) without a hand-kept slice"),
     ],
     # style packs: cross-umbrella curation (quality program step 6) — every
     # pack field must reach a decision point or it's curation rot

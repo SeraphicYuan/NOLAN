@@ -1,0 +1,8 @@
+{
+  "baseline": "v0.6",
+  "planning_context_schema_sha256": "c3fda69f14c0cc67b9fd912a6647dd08fb819fc50237325445788c4213a24a86",
+  "visual_decision_schema_sha256": "d26e250901825988fe4f1b42d046d5b1d3da62c9ce7357e14a628cd05e23accb",
+  "model_provider_config_schema_sha256": "435faa9da9860dca7954bf3aa97170ba45795f7aeb035af543589e20254db3ba",
+  "model_call_schema_sha256": "c690617e976d748dafe0d5e4f9b5df4355d2e58de2e0db2a3ac9319114848745",
+  "regeneration_artifact_schema_sha256": "3d5acaffbe8dd8710823b93486977b867703b16bcdf279690eb4b9b7c641458e"
+}

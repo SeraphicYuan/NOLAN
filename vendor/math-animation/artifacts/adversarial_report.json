@@ -1,0 +1,41 @@
+{
+  "schema_version": "math-animation.adversarial.v1",
+  "status": "passed",
+  "cases": [
+    {
+      "name": "interval-width-mismatch",
+      "status": "passed",
+      "detail": "ValidationError: 1 validation error for IntervalVisualObject\n  Value error, interval width does not agree with expected_width [type=value_error, input_value={'id': 'bad-interval', 's... 2, 'expected_width': 3}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error"
+    },
+    {
+      "name": "responsive-font-too-small",
+      "status": "passed",
+      "detail": "ValueError: object 'tiny' effective font size 3.40 is below the scene minimum 16.00"
+    },
+    {
+      "name": "malformed-latex",
+      "status": "passed",
+      "detail": "PreflightError: LaTeX preflight failed for 'bad-formula': input line 106.\n))\n(/opt/homebrew/opt/texlive/share/texmf-dist/tex/latex/l3backend/l3backend-dvips\n.def\nFile: l3backend-dvips.def 2025-10-09 L3 backend support: dvips\n\\l__pdfannot_backend_content_box=\\box56\n\\l__pdfannot_backend_model_box=\\box57\n\\g__pdfannot_backend_int=\\count299\n\\g__pdfannot_backend_link_int=\\count300\n\\g__pdfannot_backend_link_sf_int=\\count301\n)\nNo file 000.aux.\n\\openout1 = `000.aux'.\n\nLaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 4.\nLaTeX Font Info:    ... okay on input line 4.\nLaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 4.\nLaTeX Font Info:    ... okay on input line 4.\nLaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 4.\nLaTeX Font Info:    ... okay on input line 4.\nLaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 4.\nLaTeX Font Info:    ... okay on input line 4.\nLaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 4.\nLaTeX Font Info:    ... okay on input line 4.\nLaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 4.\nLaTeX Font Info:    ... okay on input line 4.\nLaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 4.\nLaTeX Font Info:    ... okay on input line 4.\nPreview: Fontsize 10pt\nLaTeX Font Info:    Trying to load font information for U+msa on input line 5.\n(/opt/homebrew/opt/texlive/share/texmf-dist/tex/latex/amsfonts/umsa.fd\nFile: umsa.fd 2013/01/14 v3.01 AMS symbols A\n)\nLaTeX Font Info:    Trying to load font information for U+msb on input line 5.\n(/opt/homebrew/opt/texlive/share/texmf-dist/tex/latex/amsfonts/umsb.fd\nFile: umsb.fd 2013/01/14 v3.01 AMS symbols B\n)\n! Undefined control sequence.\n<recently read> \\definitelyNotARealCommand \n                                           \nl.5 $\\definitelyNotARealCommand\n                               {x}$\nThe control sequence at the end of the top line\nof your error message was never \\def'ed. If you have\nmisspelled it (e.g., `\\hobx'), type `I' and the correct\nspelling (e.g., `I\\hbox'). Otherwise just continue,\nand I'll forget about whatever was undefined.\n\n \nHere is how much of TeX's memory you used:\n 2454 strings out of 467526\n 38871 string characters out of 5408466\n 437077 words of memory out of 5000000\n 31373 multiletter control sequences out of 15000+600000\n 629420 words of font info for 48 fonts, out of 8000000 for 9000\n 1141 hyphenation exceptions out of 8191\n 57i,4n,71p,299b,132s stack positions out of 10000i,1000n,20000p,200000b,200000s\nNo pages of output.\n"
+    },
+    {
+      "name": "nonfinite-surface",
+      "status": "passed",
+      "detail": "RenderError: Manim failed rendering beat 'beat' with exit 1:\n<frozen runpy>:128: RuntimeWarning: 'manim.__main__' found in sys.modules after import of package 'manim', but prior to execution of 'manim.__main__'; this may result in unpredictable behaviour\n/tmp/math-animation-adversarial/20260730-213011-nonfinite-surface/source/beat.py:30: RuntimeWarning: divide by zero encountered in scalar divide\n  return np.array([u, v, 1 / (u - u)], dtype=float) + np.array([0.0, 0.0, 0.0], dtype=float)\n╭───────────────────── Traceback (most recent call last) ──────────────────────╮\n│ /opt/miniconda3/envs/mas/lib/python3.13/site-packages/manim/cli/render/comma │\n│ nds.py:125 in render                                                         │\n│                                                                              │\n│   122 │   │   │   try:                                                       │\n│   123 │   │   │   │   with tempconfig({}):                                   │\n│   124 │   │   │   │   │   scene = SceneClass()                               │\n│ ❱ 125 │   │   │   │   │   scene.render()                                     │\n│   126 │   │   │   except Exception:                                          │\n│   127 │   │   │   │   error_console.print_exception()                        │\n│   128 │   │   │   │   sys.exit(1)                                            │\n│                                                                              │\n│ /opt/miniconda3/envs/mas/lib/python3.13/site-packages/manim/scene/scene.py:2 │\n│ 59 in render                                                                 │\n│                                                                              │\n│    256 │   │   \"\"\"                                                           │\n│    257 │   │   self.setup()                                                  │\n│    258 │   │   try:                                                          │\n│ ❱  259 │   │   │   self.construct()                                          │\n│    260 │   │   except EndSceneEarlyException:                                │\n│    261 │   │   │   pass                                                      │\n│    262 │   │   except RerunSceneException:                                   │\n│                                                                              │\n│ /tmp/math-animation-adversarial/20260730-213011-nonfinite-surface/source/bea │\n│ t.py:37 in construct                                                         │\n│                                                                              │\n│   34 │   │   │   obj_0_surface_point(u, v) for u in obj_0_u_samples for v in │\n│   35 │   │   ], dtype=float)                                                 │\n│   36 │   │   if not np.all(np.isfinite(obj_0_sampled_points)):               │\n│ ❱ 37 │   │   │   raise ValueError('surface nonfinite contains non-finite sam │\n│   38 │   │   obj_0 = Surface(lambda u, v: obj_0_surface_point(u, v), u_range │\n│   39 │   │   self.play(Create(obj_0), run_time=0.4)                          │\n│   40 │   │   self.wait(0.4)                                                  │\n╰──────────────────────────────────────────────────────────────────────────────╯\nValueError: surface nonfinite contains non-finite samples\n"
+    },
+    {
+      "name": "missing-asset",
+      "status": "passed",
+      "detail": "PreflightError: missing local input(s): asset 'missing': /tmp/math-animation-definitely-missing.png"
+    },
+    {
+      "name": "missing-audio",
+      "status": "passed",
+      "detail": "PreflightError: missing local input(s): narration audio: /tmp/math-animation-definitely-missing.wav"
+    },
+    {
+      "name": "render-timeout",
+      "status": "passed",
+      "detail": "RenderError: Manim timed out rendering beat 'beat' after 0s"
+    }
+  ]
+}

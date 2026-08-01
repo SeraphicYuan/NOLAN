@@ -1,0 +1,83 @@
+{
+  "schema_version": "math-animation.pedagogy-report.v1",
+  "status": "passed",
+  "total_score": 0.9701333333333333,
+  "dimensions": [
+    {
+      "dimension": "mathematical_grounding",
+      "score": 1.0,
+      "weight": 0.12,
+      "beat_scores": {
+        "area-triples": 1.0,
+        "orientation-flips": 1.0,
+        "area-collapses": 1.0
+      }
+    },
+    {
+      "dimension": "objective_alignment",
+      "score": 1.0,
+      "weight": 0.2,
+      "beat_scores": {
+        "area-triples": 1.0,
+        "orientation-flips": 1.0,
+        "area-collapses": 1.0
+      }
+    },
+    {
+      "dimension": "progressive_disclosure",
+      "score": 0.9333333333333332,
+      "weight": 0.16,
+      "beat_scores": {
+        "area-triples": 0.9,
+        "orientation-flips": 0.9,
+        "area-collapses": 1.0
+      }
+    },
+    {
+      "dimension": "pacing",
+      "score": 1.0,
+      "weight": 0.14,
+      "beat_scores": {
+        "area-triples": 1.0,
+        "orientation-flips": 1.0,
+        "area-collapses": 1.0
+      }
+    },
+    {
+      "dimension": "cognitive_load",
+      "score": 0.88,
+      "weight": 0.16,
+      "beat_scores": {
+        "area-triples": 0.88,
+        "orientation-flips": 0.8200000000000001,
+        "area-collapses": 0.94
+      }
+    },
+    {
+      "dimension": "narration_sync",
+      "score": 1.0,
+      "weight": 0.12,
+      "beat_scores": {
+        "area-triples": 1.0,
+        "orientation-flips": 1.0,
+        "area-collapses": 1.0
+      }
+    },
+    {
+      "dimension": "legibility",
+      "score": 1.0,
+      "weight": 0.1,
+      "beat_scores": {
+        "area-triples": 1.0,
+        "orientation-flips": 1.0,
+        "area-collapses": 1.0
+      }
+    }
+  ],
+  "findings": [],
+  "evaluator_id": "deterministic-pedagogy-v1",
+  "limitations": [
+    "This rubric detects structural teaching risks; it does not prove that a learner will understand the explanation.",
+    "Semantic alignment is keyword- and contract-based, not a human expert judgment."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "math-animation.regeneration-benchmark.v1",
+  "cases": [
+    {
+      "id": "blank-balance",
+      "injected_failure": "blank_frame",
+      "expected_template": "equation_reveal",
+      "formula_id": "balance"
+    },
+    {
+      "id": "frozen-identity",
+      "injected_failure": "frozen_motion",
+      "expected_template": "equation_reveal",
+      "formula_id": "identity"
+    }
+  ],
+  "unaffected_control": "control"
+}

@@ -1,0 +1,294 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "olin-scene-program",
+  "title": "Olin Coordinate Transform Study",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "Show a flat point cloud, its exact shadow-preserving lift, and a separate cylindrical interpretation.",
+    "audience": "mathematically curious",
+    "script_policy": "locked",
+    "target_duration_seconds": 11.0
+  },
+  "math_ledger": {
+    "claims": [
+      {
+        "id": "claim.exact-projection",
+        "statement": "The xz projection of E preserves the centered tweet coordinates.",
+        "verification": "verified",
+        "assumptions": [
+          "Projection is orthographic along the y axis."
+        ],
+        "evidence": [
+          "E copies u and v into its x and z components exactly."
+        ]
+      }
+    ],
+    "formulas": [
+      {
+        "id": "formula.exact-lift",
+        "latex_parts": [
+          "E(i,t)",
+          "=",
+          "(u,",
+          "40\\sin c,",
+          "v)"
+        ],
+        "plain_language": "The exact lift adds depth without changing the visible coordinates.",
+        "symbol_roles": {
+          "u": "fixed",
+          "40 sin c": "changing",
+          "v": "fixed"
+        },
+        "assumptions": []
+      }
+    ]
+  },
+  "style": {
+    "template_id": "placeholder-paper",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#f3ecd8",
+        "foreground": "#241a12",
+        "muted": "#796d5d"
+      },
+      "semantic_colors": {
+        "primary": "#3f746b",
+        "changing": "#a24f3d",
+        "fixed": "#485b7a",
+        "secondary": "#a17f35"
+      },
+      "typography": {
+        "title_size": 56,
+        "body_size": 26,
+        "math_size": 34
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "lift",
+      "title": "Shadow and space",
+      "learning_objective": "Distinguish an exact lift from a cylindrical reinterpretation.",
+      "duration_seconds": 11.0,
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "3d",
+        "initial_camera": {
+          "phi_degrees": 90.0,
+          "theta_degrees": -90.0,
+          "zoom": 0.9,
+          "frame_center": [0.0, 0.0, 0.0]
+        },
+        "objects": [
+          {
+            "id": "formula.lift",
+            "type": "math_tex",
+            "position": [0.0, 3.15, 0.0],
+            "fixed_in_frame": true,
+            "formula_id": "formula.exact-lift",
+            "latex_parts": [
+              "E(i,t)",
+              "=",
+              "(u,",
+              "40\\sin c,",
+              "v)"
+            ],
+            "part_roles": [
+              "foreground",
+              "foreground",
+              "fixed",
+              "changing",
+              "fixed"
+            ],
+            "font_size": 34
+          },
+          {
+            "id": "cloud.main",
+            "type": "point_cloud",
+            "position": [0.0, 0.0, 0.0],
+            "fixed_in_frame": false,
+            "sample_count": 1200,
+            "sample_start": 0.0,
+            "sample_end": 9999.0,
+            "time_value": 0.039269908169872414,
+            "bindings": [
+              {
+                "name": "sample_y",
+                "expression": "i / 235"
+              },
+              {
+                "name": "k",
+                "expression": "(4 + cos(i / 9 - 2 * t)) * cos(i / 35)"
+              },
+              {
+                "name": "e",
+                "expression": "sample_y / 7 - 13"
+              },
+              {
+                "name": "d",
+                "expression": "sqrt(k**2 + e**2) + sin(e / 9 + t / 2) - 4"
+              },
+              {
+                "name": "c",
+                "expression": "d - t"
+              },
+              {
+                "name": "q",
+                "expression": "2 * sin(3 * k) - (sample_y / 35) * k * (9 + k * sin(9 * cos(e) - 2 * d + t))"
+              },
+              {
+                "name": "u",
+                "expression": "(q + 40 * cos(c)) * 0.017"
+              },
+              {
+                "name": "v",
+                "expression": "(q * sin(c) + 35 * d - 200) * 0.017"
+              },
+              {
+                "name": "depth",
+                "expression": "40 * sin(c) * 0.017"
+              }
+            ],
+            "states": [
+              {
+                "id": "shadow",
+                "x": "u",
+                "y": "0 * i",
+                "z": "v"
+              },
+              {
+                "id": "exact-lift",
+                "x": "u",
+                "y": "depth",
+                "z": "v"
+              },
+              {
+                "id": "cylindrical",
+                "x": "(40 + q) * cos(c) * 0.017",
+                "y": "(40 + q) * sin(c) * 0.017",
+                "z": "(35 * d - 200) * 0.017"
+              }
+            ],
+            "initial_state": "shadow",
+            "projection_assertions": [
+              {
+                "id": "assert.exact-xz-shadow",
+                "source_state": "exact-lift",
+                "source_axes": ["x", "z"],
+                "target_state": "shadow",
+                "target_axes": ["x", "z"],
+                "absolute_tolerance": 1e-09
+              }
+            ],
+            "role": "primary",
+            "stroke_width": 2.4,
+            "opacity": 0.92
+          },
+          {
+            "id": "caption.interpretation",
+            "type": "text",
+            "position": [0.0, -3.25, 0.0],
+            "fixed_in_frame": true,
+            "text": "Exact lift first; cylindrical interpretation second.",
+            "role": "muted",
+            "font_size": 24,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "reveal",
+            "mode": "parallel",
+            "actions": [
+              {
+                "type": "create",
+                "target": "formula.lift",
+                "animation": "write",
+                "run_time": 1.0
+              },
+              {
+                "type": "create",
+                "target": "cloud.main",
+                "animation": "fade_in",
+                "run_time": 1.0
+              },
+              {
+                "type": "create",
+                "target": "caption.interpretation",
+                "animation": "fade_in",
+                "run_time": 1.0
+              }
+            ]
+          },
+          {
+            "id": "lift-and-orbit",
+            "mode": "parallel",
+            "actions": [
+              {
+                "type": "transform_point_cloud",
+                "target": "cloud.main",
+                "state": "exact-lift",
+                "rate_func": "smooth",
+                "run_time": 3.0
+              },
+              {
+                "type": "camera",
+                "phi_degrees": 64.0,
+                "theta_degrees": -42.0,
+                "zoom": 0.94,
+                "frame_center": [0.0, 0.0, 0.0],
+                "run_time": 3.0
+              }
+            ]
+          },
+          {
+            "id": "inspect-depth",
+            "mode": "sequential",
+            "actions": [
+              {
+                "type": "camera",
+                "phi_degrees": 70.0,
+                "theta_degrees": 24.0,
+                "zoom": 0.9,
+                "frame_center": [0.0, 0.0, 0.0],
+                "run_time": 2.0
+              }
+            ]
+          },
+          {
+            "id": "reinterpret",
+            "mode": "parallel",
+            "actions": [
+              {
+                "type": "transform_point_cloud",
+                "target": "cloud.main",
+                "state": "cylindrical",
+                "rate_func": "smooth",
+                "run_time": 3.0
+              },
+              {
+                "type": "camera",
+                "phi_degrees": 66.0,
+                "theta_degrees": -54.0,
+                "zoom": 0.9,
+                "frame_center": [0.0, 0.0, 0.0],
+                "run_time": 3.0
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 1280,
+    "pixel_height": 720,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 17
+  }
+}

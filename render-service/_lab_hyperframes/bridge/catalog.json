@@ -1154,6 +1154,169 @@
         "hero_title": "arrange:overlay, a media background + a text cell place:center|band (title/quote over footage — generalises hero)",
         "stat_over_footage": "arrange:overlay, a media background + a stat cell place:br (a number over b-roll)"
       }
+    },
+    "math": {
+      "fn": "math_scene",
+      "purpose": "A MANIM mathematical scene — a derivation transforming step by step, a plotted function, a number line, a side-by-side of two forms, or a bespoke stateful shot (3D surface, point cloud, epicycles). Rendered by the math engine in THIS essay's theme and mounted as the scene's video ground; the composed frame paints only a kicker/source over it.",
+      "when_to_use": "The beat's content IS mathematics the viewer must follow: an equation that changes, a function's shape, a limit argument, a geometric proof. Reach for this in maths and science explainers; almost nowhere else.",
+      "not_for": "DATA (use `chart`/`stat` with a bound dataset — themed, cheaper, no Manim render). A decorative formula that is never reasoned about (`statement` sets it as type). A diagram of a system or process (`diagram`). Every math render costs 10-60s, so a beat that does not need real mathematics should not pay for it.",
+      "data_schema": {
+        "template": "enum — which math template; see `templates` below for each one's params",
+        "params": "object — the chosen template's parameters, validated against the registry",
+        "formulas": "array of {latex, says?, verified?} — THE LEDGER. Every formula the scene displays is referenced BY INDEX into this list, and a bespoke `scene_program` may only paint LaTeX that appears here. The finish gate HARD-BLOCKS a formula that traces to nothing.",
+        "objective": "string — what this beat teaches (feeds the pedagogy report)",
+        "title": "string — names the beat in the run bundle; NOT painted (Manim owns the frame)",
+        "kicker": "string — a small eyebrow label painted in HTML over the clip",
+        "caption": "string — a plain-language restatement of what the scene shows, painted in HTML under the clip. This is the block's narration-anchorable prose: the aligner pins it to the words that say it. Distinct from `params.caption`, which some templates typeset INSIDE the Manim clip.",
+        "source": "string — a provenance credit painted under the clip ('Euler, 1748')"
+      },
+      "templates": {
+        "title_card": {
+          "purpose": "A typeset title (and optional subtitle) in the essay's theme, rendered by Manim so it sits in the same visual register as the mathematics around it.",
+          "when_to_use": "Opening a mathematical section when the surrounding beats are Manim scenes and an HTML `statement` would read as a different film.",
+          "not_for": "A normal essay title or section card — the `statement` / `hero` blocks are cheaper, themed, and do not cost a Manim render.",
+          "min_formulas": 0,
+          "params": {
+            "title": "text (required) — the headline",
+            "subtitle": "text — an optional second line"
+          },
+          "constraints": [
+            "duration_preserving"
+          ]
+        },
+        "equation_reveal": {
+          "purpose": "Write ONE equation onto the frame, part by part, with optional semantic roles colouring each part.",
+          "when_to_use": "The beat introduces a single formula and the viewer needs to read it once, cleanly. The default for 'here is the equation'.",
+          "not_for": "Showing a DERIVATION (use equation_sequence) or two formulas side by side (use concept_comparison).",
+          "min_formulas": 1,
+          "params": {
+            "formula": "formula_ref (required) — which ledger formula to write",
+            "part_roles": "texts — one semantic colour role per latex part: primary / changing / fixed / positive / negative / muted. Empty means one uniform colour.",
+            "caption": "text — a short line under the equation"
+          },
+          "constraints": [
+            "duration_preserving"
+          ]
+        },
+        "equation_transform": {
+          "purpose": "Morph one equation into another, matching the parts that survive so the eye follows what actually changed.",
+          "when_to_use": "ONE algebraic step where the point is the change itself — factoring, substituting, rearranging.",
+          "not_for": "Three or more steps (use equation_sequence — it keeps one persistent object across the whole derivation instead of restarting each time).",
+          "min_formulas": 2,
+          "params": {
+            "from": "formula_ref (required) — the starting formula",
+            "to": "formula_ref (required) — the resulting formula",
+            "caption": "text — a short line naming the move"
+          },
+          "constraints": [
+            "duration_preserving"
+          ]
+        },
+        "equation_sequence": {
+          "purpose": "Transform ONE persistent, ledger-bound formula through three to six authored steps — the derivation as a single continuous object.",
+          "when_to_use": "A multi-step derivation. This is the workhorse of a maths explainer: completing the square, solving for x, simplifying an expression.",
+          "not_for": "A single formula (equation_reveal) or a single step (equation_transform).",
+          "min_formulas": 3,
+          "params": {
+            "steps": "formula_refs (required) — 3-6 ledger formula indices, in the order they are derived",
+            "at": "texts — OPTIONAL: one short spoken phrase per step AFTER the first, so each step lands on the words that describe it ('show it as you say it'). Omit and the steps spread evenly across the beat."
+          },
+          "constraints": [
+            "duration_preserving"
+          ]
+        },
+        "concept_comparison": {
+          "purpose": "Two authored formulas side by side with optional labels; stacks vertically in portrait.",
+          "when_to_use": "The beat argues that two forms describe the same thing, or contrasts a before and an after — standard form vs vertex form, the general case vs the special case.",
+          "not_for": "More than two formulas, or a comparison of non-mathematical ideas (use the HTML `comparison` block).",
+          "min_formulas": 2,
+          "params": {
+            "left": "formula_ref (required) — the left/upper formula",
+            "right": "formula_ref (required) — the right/lower formula",
+            "left_label": "text — a label under the left formula (<= 32 chars)",
+            "right_label": "text — a label under the right formula (<= 32 chars)"
+          },
+          "constraints": [
+            "duration_preserving"
+          ]
+        },
+        "function_plot": {
+          "purpose": "Draw axes and trace one function's graph across them.",
+          "when_to_use": "The beat is about the SHAPE of a relationship — where it turns, grows, crosses zero.",
+          "not_for": "Plotting DATA (bind a dataset to the HTML `chart` block instead — it is themed, cheaper, and provenance-gated). This is for a function you can write.",
+          "min_formulas": 0,
+          "params": {
+            "expression": "expression (required) — the function of x in Python syntax, e.g. '0.25*x**2 - 3'",
+            "x_range": "range — [min, max, step] for the x axis",
+            "y_range": "range — [min, max, step] for the y axis",
+            "label": "formula_ref — a ledger formula to caption the curve with",
+            "role": "text — semantic colour role for the curve (default: primary)"
+          },
+          "constraints": [
+            "duration_preserving"
+          ]
+        },
+        "number_line": {
+          "purpose": "A number line with marked values and optional labels.",
+          "when_to_use": "Locating quantities on one axis: roots, an interval, a bound, where a limit is heading.",
+          "not_for": "A comparison of magnitudes across categories (use the HTML `scale` block).",
+          "min_formulas": 0,
+          "params": {
+            "values": "numbers (required) — the values to mark",
+            "labels": "texts — one label per value, or empty",
+            "x_range": "range — [min, max, step] for the line",
+            "role": "text — semantic colour role for the marks (default: primary)"
+          },
+          "constraints": [
+            "duration_preserving"
+          ]
+        },
+        "secant_to_tangent": {
+          "purpose": "Sweep a secant line into a tangent as the interval shrinks — the limit definition of the derivative, animated.",
+          "when_to_use": "Introducing derivatives, rates of change, or any 'as h goes to zero' argument.",
+          "not_for": "Anything that is not this specific limit argument.",
+          "min_formulas": 0,
+          "params": {
+            "expression": "expression (required) — the curve, e.g. '0.25*x**2'",
+            "x0": "number — the point the tangent is taken at",
+            "h_start": "number — the starting interval width (> 0)",
+            "h_end": "number — the final interval width (> 0, smaller than h_start)",
+            "x_range": "range — [min, max, step] for the x axis",
+            "y_range": "range — [min, max, step] for the y axis",
+            "caption": "text — a short line naming what is happening"
+          },
+          "constraints": [
+            "duration_preserving"
+          ]
+        },
+        "scene_program": {
+          "purpose": "The typed stateful visual IR — persistent objects that keep their identity across cues: 3D surfaces, point clouds, tracked points, parametric curves, matrix transforms, assertions.",
+          "when_to_use": "A shot no template above can express, where objects must PERSIST and coordinate: a determinant deforming an area, Fourier epicycles, a Jacobian acting on a neighbourhood, a potential landscape.",
+          "not_for": "Anything a template above covers — a template is faster, responsive, and already has render fixtures. This is the bespoke tier, not the default one. It is still TYPED: it is not a hole for Python.",
+          "min_formulas": 0,
+          "params": {
+            "program": "object (required) — a SceneProgram object (schema: `math-animation.scene-program.v1`); validated by round-tripping through the engine's contract"
+          },
+          "constraints": [
+            "duration_preserving"
+          ]
+        }
+      },
+      "semantic_roles": [
+        "primary",
+        "secondary",
+        "changing",
+        "fixed",
+        "positive",
+        "negative",
+        "foreground",
+        "muted"
+      ],
+      "constraints": [
+        "duration_preserving",
+        "narration_owns_duration",
+        "no_custom_python"
+      ]
     }
   },
   "components": {

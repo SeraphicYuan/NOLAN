@@ -1,0 +1,44 @@
+{
+  "schema_version": "math-animation.expanded-pedagogy-benchmark-report.v1",
+  "status": "passed",
+  "render_enabled": false,
+  "run_dir": "/tmp/math-animation-expanded-post-vertex-compile/20260731-015324-expanded-pedagogy-benchmark",
+  "selected_templates": [
+    "equation_sequence",
+    "concept_comparison"
+  ],
+  "custom_python_rate": 0.0,
+  "pedagogy_status": "passed",
+  "pedagogy_score": 0.9574,
+  "dimension_scores": {
+    "mathematical_grounding": 1.0,
+    "objective_alignment": 1.0,
+    "progressive_disclosure": 0.9199999999999999,
+    "pacing": 0.89,
+    "cognitive_load": 1.0,
+    "narration_sync": 0.88,
+    "legibility": 1.0
+  },
+  "synthetic_risk_status": "failed",
+  "synthetic_risk_score": 0.49060000000000004,
+  "synthetic_risk_findings": [
+    "grounding.math-review",
+    "risk.alignment",
+    "risk.progressive",
+    "risk.pacing",
+    "risk.load"
+  ],
+  "review_status": null,
+  "review_warning_count": null,
+  "review_error_count": null,
+  "fresh_render_count": 0,
+  "cache_reused_count": 0,
+  "performance": {
+    "schema_version": "math-animation.performance.v1",
+    "rendered_beats": {},
+    "cache_reused_beats": [],
+    "compile_seconds": 0.001007291954010725,
+    "total_seconds": 0.03472579101799056
+  },
+  "final_video_media": null
+}

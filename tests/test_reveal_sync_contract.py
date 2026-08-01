@@ -63,6 +63,18 @@ FIXTURES = {
                "targets": [{"label": "alpha one", "value": 60}, {"label": "beta two", "value": 40}]},
     "spans": {"spans": [{"label": "alpha one", "start": 0, "end": 5},
                         {"label": "beta two", "start": 5, "end": 9}]},
+    # math needs a hand fixture because its `params` shape depends on the chosen `template`, which no
+    # per-field synthesis can know — a generated `params` would be a string where the resolver expects
+    # a template-specific object. The block's anchorable prose is `caption`; its per-step reveals live
+    # inside the Manim clip, scheduled by nolan.mathanim.adapter._cue_times from `params.at`.
+    "math": {"template": "equation_sequence",
+             "params": {"steps": [0, 1, 2]},
+             "formulas": [{"latex": "y=x^2-6x+5", "says": "standard form"},
+                          {"latex": "y=(x^2-6x+9)-9+5", "says": "add and subtract nine"},
+                          {"latex": "y=(x-3)^2-4", "says": "vertex form"}],
+             "objective": "derive the vertex form",
+             "caption": "the vertex sits at x equals three",
+             "source": "Euler, 1748"},
     "split_view": {"paper": {"document": "doc.pdf"},
                    "right": {"kind": "text", "title": "a spoken phrase here",
                              "lines": ["the first spoken line", "the second spoken line"]}},
@@ -100,6 +112,33 @@ FIXTURES = {
 }
 
 
+def _declared_type(doc) -> str:
+    """The TYPE a catalog field declares, read from the head of its doc string.
+
+    The catalog's convention is `"<type> — <prose>"` (em dash). Classifying on the WHOLE string
+    matched `"int"` inside ordinary English — "painted", "into", "design intent", "point" — and
+    typed 58 fields across 7 blocks as the number 12 when they declare strings, arrays and bools.
+    `raw.tl` ("array of strings") and `chart.series` ("array of {label, value}") were among them,
+    so those blocks were exercised with a fixture that looked nothing like their real data.
+
+    Reading only the head fixes it. Where there is no em dash the head is the first clause, which
+    is still far narrower than the whole prose paragraph.
+    """
+    text = str(doc).lower()
+    head = text.split("—")[0] if "—" in text else text[:48]
+    # Order matters. `bool` is checked FIRST because a union like `"[from,to] | bool?"` (hero.kb,
+    # annotate.kb) reads as an array by its leading literal, and the synthesizer would build a list
+    # of label/value dicts — a shape that field never takes. The bool alternative is one this
+    # generator can actually produce correctly, so a union resolves to the buildable branch.
+    if "bool" in head:
+        return "bool"
+    if "array" in head or head.strip().startswith("["):
+        return "array"
+    if "number" in head or "int" in head or "float" in head:
+        return "number"
+    return "string"
+
+
 def _synth(bt):
     """Plausible data for a block from its declared schema — the catalog is in-repo, so this test is
     self-contained (it must not need any user project on disk)."""
@@ -108,18 +147,18 @@ def _synth(bt):
     sch = (CATALOG.get(bt) or {}).get("data_schema") or {}
     d = {}
     for k, v in sch.items():
-        vt = str(v).lower()
+        vt = _declared_type(v)
         if k in ("ground", "register", "kicker", "dataset", "query", "encode"):
             continue
         if k == "lines":
             d[k] = ["the first spoken line here", "the second spoken line here"]
-        elif "array" in vt or k in ("items", "series", "rows", "steps", "nodes", "columns",
+        elif vt == "array" or k in ("items", "series", "rows", "steps", "nodes", "columns",
                                     "points", "bins", "events", "callouts", "images", "subjects"):
             d[k] = [{"label": "alpha one", "value": 10, "text": "alpha one"},
                     {"label": "beta two", "value": 20, "text": "beta two"}]
-        elif "number" in vt or "int" in vt or "float" in vt:
+        elif vt == "number":
             d[k] = 12
-        elif "bool" in vt:
+        elif vt == "bool":
             d[k] = False
         else:
             d[k] = "a spoken phrase here"

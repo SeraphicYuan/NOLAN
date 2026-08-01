@@ -1,0 +1,257 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "typed-regeneration-benchmark",
+  "title": "Typed regeneration benchmark",
+  "request": {
+    "source_kind": "script",
+    "content": "Keep this control equation unchanged.\n\nShow the authored balance equation clearly.\n\nShow the authored trigonometric identity clearly.",
+    "audience": "math animation authors",
+    "script_policy": "review",
+    "target_duration_seconds": null
+  },
+  "math_ledger": {
+    "claims": [],
+    "formulas": [
+      {
+        "id": "control",
+        "latex_parts": [
+          "x=x"
+        ],
+        "plain_language": "Control equation",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "balance",
+        "latex_parts": [
+          "3x+5=20"
+        ],
+        "plain_language": "Balance equation",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "identity",
+        "latex_parts": [
+          "\\sin^2\\theta+\\cos^2\\theta=1"
+        ],
+        "plain_language": "Trigonometric identity",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_regeneration_benchmark.wav",
+    "utterances": [
+      {
+        "id": "control.words",
+        "text": "Keep this control equation unchanged.",
+        "words": [
+          {
+            "word": "Keep",
+            "start_seconds": 0.0,
+            "end_seconds": 0.25
+          },
+          {
+            "word": "this",
+            "start_seconds": 0.29,
+            "end_seconds": 0.54
+          },
+          {
+            "word": "control",
+            "start_seconds": 0.58,
+            "end_seconds": 0.83
+          },
+          {
+            "word": "equation",
+            "start_seconds": 0.87,
+            "end_seconds": 1.12
+          },
+          {
+            "word": "unchanged.",
+            "start_seconds": 1.16,
+            "end_seconds": 1.41
+          }
+        ]
+      },
+      {
+        "id": "balance.words",
+        "text": "Show the authored balance equation clearly.",
+        "words": [
+          {
+            "word": "Show",
+            "start_seconds": 1.81,
+            "end_seconds": 2.06
+          },
+          {
+            "word": "the",
+            "start_seconds": 2.1,
+            "end_seconds": 2.35
+          },
+          {
+            "word": "authored",
+            "start_seconds": 2.39,
+            "end_seconds": 2.64
+          },
+          {
+            "word": "balance",
+            "start_seconds": 2.68,
+            "end_seconds": 2.93
+          },
+          {
+            "word": "equation",
+            "start_seconds": 2.97,
+            "end_seconds": 3.22
+          },
+          {
+            "word": "clearly.",
+            "start_seconds": 3.26,
+            "end_seconds": 3.51
+          }
+        ]
+      },
+      {
+        "id": "identity.words",
+        "text": "Show the authored trigonometric identity clearly.",
+        "words": [
+          {
+            "word": "Show",
+            "start_seconds": 3.91,
+            "end_seconds": 4.16
+          },
+          {
+            "word": "the",
+            "start_seconds": 4.2,
+            "end_seconds": 4.45
+          },
+          {
+            "word": "authored",
+            "start_seconds": 4.49,
+            "end_seconds": 4.74
+          },
+          {
+            "word": "trigonometric",
+            "start_seconds": 4.78,
+            "end_seconds": 5.03
+          },
+          {
+            "word": "identity",
+            "start_seconds": 5.07,
+            "end_seconds": 5.32
+          },
+          {
+            "word": "clearly.",
+            "start_seconds": 5.36,
+            "end_seconds": 5.61
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "regeneration-benchmark",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#0c1118",
+        "foreground": "#f4efe5",
+        "muted": "#91a0ad"
+      },
+      "semantic_colors": {
+        "primary": "#58b8aa",
+        "changing": "#f08064",
+        "fixed": "#77a6d8"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 38,
+        "body_size": 24,
+        "math_size": 44
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "control",
+      "title": "Control equation",
+      "learning_objective": "Keep an accepted beat unchanged.",
+      "narration_utterance_id": "control.words",
+      "duration_seconds": 1.41,
+      "blocks": [
+        {
+          "id": "control.reveal",
+          "start_at": null,
+          "run_time": 0.55,
+          "hold_seconds": 0.5099999999999999,
+          "type": "equation_reveal",
+          "formula_id": "control",
+          "latex_parts": [
+            "x=x"
+          ],
+          "part_roles": [],
+          "caption": "Unchanged control"
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "blank-balance",
+      "title": "Balance equation",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "balance.words",
+      "duration_seconds": 1.6999999999999997,
+      "blocks": [
+        {
+          "id": "blank-balance.equation_reveal",
+          "start_at": null,
+          "run_time": 0.5439999999999999,
+          "hold_seconds": 0.8059999999999997,
+          "type": "equation_reveal",
+          "formula_id": "balance",
+          "latex_parts": [
+            "3x+5=20"
+          ],
+          "part_roles": [],
+          "caption": "Show the authored balance equ..."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "frozen-identity",
+      "title": "Trigonometric identity",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "identity.words",
+      "duration_seconds": 1.7000000000000002,
+      "blocks": [
+        {
+          "id": "frozen-identity.equation_reveal",
+          "start_at": null,
+          "run_time": 0.544,
+          "hold_seconds": 0.8060000000000002,
+          "type": "equation_reveal",
+          "formula_id": "identity",
+          "latex_parts": [
+            "\\sin^2\\theta+\\cos^2\\theta=1"
+          ],
+          "part_roles": [],
+          "caption": "Show the authored trigonometr..."
+        }
+      ],
+      "scene_program": null
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 640,
+    "pixel_height": 360,
+    "frame_rate": 15,
+    "transparent": false,
+    "seed": 83
+  }
+}

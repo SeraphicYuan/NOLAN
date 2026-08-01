@@ -1,0 +1,38 @@
+{
+  "schema_version": "math-animation.system-matrix.v1",
+  "status": "passed",
+  "cairo_1080p": {
+    "status": "passed",
+    "run_dir": "/tmp/math-animation-system-matrix/20260730-213106-cairo-1080p-smoke",
+    "clip": "/tmp/math-animation-system-matrix/20260730-213106-cairo-1080p-smoke/clips/balance.mp4"
+  },
+  "determinism": {
+    "status": "passed",
+    "run_dirs": [
+      "/tmp/math-animation-system-matrix/20260730-213118-decoded-frame-determinism",
+      "/tmp/math-animation-system-matrix/20260730-213128-decoded-frame-determinism"
+    ],
+    "comparisons": {
+      "source_sha256": [
+        "d35c90dd8e00eaba09f03913cf61378016d24d30c80557ffa4e8c9aa56144348",
+        "d35c90dd8e00eaba09f03913cf61378016d24d30c80557ffa4e8c9aa56144348"
+      ],
+      "visual_ir_sha256": [
+        "50caaf7b9162e42a80f7c2e84525f80ff231c8defccf36742f9c9e4458f0859e",
+        "50caaf7b9162e42a80f7c2e84525f80ff231c8defccf36742f9c9e4458f0859e"
+      ],
+      "timeline_sha256": [
+        "3de3944b851e7654e5aaebf63581eaafb7d908f882408c8019620984086c28ba",
+        "3de3944b851e7654e5aaebf63581eaafb7d908f882408c8019620984086c28ba"
+      ],
+      "decoded_frames_sha256": [
+        "04ed9c5ac49aaf9859775ba73e74d57d6b479d035caf65cae5d27e2987cb33ba",
+        "04ed9c5ac49aaf9859775ba73e74d57d6b479d035caf65cae5d27e2987cb33ba"
+      ]
+    }
+  },
+  "opengl": {
+    "status": "unsupported_in_environment",
+    "detail": "RenderError: Manim failed rendering beat 'balance' with exit 1:\ne']) │\n│   101 │                                                                      │\n│   102 │   return create                                                      │\n│   103                                                                        │\n╰──────────────────────────────────────────────────────────────────────────────╯\nException: cannot choose pixel format\n\nDuring handling of the above exception, another exception occurred:\n\n╭───────────────────── Traceback (most recent call last) ──────────────────────╮\n│ /opt/miniconda3/envs/mas/lib/python3.13/site-packages/manim/cli/render/comma │\n│ nds.py:106 in render                                                         │\n│                                                                              │\n│   103 │   │   │   while keep_running:                                        │\n│   104 │   │   │   │   for SceneClass in scene_classes_from_file(file):       │\n│   105 │   │   │   │   │   with tempconfig({}):                               │\n│ ❱ 106 │   │   │   │   │   │   scene = SceneClass(renderer)                   │\n│   107 │   │   │   │   │   │   rerun = scene.render()                         │\n│   108 │   │   │   │   │   if rerun or config[\"write_all\"]:                   │\n│   109 │   │   │   │   │   │   renderer.num_plays = 0                         │\n│                                                                              │\n│ /opt/miniconda3/envs/mas/lib/python3.13/site-packages/manim/scene/scene.py:2 │\n│ 17 in __init__                                                               │\n│                                                                              │\n│    214 │   │   │   )                                                         │\n│    215 │   │   else:                                                         │\n│    216 │   │   │   self.renderer = renderer                                  │\n│ ❱  217 │   │   self.renderer.init_scene(self)                                │\n│    218 │   │                                                                 │\n│    219 │   │   self.mobjects: list[Mobject] = []                             │\n│    220 │   │   # TODO, remove need for foreground mobjects                   │\n│                                                                              │\n│ /opt/miniconda3/envs/mas/lib/python3.13/site-packages/manim/renderer/opengl_ │\n│ renderer.py:552 in init_scene                                                │\n│                                                                              │\n│    549 │   │   │   try:                                                      │\n│    550 │   │   │   │   self.context = moderngl.create_context(standalone=Tru │\n│    551 │   │   │   except Exception:                                         │\n│ ❱  552 │   │   │   │   self.context = moderngl.create_context(               │\n│    553 │   │   │   │   │   standalone=True,                                  │\n│    554 │   │   │   │   │   backend=\"egl\",                                    │\n│    555 │   │   │   │   )                                                     │\n│                                                                              │\n│ /opt/miniconda3/envs/mas/lib/python3.13/site-packages/moderngl/__init__.py:2 │\n│ 254 in create_context                                                        │\n│                                                                              │\n│   2251 │   │   mode = \"share\"                                                │\n│   2252 │                                                                     │\n│   2253 │   ctx = Context.__new__(Context)                                    │\n│ ❱ 2254 │   ctx.mglo, ctx.version_code = mgl.create_context(glversion=require │\n│   2255 │   ctx._info = None                                                  │\n│   2256 │   ctx._extensions = None                                            │\n│   2257 │   ctx.extra = None                                                  │\n│                                                                              │\n│ /opt/miniconda3/envs/mas/lib/python3.13/site-packages/glcontext/__init__.py: │\n│ 49 in get_backend_by_name                                                    │\n│                                                                              │\n│    46 def get_backend_by_name(name: str):                                    │\n│    47 │   \"\"\"Request a specific backend by name\"\"\"                           │\n│    48 │   if name == 'egl':                                                  │\n│ ❱  49 │   │   return _egl()                                                  │\n│    50 │                                                                      │\n│    51 │   raise ValueError(\"Cannot find supported backend: '{}'\".format(name │\n│    52                                                                        │\n│                                                                              │\n│ /opt/miniconda3/envs/mas/lib/python3.13/site-packages/glcontext/__init__.py: │\n│ 106 in _egl                                                                  │\n│                                                                              │\n│   103                                                                        │\n│   104                                                                        │\n│   105 def _egl():                                                            │\n│ ❱ 106 │   from glcontext import egl                                          │\n│   107 │   from ctypes.util import find_library                               │\n│   108 │                                                                      │\n│   109 │   def create(*args, **kwargs):                                       │\n╰──────────────────────────────────────────────────────────────────────────────╯\nImportError: cannot import name 'egl' from 'glcontext' \n(/opt/miniconda3/envs/mas/lib/python3.13/site-packages/glcontext/__init__.py)\n"
+  }
+}

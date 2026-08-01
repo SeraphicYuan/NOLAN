@@ -21,6 +21,11 @@ renders/
 **/inputs/
 **/public/
 **/capture/assets/
+# per-render Manim run bundles (nolan.mathanim) — one timestamped directory per render,
+# holding generated sources, Tex intermediates and the run's own evidence. Regenerable from
+# the scene spec; the CLIP it produces is content-addressed under assets/math/ and already
+# ignored above. Keep them on disk to inspect, out of the history.
+**/capture/_math/
 node_modules/
 _batch.jsonl
 audio_engine_meta.json

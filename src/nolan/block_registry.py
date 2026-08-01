@@ -48,6 +48,17 @@ DATA_GROUND_BLOCKS: FrozenSet[str] = frozenset({
     "slope", "small_multiples", "stream", "trajectory",
 })
 
+# `math` is deliberately in NEITHER set, and that is not an oversight.
+#
+# A math scene's `data.ground` is a video ground like any other — `collect_video_grounds` root-mounts
+# it and the viewer sees a full-frame Manim clip. But its composer never calls `media_ground()` or
+# `_data_ground()`: the clip IS the scene, so there is no ambient backdrop to paint and no legibility
+# veil to draw over it. Listing `math` here would tell auto-ground it may place a pool photo behind a
+# derivation, which would overwrite the ground the resolver stamped and throw away a Manim render.
+#
+# It still has to COUNT as media, or `coverage` scores a full-frame animation `none` — precisely the
+# contradiction this module was created to end. `style_contract.metrics.scene_media` handles it
+# explicitly, the way `newshead` and `document` are handled, and `tests/test_mathanim.py` pins it.
 ANY_GROUND_BLOCKS: FrozenSet[str] = GROUND_BLOCKS | DATA_GROUND_BLOCKS
 
 

@@ -1,0 +1,1228 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "unseen-planner-benchmark",
+  "title": "Constrained planner unseen-prompt benchmark",
+  "request": {
+    "source_kind": "script",
+    "content": "Explain that solving $3x+5=20$ means preserving equality on both sides.\n\nRewrite $2x+6=14$, then simplify it to $x=4$ without changing the solution.\n\nPlace -4, -1, 0, and 3 on a number line and compare their order.\n\nConnect the side lengths of a right triangle with $a^2+b^2=c^2$.\n\nFor the function `0.25*x**2`, move a secant toward the tangent to explain the derivative.\n\nGraph the function `sin(x)` and point out its repeating oscillation.\n\nIntroduce conditional probability with $P(A\\mid B)=\\frac{P(A\\cap B)}{P(B)}$.\n\nState the linear transformation $T(\\mathbf{x})=A\\mathbf{x}$ before discussing its geometry.\n\nIntroduce rotating harmonics with $z(t)=\\sum_n a_n e^{int}$.\n\nPlot the curve `exp(-(x**2))` as a simple bell-shaped density profile.\n\nRelate the bowl to its zero level equation $x^2+y^2-1=0$.\n\nContrast an approached infimum with the attained upper width $2\\sqrt{2}$.",
+    "audience": "mixed mathematical learners",
+    "script_policy": "review",
+    "target_duration_seconds": 31.635
+  },
+  "math_ledger": {
+    "claims": [
+      {
+        "id": "claim.001.01",
+        "statement": "The authored script asserts $3x+5=20$.",
+        "verification": "assumed",
+        "assumptions": [
+          "The authored script is the source of truth pending independent mathematical verification."
+        ],
+        "evidence": [
+          "script beat 1"
+        ]
+      },
+      {
+        "id": "claim.002.01",
+        "statement": "The authored script asserts $2x+6=14$.",
+        "verification": "assumed",
+        "assumptions": [
+          "The authored script is the source of truth pending independent mathematical verification."
+        ],
+        "evidence": [
+          "script beat 2"
+        ]
+      },
+      {
+        "id": "claim.002.02",
+        "statement": "The authored script asserts $x=4$.",
+        "verification": "assumed",
+        "assumptions": [
+          "The authored script is the source of truth pending independent mathematical verification."
+        ],
+        "evidence": [
+          "script beat 2"
+        ]
+      },
+      {
+        "id": "claim.004.01",
+        "statement": "The authored script asserts $a^2+b^2=c^2$.",
+        "verification": "assumed",
+        "assumptions": [
+          "The authored script is the source of truth pending independent mathematical verification."
+        ],
+        "evidence": [
+          "script beat 4"
+        ]
+      },
+      {
+        "id": "claim.007.01",
+        "statement": "The authored script asserts $P(A\\mid B)=\\frac{P(A\\cap B)}{P(B)}$.",
+        "verification": "assumed",
+        "assumptions": [
+          "The authored script is the source of truth pending independent mathematical verification."
+        ],
+        "evidence": [
+          "script beat 7"
+        ]
+      },
+      {
+        "id": "claim.008.01",
+        "statement": "The authored script asserts $T(\\mathbf{x})=A\\mathbf{x}$.",
+        "verification": "assumed",
+        "assumptions": [
+          "The authored script is the source of truth pending independent mathematical verification."
+        ],
+        "evidence": [
+          "script beat 8"
+        ]
+      },
+      {
+        "id": "claim.009.01",
+        "statement": "The authored script asserts $z(t)=\\sum_n a_n e^{int}$.",
+        "verification": "assumed",
+        "assumptions": [
+          "The authored script is the source of truth pending independent mathematical verification."
+        ],
+        "evidence": [
+          "script beat 9"
+        ]
+      },
+      {
+        "id": "claim.011.01",
+        "statement": "The authored script asserts $x^2+y^2-1=0$.",
+        "verification": "assumed",
+        "assumptions": [
+          "The authored script is the source of truth pending independent mathematical verification."
+        ],
+        "evidence": [
+          "script beat 11"
+        ]
+      },
+      {
+        "id": "claim.012.01",
+        "statement": "The authored script asserts $2\\sqrt{2}$.",
+        "verification": "assumed",
+        "assumptions": [
+          "The authored script is the source of truth pending independent mathematical verification."
+        ],
+        "evidence": [
+          "script beat 12"
+        ]
+      }
+    ],
+    "formulas": [
+      {
+        "id": "formula.001.01",
+        "latex_parts": [
+          "3x+5=20"
+        ],
+        "plain_language": "Explain that solving equation...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.002.01",
+        "latex_parts": [
+          "2x+6=14"
+        ],
+        "plain_language": "Rewrite equation, then simpli...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.002.02",
+        "latex_parts": [
+          "x=4"
+        ],
+        "plain_language": "Rewrite equation, then simpli...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.004.01",
+        "latex_parts": [
+          "a^2+b^2=c^2"
+        ],
+        "plain_language": "Connect the side lengths of a...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.007.01",
+        "latex_parts": [
+          "P(A\\mid B)=\\frac{P(A\\cap B)}{P(B)}"
+        ],
+        "plain_language": "Introduce conditional probabi...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.008.01",
+        "latex_parts": [
+          "T(\\mathbf{x})=A\\mathbf{x}"
+        ],
+        "plain_language": "State the linear transformati...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.009.01",
+        "latex_parts": [
+          "z(t)=\\sum_n a_n e^{int}"
+        ],
+        "plain_language": "Introduce rotating harmonics...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.011.01",
+        "latex_parts": [
+          "x^2+y^2-1=0"
+        ],
+        "plain_language": "Relate the bowl to its zero l...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.012.01",
+        "latex_parts": [
+          "2\\sqrt{2}"
+        ],
+        "plain_language": "Contrast an approached infimu...",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_planner_benchmark.wav",
+    "utterances": [
+      {
+        "id": "algebra-balance",
+        "text": "Explain that solving $3x+5=20$ means preserving equality on both sides.",
+        "words": [
+          {
+            "word": "Explain",
+            "start_seconds": 0.0,
+            "end_seconds": 0.18
+          },
+          {
+            "word": "that",
+            "start_seconds": 0.225,
+            "end_seconds": 0.405
+          },
+          {
+            "word": "solving",
+            "start_seconds": 0.45,
+            "end_seconds": 0.63
+          },
+          {
+            "word": "$3x+5=20$",
+            "start_seconds": 0.675,
+            "end_seconds": 0.855
+          },
+          {
+            "word": "means",
+            "start_seconds": 0.9,
+            "end_seconds": 1.08
+          },
+          {
+            "word": "preserving",
+            "start_seconds": 1.125,
+            "end_seconds": 1.305
+          },
+          {
+            "word": "equality",
+            "start_seconds": 1.35,
+            "end_seconds": 1.53
+          },
+          {
+            "word": "on",
+            "start_seconds": 1.575,
+            "end_seconds": 1.755
+          },
+          {
+            "word": "both",
+            "start_seconds": 1.8,
+            "end_seconds": 1.98
+          },
+          {
+            "word": "sides.",
+            "start_seconds": 2.025,
+            "end_seconds": 2.205
+          }
+        ]
+      },
+      {
+        "id": "equation-transform",
+        "text": "Rewrite $2x+6=14$, then simplify it to $x=4$ without changing the solution.",
+        "words": [
+          {
+            "word": "Rewrite",
+            "start_seconds": 2.655,
+            "end_seconds": 2.835
+          },
+          {
+            "word": "$2x+6=14$,",
+            "start_seconds": 2.88,
+            "end_seconds": 3.06
+          },
+          {
+            "word": "then",
+            "start_seconds": 3.105,
+            "end_seconds": 3.285
+          },
+          {
+            "word": "simplify",
+            "start_seconds": 3.33,
+            "end_seconds": 3.51
+          },
+          {
+            "word": "it",
+            "start_seconds": 3.555,
+            "end_seconds": 3.735
+          },
+          {
+            "word": "to",
+            "start_seconds": 3.78,
+            "end_seconds": 3.96
+          },
+          {
+            "word": "$x=4$",
+            "start_seconds": 4.005,
+            "end_seconds": 4.185
+          },
+          {
+            "word": "without",
+            "start_seconds": 4.23,
+            "end_seconds": 4.41
+          },
+          {
+            "word": "changing",
+            "start_seconds": 4.455,
+            "end_seconds": 4.635
+          },
+          {
+            "word": "the",
+            "start_seconds": 4.68,
+            "end_seconds": 4.86
+          },
+          {
+            "word": "solution.",
+            "start_seconds": 4.905,
+            "end_seconds": 5.085
+          }
+        ]
+      },
+      {
+        "id": "negative-number-line",
+        "text": "Place -4, -1, 0, and 3 on a number line and compare their order.",
+        "words": [
+          {
+            "word": "Place",
+            "start_seconds": 5.535,
+            "end_seconds": 5.715
+          },
+          {
+            "word": "-4,",
+            "start_seconds": 5.76,
+            "end_seconds": 5.94
+          },
+          {
+            "word": "-1,",
+            "start_seconds": 5.985,
+            "end_seconds": 6.165
+          },
+          {
+            "word": "0,",
+            "start_seconds": 6.21,
+            "end_seconds": 6.39
+          },
+          {
+            "word": "and",
+            "start_seconds": 6.435,
+            "end_seconds": 6.615
+          },
+          {
+            "word": "3",
+            "start_seconds": 6.66,
+            "end_seconds": 6.84
+          },
+          {
+            "word": "on",
+            "start_seconds": 6.885,
+            "end_seconds": 7.065
+          },
+          {
+            "word": "a",
+            "start_seconds": 7.11,
+            "end_seconds": 7.29
+          },
+          {
+            "word": "number",
+            "start_seconds": 7.335,
+            "end_seconds": 7.515
+          },
+          {
+            "word": "line",
+            "start_seconds": 7.56,
+            "end_seconds": 7.74
+          },
+          {
+            "word": "and",
+            "start_seconds": 7.785,
+            "end_seconds": 7.965
+          },
+          {
+            "word": "compare",
+            "start_seconds": 8.01,
+            "end_seconds": 8.19
+          },
+          {
+            "word": "their",
+            "start_seconds": 8.235,
+            "end_seconds": 8.415
+          },
+          {
+            "word": "order.",
+            "start_seconds": 8.46,
+            "end_seconds": 8.64
+          }
+        ]
+      },
+      {
+        "id": "pythagorean",
+        "text": "Connect the side lengths of a right triangle with $a^2+b^2=c^2$.",
+        "words": [
+          {
+            "word": "Connect",
+            "start_seconds": 9.09,
+            "end_seconds": 9.27
+          },
+          {
+            "word": "the",
+            "start_seconds": 9.315,
+            "end_seconds": 9.495
+          },
+          {
+            "word": "side",
+            "start_seconds": 9.54,
+            "end_seconds": 9.72
+          },
+          {
+            "word": "lengths",
+            "start_seconds": 9.765,
+            "end_seconds": 9.945
+          },
+          {
+            "word": "of",
+            "start_seconds": 9.99,
+            "end_seconds": 10.17
+          },
+          {
+            "word": "a",
+            "start_seconds": 10.215,
+            "end_seconds": 10.395
+          },
+          {
+            "word": "right",
+            "start_seconds": 10.44,
+            "end_seconds": 10.62
+          },
+          {
+            "word": "triangle",
+            "start_seconds": 10.665,
+            "end_seconds": 10.845
+          },
+          {
+            "word": "with",
+            "start_seconds": 10.89,
+            "end_seconds": 11.07
+          },
+          {
+            "word": "$a^2+b^2=c^2$.",
+            "start_seconds": 11.115,
+            "end_seconds": 11.295
+          }
+        ]
+      },
+      {
+        "id": "secant-limit",
+        "text": "For the function `0.25*x**2`, move a secant toward the tangent to explain the derivative.",
+        "words": [
+          {
+            "word": "For",
+            "start_seconds": 11.745,
+            "end_seconds": 11.925
+          },
+          {
+            "word": "the",
+            "start_seconds": 11.97,
+            "end_seconds": 12.15
+          },
+          {
+            "word": "function",
+            "start_seconds": 12.195,
+            "end_seconds": 12.375
+          },
+          {
+            "word": "`0.25*x**2`,",
+            "start_seconds": 12.42,
+            "end_seconds": 12.6
+          },
+          {
+            "word": "move",
+            "start_seconds": 12.645,
+            "end_seconds": 12.825
+          },
+          {
+            "word": "a",
+            "start_seconds": 12.87,
+            "end_seconds": 13.05
+          },
+          {
+            "word": "secant",
+            "start_seconds": 13.095,
+            "end_seconds": 13.275
+          },
+          {
+            "word": "toward",
+            "start_seconds": 13.32,
+            "end_seconds": 13.5
+          },
+          {
+            "word": "the",
+            "start_seconds": 13.545,
+            "end_seconds": 13.725
+          },
+          {
+            "word": "tangent",
+            "start_seconds": 13.77,
+            "end_seconds": 13.95
+          },
+          {
+            "word": "to",
+            "start_seconds": 13.995,
+            "end_seconds": 14.175
+          },
+          {
+            "word": "explain",
+            "start_seconds": 14.22,
+            "end_seconds": 14.4
+          },
+          {
+            "word": "the",
+            "start_seconds": 14.445,
+            "end_seconds": 14.625
+          },
+          {
+            "word": "derivative.",
+            "start_seconds": 14.67,
+            "end_seconds": 14.85
+          }
+        ]
+      },
+      {
+        "id": "sine-graph",
+        "text": "Graph the function `sin(x)` and point out its repeating oscillation.",
+        "words": [
+          {
+            "word": "Graph",
+            "start_seconds": 15.3,
+            "end_seconds": 15.48
+          },
+          {
+            "word": "the",
+            "start_seconds": 15.525,
+            "end_seconds": 15.705
+          },
+          {
+            "word": "function",
+            "start_seconds": 15.75,
+            "end_seconds": 15.93
+          },
+          {
+            "word": "`sin(x)`",
+            "start_seconds": 15.975,
+            "end_seconds": 16.155
+          },
+          {
+            "word": "and",
+            "start_seconds": 16.2,
+            "end_seconds": 16.38
+          },
+          {
+            "word": "point",
+            "start_seconds": 16.425,
+            "end_seconds": 16.605
+          },
+          {
+            "word": "out",
+            "start_seconds": 16.65,
+            "end_seconds": 16.83
+          },
+          {
+            "word": "its",
+            "start_seconds": 16.875,
+            "end_seconds": 17.055
+          },
+          {
+            "word": "repeating",
+            "start_seconds": 17.1,
+            "end_seconds": 17.28
+          },
+          {
+            "word": "oscillation.",
+            "start_seconds": 17.325,
+            "end_seconds": 17.505
+          }
+        ]
+      },
+      {
+        "id": "conditional-probability",
+        "text": "Introduce conditional probability with $P(A\\mid B)=\\frac{P(A\\cap B)}{P(B)}$.",
+        "words": [
+          {
+            "word": "Introduce",
+            "start_seconds": 17.955,
+            "end_seconds": 18.135
+          },
+          {
+            "word": "conditional",
+            "start_seconds": 18.18,
+            "end_seconds": 18.36
+          },
+          {
+            "word": "probability",
+            "start_seconds": 18.405,
+            "end_seconds": 18.585
+          },
+          {
+            "word": "with",
+            "start_seconds": 18.63,
+            "end_seconds": 18.81
+          },
+          {
+            "word": "$P(A\\mid",
+            "start_seconds": 18.855,
+            "end_seconds": 19.035
+          },
+          {
+            "word": "B)=\\frac{P(A\\cap",
+            "start_seconds": 19.08,
+            "end_seconds": 19.26
+          },
+          {
+            "word": "B)}{P(B)}$.",
+            "start_seconds": 19.305,
+            "end_seconds": 19.485
+          }
+        ]
+      },
+      {
+        "id": "matrix-action",
+        "text": "State the linear transformation $T(\\mathbf{x})=A\\mathbf{x}$ before discussing its geometry.",
+        "words": [
+          {
+            "word": "State",
+            "start_seconds": 19.935,
+            "end_seconds": 20.115
+          },
+          {
+            "word": "the",
+            "start_seconds": 20.16,
+            "end_seconds": 20.34
+          },
+          {
+            "word": "linear",
+            "start_seconds": 20.385,
+            "end_seconds": 20.565
+          },
+          {
+            "word": "transformation",
+            "start_seconds": 20.61,
+            "end_seconds": 20.79
+          },
+          {
+            "word": "$T(\\mathbf{x})=A\\mathbf{x}$",
+            "start_seconds": 20.835,
+            "end_seconds": 21.015
+          },
+          {
+            "word": "before",
+            "start_seconds": 21.06,
+            "end_seconds": 21.24
+          },
+          {
+            "word": "discussing",
+            "start_seconds": 21.285,
+            "end_seconds": 21.465
+          },
+          {
+            "word": "its",
+            "start_seconds": 21.51,
+            "end_seconds": 21.69
+          },
+          {
+            "word": "geometry.",
+            "start_seconds": 21.735,
+            "end_seconds": 21.915
+          }
+        ]
+      },
+      {
+        "id": "fourier-sum",
+        "text": "Introduce rotating harmonics with $z(t)=\\sum_n a_n e^{int}$.",
+        "words": [
+          {
+            "word": "Introduce",
+            "start_seconds": 22.365,
+            "end_seconds": 22.545
+          },
+          {
+            "word": "rotating",
+            "start_seconds": 22.59,
+            "end_seconds": 22.77
+          },
+          {
+            "word": "harmonics",
+            "start_seconds": 22.815,
+            "end_seconds": 22.995
+          },
+          {
+            "word": "with",
+            "start_seconds": 23.04,
+            "end_seconds": 23.22
+          },
+          {
+            "word": "$z(t)=\\sum_n",
+            "start_seconds": 23.265,
+            "end_seconds": 23.445
+          },
+          {
+            "word": "a_n",
+            "start_seconds": 23.49,
+            "end_seconds": 23.67
+          },
+          {
+            "word": "e^{int}$.",
+            "start_seconds": 23.715,
+            "end_seconds": 23.895
+          }
+        ]
+      },
+      {
+        "id": "gaussian-curve",
+        "text": "Plot the curve `exp(-(x**2))` as a simple bell-shaped density profile.",
+        "words": [
+          {
+            "word": "Plot",
+            "start_seconds": 24.345,
+            "end_seconds": 24.525
+          },
+          {
+            "word": "the",
+            "start_seconds": 24.57,
+            "end_seconds": 24.75
+          },
+          {
+            "word": "curve",
+            "start_seconds": 24.795,
+            "end_seconds": 24.975
+          },
+          {
+            "word": "`exp(-(x**2))`",
+            "start_seconds": 25.02,
+            "end_seconds": 25.2
+          },
+          {
+            "word": "as",
+            "start_seconds": 25.245,
+            "end_seconds": 25.425
+          },
+          {
+            "word": "a",
+            "start_seconds": 25.47,
+            "end_seconds": 25.65
+          },
+          {
+            "word": "simple",
+            "start_seconds": 25.695,
+            "end_seconds": 25.875
+          },
+          {
+            "word": "bell-shaped",
+            "start_seconds": 25.92,
+            "end_seconds": 26.1
+          },
+          {
+            "word": "density",
+            "start_seconds": 26.145,
+            "end_seconds": 26.325
+          },
+          {
+            "word": "profile.",
+            "start_seconds": 26.37,
+            "end_seconds": 26.55
+          }
+        ]
+      },
+      {
+        "id": "surface-level",
+        "text": "Relate the bowl to its zero level equation $x^2+y^2-1=0$.",
+        "words": [
+          {
+            "word": "Relate",
+            "start_seconds": 27.0,
+            "end_seconds": 27.18
+          },
+          {
+            "word": "the",
+            "start_seconds": 27.225,
+            "end_seconds": 27.405
+          },
+          {
+            "word": "bowl",
+            "start_seconds": 27.45,
+            "end_seconds": 27.63
+          },
+          {
+            "word": "to",
+            "start_seconds": 27.675,
+            "end_seconds": 27.855
+          },
+          {
+            "word": "its",
+            "start_seconds": 27.9,
+            "end_seconds": 28.08
+          },
+          {
+            "word": "zero",
+            "start_seconds": 28.125,
+            "end_seconds": 28.305
+          },
+          {
+            "word": "level",
+            "start_seconds": 28.35,
+            "end_seconds": 28.53
+          },
+          {
+            "word": "equation",
+            "start_seconds": 28.575,
+            "end_seconds": 28.755
+          },
+          {
+            "word": "$x^2+y^2-1=0$.",
+            "start_seconds": 28.8,
+            "end_seconds": 28.98
+          }
+        ]
+      },
+      {
+        "id": "research-extreme",
+        "text": "Contrast an approached infimum with the attained upper width $2\\sqrt{2}$.",
+        "words": [
+          {
+            "word": "Contrast",
+            "start_seconds": 29.43,
+            "end_seconds": 29.61
+          },
+          {
+            "word": "an",
+            "start_seconds": 29.655,
+            "end_seconds": 29.835
+          },
+          {
+            "word": "approached",
+            "start_seconds": 29.88,
+            "end_seconds": 30.06
+          },
+          {
+            "word": "infimum",
+            "start_seconds": 30.105,
+            "end_seconds": 30.285
+          },
+          {
+            "word": "with",
+            "start_seconds": 30.33,
+            "end_seconds": 30.51
+          },
+          {
+            "word": "the",
+            "start_seconds": 30.555,
+            "end_seconds": 30.735
+          },
+          {
+            "word": "attained",
+            "start_seconds": 30.78,
+            "end_seconds": 30.96
+          },
+          {
+            "word": "upper",
+            "start_seconds": 31.005,
+            "end_seconds": 31.185
+          },
+          {
+            "word": "width",
+            "start_seconds": 31.23,
+            "end_seconds": 31.41
+          },
+          {
+            "word": "$2\\sqrt{2}$.",
+            "start_seconds": 31.455,
+            "end_seconds": 31.635
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "planner-benchmark",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#0d1218",
+        "foreground": "#f3efe6",
+        "muted": "#87919a"
+      },
+      "semantic_colors": {
+        "primary": "#5aa9a1",
+        "changing": "#e2765b",
+        "fixed": "#6e9ccc"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 42,
+        "body_size": 23,
+        "math_size": 42
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "beat-001",
+      "title": "Explain that solving equation...",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "algebra-balance",
+      "duration_seconds": 2.205,
+      "blocks": [
+        {
+          "id": "beat-001.equation_reveal",
+          "start_at": null,
+          "run_time": 0.7056,
+          "hold_seconds": 1.1494,
+          "type": "equation_reveal",
+          "formula_id": "formula.001.01",
+          "latex_parts": [
+            "3x+5=20"
+          ],
+          "part_roles": [],
+          "caption": "Explain that solving equation..."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-002",
+      "title": "Rewrite equation, then simpli...",
+      "learning_objective": "Show the authored symbolic change.",
+      "narration_utterance_id": "equation-transform",
+      "duration_seconds": 2.43,
+      "blocks": [
+        {
+          "id": "beat-002.equation_transform",
+          "start_at": null,
+          "run_time": 0.7776000000000001,
+          "hold_seconds": 1.0524,
+          "type": "equation_transform",
+          "from_latex": [
+            "2x+6=14"
+          ],
+          "to_latex": [
+            "x=4"
+          ],
+          "caption": "Rewrite equation, then simpli..."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-003",
+      "title": "Place -4, -1, 0, and 3 on a n...",
+      "learning_objective": "Locate the narrated values on a number line.",
+      "narration_utterance_id": "negative-number-line",
+      "duration_seconds": 3.1050000000000004,
+      "blocks": [
+        {
+          "id": "beat-003.number_line",
+          "start_at": null,
+          "run_time": 0.9936000000000001,
+          "hold_seconds": 1.7614,
+          "type": "number_line",
+          "x_range": [
+            -5.4,
+            4.4,
+            1.0
+          ],
+          "values": [
+            -4.0,
+            -1.0,
+            0.0,
+            3.0
+          ],
+          "labels": [
+            "-4",
+            "-1",
+            "0",
+            "3"
+          ],
+          "role": "primary"
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-004",
+      "title": "Connect the side lengths of a...",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "pythagorean",
+      "duration_seconds": 2.205,
+      "blocks": [
+        {
+          "id": "beat-004.equation_reveal",
+          "start_at": null,
+          "run_time": 0.7056,
+          "hold_seconds": 1.1494,
+          "type": "equation_reveal",
+          "formula_id": "formula.004.01",
+          "latex_parts": [
+            "a^2+b^2=c^2"
+          ],
+          "part_roles": [],
+          "caption": "Connect the side lengths of a..."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-005",
+      "title": "For the function `0.25*x**2`,...",
+      "learning_objective": "Connect secant motion to tangent behavior.",
+      "narration_utterance_id": "secant-limit",
+      "duration_seconds": 3.1050000000000004,
+      "blocks": [
+        {
+          "id": "beat-005.secant_to_tangent",
+          "start_at": null,
+          "run_time": 0.9936000000000001,
+          "hold_seconds": 1.5114,
+          "type": "secant_to_tangent",
+          "expression": "0.25*x**2",
+          "x_range": [
+            -4.0,
+            4.0,
+            1.0
+          ],
+          "y_range": [
+            -2.0,
+            5.0,
+            1.0
+          ],
+          "x0": 0.5,
+          "h_start": 2.5,
+          "h_end": 0.08,
+          "caption": "For the function `0.25*x**2`,..."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-006",
+      "title": "Graph the function `sin(x)` a...",
+      "learning_objective": "Relate an explicit expression to its graph.",
+      "narration_utterance_id": "sine-graph",
+      "duration_seconds": 2.2049999999999983,
+      "blocks": [
+        {
+          "id": "beat-006.function_plot",
+          "start_at": null,
+          "run_time": 0.7055999999999994,
+          "hold_seconds": 1.1493999999999986,
+          "type": "function_plot",
+          "expression": "sin(x)",
+          "x_range": [
+            -4.0,
+            4.0,
+            1.0
+          ],
+          "y_range": [
+            -3.0,
+            5.0,
+            1.0
+          ],
+          "label_latex": null,
+          "role": "primary"
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-007",
+      "title": "Introduce conditional probabi...",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "conditional-probability",
+      "duration_seconds": 1.5300000000000011,
+      "blocks": [
+        {
+          "id": "beat-007.equation_reveal",
+          "start_at": null,
+          "run_time": 0.48960000000000037,
+          "hold_seconds": 0.6904000000000009,
+          "type": "equation_reveal",
+          "formula_id": "formula.007.01",
+          "latex_parts": [
+            "P(A\\mid B)=\\frac{P(A\\cap B)}{P(B)}"
+          ],
+          "part_roles": [],
+          "caption": "Introduce conditional probabi..."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-008",
+      "title": "State the linear transformati...",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "matrix-action",
+      "duration_seconds": 1.9800000000000004,
+      "blocks": [
+        {
+          "id": "beat-008.equation_reveal",
+          "start_at": null,
+          "run_time": 0.6336000000000002,
+          "hold_seconds": 0.9964000000000003,
+          "type": "equation_reveal",
+          "formula_id": "formula.008.01",
+          "latex_parts": [
+            "T(\\mathbf{x})=A\\mathbf{x}"
+          ],
+          "part_roles": [],
+          "caption": "State the linear transformati..."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-009",
+      "title": "Introduce rotating harmonics...",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "fourier-sum",
+      "duration_seconds": 1.5300000000000011,
+      "blocks": [
+        {
+          "id": "beat-009.equation_reveal",
+          "start_at": null,
+          "run_time": 0.48960000000000037,
+          "hold_seconds": 0.6904000000000009,
+          "type": "equation_reveal",
+          "formula_id": "formula.009.01",
+          "latex_parts": [
+            "z(t)=\\sum_n a_n e^{int}"
+          ],
+          "part_roles": [],
+          "caption": "Introduce rotating harmonics..."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-010",
+      "title": "Plot the curve `exp(-(x**2))`...",
+      "learning_objective": "Relate an explicit expression to its graph.",
+      "narration_utterance_id": "gaussian-curve",
+      "duration_seconds": 2.205000000000002,
+      "blocks": [
+        {
+          "id": "beat-010.function_plot",
+          "start_at": null,
+          "run_time": 0.7056000000000006,
+          "hold_seconds": 1.1494000000000013,
+          "type": "function_plot",
+          "expression": "exp(-(x**2))",
+          "x_range": [
+            -4.0,
+            4.0,
+            1.0
+          ],
+          "y_range": [
+            -3.0,
+            5.0,
+            1.0
+          ],
+          "label_latex": null,
+          "role": "primary"
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-011",
+      "title": "Relate the bowl to its zero l...",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "surface-level",
+      "duration_seconds": 1.9800000000000004,
+      "blocks": [
+        {
+          "id": "beat-011.equation_reveal",
+          "start_at": null,
+          "run_time": 0.6336000000000002,
+          "hold_seconds": 0.9964000000000003,
+          "type": "equation_reveal",
+          "formula_id": "formula.011.01",
+          "latex_parts": [
+            "x^2+y^2-1=0"
+          ],
+          "part_roles": [],
+          "caption": "Relate the bowl to its zero l..."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "beat-012",
+      "title": "Contrast an approached infimu...",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "research-extreme",
+      "duration_seconds": 2.205000000000002,
+      "blocks": [
+        {
+          "id": "beat-012.equation_reveal",
+          "start_at": null,
+          "run_time": 0.7056000000000006,
+          "hold_seconds": 1.1494000000000013,
+          "type": "equation_reveal",
+          "formula_id": "formula.012.01",
+          "latex_parts": [
+            "2\\sqrt{2}"
+          ],
+          "part_roles": [],
+          "caption": "Contrast an approached infimu..."
+        }
+      ],
+      "scene_program": null
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 640,
+    "pixel_height": 360,
+    "frame_rate": 15,
+    "transparent": false,
+    "seed": 61
+  }
+}

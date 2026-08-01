@@ -1,0 +1,74 @@
+{
+  "schema_version": "math-animation.determinant-stress-report.v1",
+  "status": "passed",
+  "topic": "Why the determinant measures area",
+  "narration_mode": "macos_system_tts_proportional_alignment",
+  "alignment_note": "Local system TTS uses proportional per-word timing for this standalone test; Nolan alignment remains authoritative.",
+  "beat_count": 3,
+  "scene_program_count": 3,
+  "object_count": 24,
+  "cue_count": 13,
+  "action_count": 23,
+  "manim_features": [
+    "persistent object groups",
+    "parallel create and transform cues",
+    "word-anchored timing",
+    "matrix transformations with determinant assertions",
+    "polygon area deformation",
+    "orientation reversal",
+    "singular collapse",
+    "TransformMatchingTex equations",
+    "semantic color roles",
+    "arrow annotations"
+  ],
+  "pedagogy_status": "passed",
+  "pedagogy_score": 0.9701333333333333,
+  "dimension_scores": {
+    "mathematical_grounding": 1.0,
+    "objective_alignment": 1.0,
+    "progressive_disclosure": 0.9333333333333332,
+    "pacing": 1.0,
+    "cognitive_load": 0.88,
+    "narration_sync": 1.0,
+    "legibility": 1.0
+  },
+  "review_status": "passed",
+  "review_warning_count": 0,
+  "review_error_count": 0,
+  "fresh_render_count": 3,
+  "performance": {
+    "schema_version": "math-animation.performance.v1",
+    "rendered_beats": {
+      "area-triples": 14.331301458994858,
+      "orientation-flips": 14.237562125024851,
+      "area-collapses": 21.94212650001282
+    },
+    "cache_reused_beats": [],
+    "compile_seconds": 0.0024355000350624323,
+    "latex_preflight_seconds": 3.3187173339538276,
+    "compose_seconds": 0.4702182079781778,
+    "review_seconds": 2.3793602919904515,
+    "total_seconds": 56.741248167003505
+  },
+  "final_video_media": {
+    "duration_seconds": 22.875,
+    "video_codec": "h264",
+    "pixel_format": "yuv420p",
+    "width": 960,
+    "height": 540,
+    "frame_rate": 24.0,
+    "frame_count": 549,
+    "audio_streams": [
+      {
+        "codec": "aac",
+        "sample_rate": "24000",
+        "channels": 1
+      }
+    ]
+  },
+  "custom_python_rate": 0.0,
+  "run_dir": "/tmp/math-animation-determinant-area-stress-final-cold-20260731/20260731-021253-determinant-area-stress",
+  "video_artifact": "/Users/yuan/ClaudeProjects/Animation_Lib/artifacts/determinant_area_stress.mp4",
+  "keyframes_artifact": "/Users/yuan/ClaudeProjects/Animation_Lib/artifacts/determinant_area_stress_keyframes.png",
+  "review_artifact": "/Users/yuan/ClaudeProjects/Animation_Lib/artifacts/determinant_area_stress_review.json"
+}

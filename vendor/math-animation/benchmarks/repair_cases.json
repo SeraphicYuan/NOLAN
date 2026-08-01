@@ -1,0 +1,60 @@
+{
+  "schema_version": "math-animation.repair-benchmark.v1",
+  "repairable_cases": [
+    {
+      "id": "clipped-caption",
+      "diagnostic": "text_overflow",
+      "operation": "shorten_generated_caption"
+    },
+    {
+      "id": "tiny-portrait-type",
+      "diagnostic": "illegible_type",
+      "operation": "set_responsive_scale"
+    },
+    {
+      "id": "frozen-tracker",
+      "diagnostic": "frozen_motion",
+      "operation": "set_tracker_end_value"
+    },
+    {
+      "id": "excessive-surface-density",
+      "diagnostic": "excessive_density",
+      "operation": "reduce_density"
+    },
+    {
+      "id": "overlong-cue",
+      "diagnostic": "timing_drift",
+      "operation": "scale_timing"
+    },
+    {
+      "id": "offscreen-object",
+      "diagnostic": "text_overflow",
+      "operation": "reposition_object"
+    },
+    {
+      "id": "unbounded-portrait-text",
+      "diagnostic": "text_overflow",
+      "operation": "set_max_width"
+    },
+    {
+      "id": "wrong-template",
+      "diagnostic": "template_mismatch",
+      "operation": "swap_template"
+    }
+  ],
+  "refusal_cases": [
+    {
+      "id": "missing-asset",
+      "diagnostic": "missing_input"
+    },
+    {
+      "id": "invalid-math-ledger",
+      "diagnostic": "math_validation_failed"
+    },
+    {
+      "id": "nonfinite-surface-domain",
+      "diagnostic": "invariant_failure",
+      "requires_render": true
+    }
+  ]
+}

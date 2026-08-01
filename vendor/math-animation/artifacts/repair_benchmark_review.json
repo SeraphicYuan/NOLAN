@@ -1,0 +1,690 @@
+{
+  "schema_version": "math-animation.review.v2",
+  "status": "passed",
+  "clips": [
+    {
+      "beat_id": "clipped-caption",
+      "decoder": "passed",
+      "declared_duration_seconds": 2.3,
+      "media_duration_seconds": 2.333333,
+      "media": {
+        "duration_seconds": 2.333333,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 360,
+        "height": 640,
+        "frame_rate": 12.0,
+        "frame_count": 28,
+        "audio_streams": []
+      },
+      "cue_timing": [],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/clipped-caption/000-opening.png",
+          "metrics": {
+            "luma_stddev": 6.3827055586229,
+            "foreground_fraction": 0.0039603960396039604
+          }
+        },
+        {
+          "id": "caption.reveal.stable",
+          "time_seconds": 0.7000000000000001,
+          "kind": "stable",
+          "path": "review/frames/clipped-caption/001-caption.reveal.stable.png",
+          "metrics": {
+            "luma_stddev": 8.437395382339894,
+            "foreground_fraction": 0.02128712871287129
+          }
+        },
+        {
+          "id": "caption.reveal.motion-a",
+          "time_seconds": 0.1375,
+          "kind": "motion-a",
+          "motion_group": "caption.reveal",
+          "path": "review/frames/clipped-caption/002-caption.reveal.motion-a.png",
+          "metrics": {
+            "luma_stddev": 6.3827055586229,
+            "foreground_fraction": 0.0039603960396039604
+          }
+        },
+        {
+          "id": "caption.reveal.motion-b",
+          "time_seconds": 0.41250000000000003,
+          "kind": "motion-b",
+          "motion_group": "caption.reveal",
+          "path": "review/frames/clipped-caption/003-caption.reveal.motion-b.png",
+          "metrics": {
+            "luma_stddev": 9.21651753179947,
+            "foreground_fraction": 0.021727172717271728
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 2.1666663333333336,
+          "expect_blank": true,
+          "path": "review/frames/clipped-caption/004-closing.png",
+          "metrics": {
+            "luma_stddev": 0.7984019387505609,
+            "foreground_fraction": 0.0011551155115511551
+          }
+        }
+      ],
+      "contact_sheet": "review/clipped-caption.contact-sheet.png"
+    },
+    {
+      "beat_id": "tiny-portrait-type",
+      "decoder": "passed",
+      "declared_duration_seconds": 2.3000000000000003,
+      "media_duration_seconds": 2.25,
+      "media": {
+        "duration_seconds": 2.25,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 360,
+        "height": 640,
+        "frame_rate": 12.0,
+        "frame_count": 27,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "tiny.show",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/tiny-portrait-type/000-opening.png",
+          "metrics": {
+            "luma_stddev": 4.671612114967202,
+            "foreground_fraction": 0.0033003300330033004
+          }
+        },
+        {
+          "id": "tiny.show.stable",
+          "time_seconds": 0.7000000000000001,
+          "kind": "stable",
+          "path": "review/frames/tiny-portrait-type/001-tiny.show.stable.png",
+          "metrics": {
+            "luma_stddev": 4.558027402719149,
+            "foreground_fraction": 0.0070407040704070405
+          }
+        },
+        {
+          "id": "tiny.show.motion-a",
+          "time_seconds": 0.1625,
+          "kind": "motion-a",
+          "motion_group": "tiny.show",
+          "path": "review/frames/tiny-portrait-type/002-tiny.show.motion-a.png",
+          "metrics": {
+            "luma_stddev": 4.671612114967202,
+            "foreground_fraction": 0.0033003300330033004
+          }
+        },
+        {
+          "id": "tiny.show.motion-b",
+          "time_seconds": 0.48750000000000004,
+          "kind": "motion-b",
+          "motion_group": "tiny.show",
+          "path": "review/frames/tiny-portrait-type/003-tiny.show.motion-b.png",
+          "metrics": {
+            "luma_stddev": 5.403615611028644,
+            "foreground_fraction": 0.006655665566556656
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 2.0833333333333335,
+          "expect_blank": false,
+          "path": "review/frames/tiny-portrait-type/004-closing.png",
+          "metrics": {
+            "luma_stddev": 4.558027402719149,
+            "foreground_fraction": 0.0070407040704070405
+          }
+        }
+      ],
+      "contact_sheet": "review/tiny-portrait-type.contact-sheet.png"
+    },
+    {
+      "beat_id": "frozen-tracker",
+      "decoder": "passed",
+      "declared_duration_seconds": 2.8199999999999994,
+      "media_duration_seconds": 2.916667,
+      "media": {
+        "duration_seconds": 2.916667,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 360,
+        "height": 640,
+        "frame_rate": 12.0,
+        "frame_count": 35,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "orbit.show",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "orbit.move",
+          "desired_seconds": 0.45,
+          "output_frame": 5,
+          "quantized_seconds": 0.4166666666666667,
+          "absolute_error_seconds": 0.033333333333333326,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/frozen-tracker/000-opening.png",
+          "metrics": {
+            "luma_stddev": 4.783771494080894,
+            "foreground_fraction": 0.006435643564356435
+          }
+        },
+        {
+          "id": "orbit.show.stable",
+          "time_seconds": 0.5,
+          "kind": "stable",
+          "path": "review/frames/frozen-tracker/001-orbit.show.stable.png",
+          "metrics": {
+            "luma_stddev": 10.388374813777604,
+            "foreground_fraction": 0.029262926292629263
+          }
+        },
+        {
+          "id": "orbit.show.motion-a",
+          "time_seconds": 0.1125,
+          "kind": "motion-a",
+          "motion_group": "orbit.show",
+          "path": "review/frames/frozen-tracker/002-orbit.show.motion-a.png",
+          "metrics": {
+            "luma_stddev": 4.783771494080894,
+            "foreground_fraction": 0.006435643564356435
+          }
+        },
+        {
+          "id": "orbit.show.motion-b",
+          "time_seconds": 0.3375,
+          "kind": "motion-b",
+          "motion_group": "orbit.show",
+          "path": "review/frames/frozen-tracker/003-orbit.show.motion-b.png",
+          "metrics": {
+            "luma_stddev": 10.450336601480615,
+            "foreground_fraction": 0.02942794279427943
+          }
+        },
+        {
+          "id": "orbit.move.stable",
+          "time_seconds": 1.35,
+          "kind": "stable",
+          "path": "review/frames/frozen-tracker/004-orbit.move.stable.png",
+          "metrics": {
+            "luma_stddev": 10.388171267788959,
+            "foreground_fraction": 0.029372937293729372
+          }
+        },
+        {
+          "id": "orbit.move.motion-a",
+          "time_seconds": 0.6625,
+          "kind": "motion-a",
+          "motion_group": "orbit.move",
+          "path": "review/frames/frozen-tracker/005-orbit.move.motion-a.png",
+          "metrics": {
+            "luma_stddev": 10.410870021140616,
+            "foreground_fraction": 0.02920792079207921
+          }
+        },
+        {
+          "id": "orbit.move.motion-b",
+          "time_seconds": 1.0875,
+          "kind": "motion-b",
+          "motion_group": "orbit.move",
+          "path": "review/frames/frozen-tracker/006-orbit.move.motion-b.png",
+          "metrics": {
+            "luma_stddev": 10.380794193999568,
+            "foreground_fraction": 0.029152915291529153
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 2.7199999999999993,
+          "expect_blank": false,
+          "path": "review/frames/frozen-tracker/007-closing.png",
+          "metrics": {
+            "luma_stddev": 10.384799979438238,
+            "foreground_fraction": 0.029372937293729372
+          }
+        }
+      ],
+      "contact_sheet": "review/frozen-tracker.contact-sheet.png"
+    },
+    {
+      "beat_id": "excessive-surface-density",
+      "decoder": "passed",
+      "declared_duration_seconds": 2.299999999999999,
+      "media_duration_seconds": 2.25,
+      "media": {
+        "duration_seconds": 2.25,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 360,
+        "height": 640,
+        "frame_rate": 12.0,
+        "frame_count": 27,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "wave.show",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/excessive-surface-density/000-opening.png",
+          "metrics": {
+            "luma_stddev": 19.19354465333663,
+            "foreground_fraction": 0.04361936193619362
+          }
+        },
+        {
+          "id": "wave.show.stable",
+          "time_seconds": 0.8500000000000001,
+          "kind": "stable",
+          "path": "review/frames/excessive-surface-density/001-wave.show.stable.png",
+          "metrics": {
+            "luma_stddev": 47.0831068467424,
+            "foreground_fraction": 0.283003300330033
+          }
+        },
+        {
+          "id": "wave.show.motion-a",
+          "time_seconds": 0.2,
+          "kind": "motion-a",
+          "motion_group": "wave.show",
+          "path": "review/frames/excessive-surface-density/002-wave.show.motion-a.png",
+          "metrics": {
+            "luma_stddev": 25.858351710177875,
+            "foreground_fraction": 0.06897689768976897
+          }
+        },
+        {
+          "id": "wave.show.motion-b",
+          "time_seconds": 0.6000000000000001,
+          "kind": "motion-b",
+          "motion_group": "wave.show",
+          "path": "review/frames/excessive-surface-density/003-wave.show.motion-b.png",
+          "metrics": {
+            "luma_stddev": 45.00635322232819,
+            "foreground_fraction": 0.24103410341034104
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 2.0833333333333335,
+          "expect_blank": false,
+          "path": "review/frames/excessive-surface-density/004-closing.png",
+          "metrics": {
+            "luma_stddev": 47.069897321242856,
+            "foreground_fraction": 0.283003300330033
+          }
+        }
+      ],
+      "contact_sheet": "review/excessive-surface-density.contact-sheet.png"
+    },
+    {
+      "beat_id": "overlong-cue",
+      "decoder": "passed",
+      "declared_duration_seconds": 2.3000000000000007,
+      "media_duration_seconds": 2.25,
+      "media": {
+        "duration_seconds": 2.25,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 360,
+        "height": 640,
+        "frame_rate": 12.0,
+        "frame_count": 27,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "timing.show",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/overlong-cue/000-opening.png",
+          "metrics": {
+            "luma_stddev": 0.055912083452114236,
+            "foreground_fraction": 0.0
+          }
+        },
+        {
+          "id": "timing.show.stable",
+          "time_seconds": 2.0833333333333335,
+          "kind": "stable",
+          "path": "review/frames/overlong-cue/001-timing.show.stable.png",
+          "metrics": {
+            "luma_stddev": 9.610855160104718,
+            "foreground_fraction": 0.016116611661166118
+          }
+        },
+        {
+          "id": "timing.show.motion-a",
+          "time_seconds": 0.5405000000000002,
+          "kind": "motion-a",
+          "motion_group": "timing.show",
+          "path": "review/frames/overlong-cue/002-timing.show.motion-a.png",
+          "metrics": {
+            "luma_stddev": 0.7700421310514948,
+            "foreground_fraction": 0.00016501650165016502
+          }
+        },
+        {
+          "id": "timing.show.motion-b",
+          "time_seconds": 1.6215000000000006,
+          "kind": "motion-b",
+          "motion_group": "timing.show",
+          "path": "review/frames/overlong-cue/003-timing.show.motion-b.png",
+          "metrics": {
+            "luma_stddev": 9.045088531068577,
+            "foreground_fraction": 0.016006600660066008
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 2.0833333333333335,
+          "expect_blank": false,
+          "path": "review/frames/overlong-cue/004-closing.png",
+          "metrics": {
+            "luma_stddev": 9.610855160104718,
+            "foreground_fraction": 0.016116611661166118
+          }
+        }
+      ],
+      "contact_sheet": "review/overlong-cue.contact-sheet.png"
+    },
+    {
+      "beat_id": "offscreen-object",
+      "decoder": "passed",
+      "declared_duration_seconds": 2.3000000000000007,
+      "media_duration_seconds": 2.25,
+      "media": {
+        "duration_seconds": 2.25,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 360,
+        "height": 640,
+        "frame_rate": 12.0,
+        "frame_count": 27,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "offscreen.show",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/offscreen-object/000-opening.png",
+          "metrics": {
+            "luma_stddev": 0.5881804940584744,
+            "foreground_fraction": 0.0
+          }
+        },
+        {
+          "id": "offscreen.show.stable",
+          "time_seconds": 0.7000000000000001,
+          "kind": "stable",
+          "path": "review/frames/offscreen-object/001-offscreen.show.stable.png",
+          "metrics": {
+            "luma_stddev": 8.177949219136305,
+            "foreground_fraction": 0.011001100110011002
+          }
+        },
+        {
+          "id": "offscreen.show.motion-a",
+          "time_seconds": 0.1625,
+          "kind": "motion-a",
+          "motion_group": "offscreen.show",
+          "path": "review/frames/offscreen-object/002-offscreen.show.motion-a.png",
+          "metrics": {
+            "luma_stddev": 0.5881804940584744,
+            "foreground_fraction": 0.0
+          }
+        },
+        {
+          "id": "offscreen.show.motion-b",
+          "time_seconds": 0.48750000000000004,
+          "kind": "motion-b",
+          "motion_group": "offscreen.show",
+          "path": "review/frames/offscreen-object/003-offscreen.show.motion-b.png",
+          "metrics": {
+            "luma_stddev": 7.627464752817787,
+            "foreground_fraction": 0.010671067106710671
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 2.0833333333333335,
+          "expect_blank": false,
+          "path": "review/frames/offscreen-object/004-closing.png",
+          "metrics": {
+            "luma_stddev": 8.177949219136305,
+            "foreground_fraction": 0.011001100110011002
+          }
+        }
+      ],
+      "contact_sheet": "review/offscreen-object.contact-sheet.png"
+    },
+    {
+      "beat_id": "unbounded-portrait-text",
+      "decoder": "passed",
+      "declared_duration_seconds": 2.5599999999999987,
+      "media_duration_seconds": 2.5,
+      "media": {
+        "duration_seconds": 2.5,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 360,
+        "height": 640,
+        "frame_rate": 12.0,
+        "frame_count": 30,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "width.show",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/unbounded-portrait-text/000-opening.png",
+          "metrics": {
+            "luma_stddev": 1.326294870192701,
+            "foreground_fraction": 5.5005500550055004e-05
+          }
+        },
+        {
+          "id": "width.show.stable",
+          "time_seconds": 0.7000000000000001,
+          "kind": "stable",
+          "path": "review/frames/unbounded-portrait-text/001-width.show.stable.png",
+          "metrics": {
+            "luma_stddev": 18.692904413891267,
+            "foreground_fraction": 0.08415841584158416
+          }
+        },
+        {
+          "id": "width.show.motion-a",
+          "time_seconds": 0.1625,
+          "kind": "motion-a",
+          "motion_group": "width.show",
+          "path": "review/frames/unbounded-portrait-text/002-width.show.motion-a.png",
+          "metrics": {
+            "luma_stddev": 1.326294870192701,
+            "foreground_fraction": 5.5005500550055004e-05
+          }
+        },
+        {
+          "id": "width.show.motion-b",
+          "time_seconds": 0.48750000000000004,
+          "kind": "motion-b",
+          "motion_group": "width.show",
+          "path": "review/frames/unbounded-portrait-text/003-width.show.motion-b.png",
+          "metrics": {
+            "luma_stddev": 17.295791314824374,
+            "foreground_fraction": 0.08294829482948295
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 2.3333333333333335,
+          "expect_blank": false,
+          "path": "review/frames/unbounded-portrait-text/004-closing.png",
+          "metrics": {
+            "luma_stddev": 18.684274606085726,
+            "foreground_fraction": 0.08415841584158416
+          }
+        }
+      ],
+      "contact_sheet": "review/unbounded-portrait-text.contact-sheet.png"
+    },
+    {
+      "beat_id": "wrong-template",
+      "decoder": "passed",
+      "declared_duration_seconds": 2.3000000000000007,
+      "media_duration_seconds": 2.333333,
+      "media": {
+        "duration_seconds": 2.333333,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 360,
+        "height": 640,
+        "frame_rate": 12.0,
+        "frame_count": 28,
+        "audio_streams": []
+      },
+      "cue_timing": [],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/wrong-template/000-opening.png",
+          "metrics": {
+            "luma_stddev": 6.016796429390574,
+            "foreground_fraction": 0.0033003300330033004
+          }
+        },
+        {
+          "id": "wrong.fallback.stable",
+          "time_seconds": 0.8860000000000002,
+          "kind": "stable",
+          "path": "review/frames/wrong-template/001-wrong.fallback.stable.png",
+          "metrics": {
+            "luma_stddev": 9.686614410481242,
+            "foreground_fraction": 0.022167216721672166
+          }
+        },
+        {
+          "id": "wrong.fallback.motion-a",
+          "time_seconds": 0.18400000000000005,
+          "kind": "motion-a",
+          "motion_group": "wrong.fallback",
+          "path": "review/frames/wrong-template/002-wrong.fallback.motion-a.png",
+          "metrics": {
+            "luma_stddev": 7.096390954700783,
+            "foreground_fraction": 0.007260726072607261
+          }
+        },
+        {
+          "id": "wrong.fallback.motion-b",
+          "time_seconds": 0.5520000000000002,
+          "kind": "motion-b",
+          "motion_group": "wrong.fallback",
+          "path": "review/frames/wrong-template/003-wrong.fallback.motion-b.png",
+          "metrics": {
+            "luma_stddev": 9.893797992878845,
+            "foreground_fraction": 0.022662266226622662
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 2.1666663333333336,
+          "expect_blank": true,
+          "path": "review/frames/wrong-template/004-closing.png",
+          "metrics": {
+            "luma_stddev": 0.908128848674485,
+            "foreground_fraction": 0.0016501650165016502
+          }
+        }
+      ],
+      "contact_sheet": "review/wrong-template.contact-sheet.png"
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "diagnostics": [],
+  "final_video_decoder": {
+    "status": "passed"
+  },
+  "final_video_media": {
+    "duration_seconds": 21.416667,
+    "video_codec": "h264",
+    "pixel_format": "yuv420p",
+    "width": 360,
+    "height": 640,
+    "frame_rate": 12.0,
+    "frame_count": 257,
+    "audio_streams": [
+      {
+        "codec": "aac",
+        "sample_rate": "24000",
+        "channels": 1
+      }
+    ]
+  }
+}

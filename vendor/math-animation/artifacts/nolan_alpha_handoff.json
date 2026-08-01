@@ -1,0 +1,168 @@
+{
+  "schema_version": "math-animation.nolan-handoff.v1",
+  "project_id": "nolan-alpha-handoff-smoke",
+  "duration_seconds": 4.9,
+  "frame_rate": 24,
+  "canvas": {
+    "width": 640,
+    "height": 360,
+    "transparent": true
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_algebra.wav",
+    "utterances": [
+      {
+        "id": "u1",
+        "text": "An equation is a balance with equal weight on both sides",
+        "words": [
+          {
+            "word": "An",
+            "start_seconds": 0.0,
+            "end_seconds": 0.36
+          },
+          {
+            "word": "equation",
+            "start_seconds": 0.44,
+            "end_seconds": 0.8
+          },
+          {
+            "word": "is",
+            "start_seconds": 0.88,
+            "end_seconds": 1.24
+          },
+          {
+            "word": "a",
+            "start_seconds": 1.32,
+            "end_seconds": 1.68
+          },
+          {
+            "word": "balance",
+            "start_seconds": 1.76,
+            "end_seconds": 2.12
+          },
+          {
+            "word": "with",
+            "start_seconds": 2.2,
+            "end_seconds": 2.56
+          },
+          {
+            "word": "equal",
+            "start_seconds": 2.64,
+            "end_seconds": 3.0
+          },
+          {
+            "word": "weight",
+            "start_seconds": 3.08,
+            "end_seconds": 3.44
+          },
+          {
+            "word": "on",
+            "start_seconds": 3.52,
+            "end_seconds": 3.88
+          },
+          {
+            "word": "both",
+            "start_seconds": 3.96,
+            "end_seconds": 4.32
+          },
+          {
+            "word": "sides",
+            "start_seconds": 4.4,
+            "end_seconds": 4.76
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "synthetic-nolan-light",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "normalized": {
+      "background": "#f5efe3",
+      "foreground": "#211b17",
+      "muted": "#71685e",
+      "semantic_colors": {
+        "primary": "#256b68",
+        "secondary": "#9a772f",
+        "changing": "#b64e3b",
+        "fixed": "#416188",
+        "positive": "#4d7a4c",
+        "negative": "#c96a6a"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 54,
+        "body_size": 27,
+        "math_size": 52
+      },
+      "motion": {
+        "create_seconds": 1.0,
+        "transform_seconds": 1.2,
+        "beat_hold_seconds": 0.4
+      },
+      "raw_provider_payload": {
+        "colors": {
+          "background": "#f5efe3",
+          "foreground": "#211b17",
+          "muted": "#71685e"
+        },
+        "semantic_colors": {
+          "primary": "#256b68",
+          "changing": "#b64e3b",
+          "fixed": "#416188",
+          "secondary": "#9a772f",
+          "positive": "#4d7a4c"
+        },
+        "typography": {
+          "font": "Avenir Next",
+          "title_size": 54,
+          "body_size": 27,
+          "math_size": 52
+        }
+      }
+    },
+    "raw": {
+      "colors": {
+        "background": "#f5efe3",
+        "foreground": "#211b17",
+        "muted": "#71685e"
+      },
+      "semantic_colors": {
+        "primary": "#256b68",
+        "changing": "#b64e3b",
+        "fixed": "#416188",
+        "secondary": "#9a772f",
+        "positive": "#4d7a4c"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 54,
+        "body_size": 27,
+        "math_size": 52
+      }
+    }
+  },
+  "clips": [
+    {
+      "id": "balance",
+      "kind": "manim",
+      "start_seconds": 0.0,
+      "end_seconds": 4.9,
+      "duration_seconds": 4.9,
+      "media_path": "clips/balance.mov",
+      "alpha": true,
+      "source_contract": "visual_ir/balance.scene.json"
+    }
+  ],
+  "assets": [
+    {
+      "id": "gsap.placeholder",
+      "path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/gsap_placeholder.mp4",
+      "media_type": "video",
+      "sha256": "230a0edae9a2beae39a425339b3392e5a9ce50e7ef7ce596d4d667a8ebe1fced",
+      "attribution": "Synthetic Nolan/GSAP handoff fixture"
+    }
+  ]
+}

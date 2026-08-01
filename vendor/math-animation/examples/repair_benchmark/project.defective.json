@@ -1,0 +1,928 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "repair-featured-explainer",
+  "title": "Self-healing mathematical explainer",
+  "request": {
+    "source_kind": "script",
+    "content": "Reveal the invariant equation while its concise caption follows.\n\nKeep mathematical labels readable in a narrow portrait frame.\n\nMove the point around the circle and expose its traced orbit.\n\nReveal a smooth wave surface without wasteful geometric density.\n\nFit the visual explanation inside the aligned narration window.\n\nRecenter a label that was accidentally authored outside frame.\n\nConstrain a long explanatory label to the portrait safe area.\n\nReplace the generic fallback with the authored balance equation.",
+    "audience": "math animation authors",
+    "script_policy": "review",
+    "target_duration_seconds": 19.18
+  },
+  "math_ledger": {
+    "claims": [],
+    "formulas": [
+      {
+        "id": "invariant",
+        "latex_parts": [
+          "a^2+b^2=c^2"
+        ],
+        "plain_language": "Pythagorean invariant",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "balance",
+        "latex_parts": [
+          "3x+5=20"
+        ],
+        "plain_language": "Balance equation",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_repair_benchmark.wav",
+    "utterances": [
+      {
+        "id": "clipped-caption",
+        "text": "Reveal the invariant equation while its concise caption follows.",
+        "words": [
+          {
+            "word": "Reveal",
+            "start_seconds": 0.0,
+            "end_seconds": 0.22
+          },
+          {
+            "word": "the",
+            "start_seconds": 0.26,
+            "end_seconds": 0.48
+          },
+          {
+            "word": "invariant",
+            "start_seconds": 0.52,
+            "end_seconds": 0.74
+          },
+          {
+            "word": "equation",
+            "start_seconds": 0.78,
+            "end_seconds": 1.0
+          },
+          {
+            "word": "while",
+            "start_seconds": 1.04,
+            "end_seconds": 1.26
+          },
+          {
+            "word": "its",
+            "start_seconds": 1.3,
+            "end_seconds": 1.52
+          },
+          {
+            "word": "concise",
+            "start_seconds": 1.56,
+            "end_seconds": 1.78
+          },
+          {
+            "word": "caption",
+            "start_seconds": 1.82,
+            "end_seconds": 2.04
+          },
+          {
+            "word": "follows.",
+            "start_seconds": 2.08,
+            "end_seconds": 2.3
+          }
+        ]
+      },
+      {
+        "id": "tiny-portrait-type",
+        "text": "Keep mathematical labels readable in a narrow portrait frame.",
+        "words": [
+          {
+            "word": "Keep",
+            "start_seconds": 2.65,
+            "end_seconds": 2.87
+          },
+          {
+            "word": "mathematical",
+            "start_seconds": 2.91,
+            "end_seconds": 3.13
+          },
+          {
+            "word": "labels",
+            "start_seconds": 3.17,
+            "end_seconds": 3.39
+          },
+          {
+            "word": "readable",
+            "start_seconds": 3.43,
+            "end_seconds": 3.65
+          },
+          {
+            "word": "in",
+            "start_seconds": 3.69,
+            "end_seconds": 3.91
+          },
+          {
+            "word": "a",
+            "start_seconds": 3.95,
+            "end_seconds": 4.17
+          },
+          {
+            "word": "narrow",
+            "start_seconds": 4.21,
+            "end_seconds": 4.43
+          },
+          {
+            "word": "portrait",
+            "start_seconds": 4.47,
+            "end_seconds": 4.69
+          },
+          {
+            "word": "frame.",
+            "start_seconds": 4.73,
+            "end_seconds": 4.95
+          }
+        ]
+      },
+      {
+        "id": "frozen-tracker",
+        "text": "Move the point around the circle and expose its traced orbit.",
+        "words": [
+          {
+            "word": "Move",
+            "start_seconds": 5.3,
+            "end_seconds": 5.52
+          },
+          {
+            "word": "the",
+            "start_seconds": 5.56,
+            "end_seconds": 5.78
+          },
+          {
+            "word": "point",
+            "start_seconds": 5.82,
+            "end_seconds": 6.04
+          },
+          {
+            "word": "around",
+            "start_seconds": 6.08,
+            "end_seconds": 6.3
+          },
+          {
+            "word": "the",
+            "start_seconds": 6.34,
+            "end_seconds": 6.56
+          },
+          {
+            "word": "circle",
+            "start_seconds": 6.6,
+            "end_seconds": 6.82
+          },
+          {
+            "word": "and",
+            "start_seconds": 6.86,
+            "end_seconds": 7.08
+          },
+          {
+            "word": "expose",
+            "start_seconds": 7.12,
+            "end_seconds": 7.34
+          },
+          {
+            "word": "its",
+            "start_seconds": 7.38,
+            "end_seconds": 7.6
+          },
+          {
+            "word": "traced",
+            "start_seconds": 7.64,
+            "end_seconds": 7.86
+          },
+          {
+            "word": "orbit.",
+            "start_seconds": 7.9,
+            "end_seconds": 8.12
+          }
+        ]
+      },
+      {
+        "id": "excessive-surface-density",
+        "text": "Reveal a smooth wave surface without wasteful geometric density.",
+        "words": [
+          {
+            "word": "Reveal",
+            "start_seconds": 8.47,
+            "end_seconds": 8.69
+          },
+          {
+            "word": "a",
+            "start_seconds": 8.73,
+            "end_seconds": 8.95
+          },
+          {
+            "word": "smooth",
+            "start_seconds": 8.99,
+            "end_seconds": 9.21
+          },
+          {
+            "word": "wave",
+            "start_seconds": 9.25,
+            "end_seconds": 9.47
+          },
+          {
+            "word": "surface",
+            "start_seconds": 9.51,
+            "end_seconds": 9.73
+          },
+          {
+            "word": "without",
+            "start_seconds": 9.77,
+            "end_seconds": 9.99
+          },
+          {
+            "word": "wasteful",
+            "start_seconds": 10.03,
+            "end_seconds": 10.25
+          },
+          {
+            "word": "geometric",
+            "start_seconds": 10.29,
+            "end_seconds": 10.51
+          },
+          {
+            "word": "density.",
+            "start_seconds": 10.55,
+            "end_seconds": 10.77
+          }
+        ]
+      },
+      {
+        "id": "overlong-cue",
+        "text": "Fit the visual explanation inside the aligned narration window.",
+        "words": [
+          {
+            "word": "Fit",
+            "start_seconds": 11.12,
+            "end_seconds": 11.34
+          },
+          {
+            "word": "the",
+            "start_seconds": 11.38,
+            "end_seconds": 11.6
+          },
+          {
+            "word": "visual",
+            "start_seconds": 11.64,
+            "end_seconds": 11.86
+          },
+          {
+            "word": "explanation",
+            "start_seconds": 11.9,
+            "end_seconds": 12.12
+          },
+          {
+            "word": "inside",
+            "start_seconds": 12.16,
+            "end_seconds": 12.38
+          },
+          {
+            "word": "the",
+            "start_seconds": 12.42,
+            "end_seconds": 12.64
+          },
+          {
+            "word": "aligned",
+            "start_seconds": 12.68,
+            "end_seconds": 12.9
+          },
+          {
+            "word": "narration",
+            "start_seconds": 12.94,
+            "end_seconds": 13.16
+          },
+          {
+            "word": "window.",
+            "start_seconds": 13.2,
+            "end_seconds": 13.42
+          }
+        ]
+      },
+      {
+        "id": "offscreen-object",
+        "text": "Recenter a label that was accidentally authored outside frame.",
+        "words": [
+          {
+            "word": "Recenter",
+            "start_seconds": 13.77,
+            "end_seconds": 13.99
+          },
+          {
+            "word": "a",
+            "start_seconds": 14.03,
+            "end_seconds": 14.25
+          },
+          {
+            "word": "label",
+            "start_seconds": 14.29,
+            "end_seconds": 14.51
+          },
+          {
+            "word": "that",
+            "start_seconds": 14.55,
+            "end_seconds": 14.77
+          },
+          {
+            "word": "was",
+            "start_seconds": 14.81,
+            "end_seconds": 15.03
+          },
+          {
+            "word": "accidentally",
+            "start_seconds": 15.07,
+            "end_seconds": 15.29
+          },
+          {
+            "word": "authored",
+            "start_seconds": 15.33,
+            "end_seconds": 15.55
+          },
+          {
+            "word": "outside",
+            "start_seconds": 15.59,
+            "end_seconds": 15.81
+          },
+          {
+            "word": "frame.",
+            "start_seconds": 15.85,
+            "end_seconds": 16.07
+          }
+        ]
+      },
+      {
+        "id": "unbounded-portrait-text",
+        "text": "Constrain a long explanatory label to the portrait safe area.",
+        "words": [
+          {
+            "word": "Constrain",
+            "start_seconds": 16.42,
+            "end_seconds": 16.64
+          },
+          {
+            "word": "a",
+            "start_seconds": 16.68,
+            "end_seconds": 16.9
+          },
+          {
+            "word": "long",
+            "start_seconds": 16.94,
+            "end_seconds": 17.16
+          },
+          {
+            "word": "explanatory",
+            "start_seconds": 17.2,
+            "end_seconds": 17.42
+          },
+          {
+            "word": "label",
+            "start_seconds": 17.46,
+            "end_seconds": 17.68
+          },
+          {
+            "word": "to",
+            "start_seconds": 17.72,
+            "end_seconds": 17.94
+          },
+          {
+            "word": "the",
+            "start_seconds": 17.98,
+            "end_seconds": 18.2
+          },
+          {
+            "word": "portrait",
+            "start_seconds": 18.24,
+            "end_seconds": 18.46
+          },
+          {
+            "word": "safe",
+            "start_seconds": 18.5,
+            "end_seconds": 18.72
+          },
+          {
+            "word": "area.",
+            "start_seconds": 18.76,
+            "end_seconds": 18.98
+          }
+        ]
+      },
+      {
+        "id": "wrong-template",
+        "text": "Replace the generic fallback with the authored balance equation.",
+        "words": [
+          {
+            "word": "Replace",
+            "start_seconds": 19.33,
+            "end_seconds": 19.55
+          },
+          {
+            "word": "the",
+            "start_seconds": 19.59,
+            "end_seconds": 19.81
+          },
+          {
+            "word": "generic",
+            "start_seconds": 19.85,
+            "end_seconds": 20.07
+          },
+          {
+            "word": "fallback",
+            "start_seconds": 20.11,
+            "end_seconds": 20.33
+          },
+          {
+            "word": "with",
+            "start_seconds": 20.37,
+            "end_seconds": 20.59
+          },
+          {
+            "word": "the",
+            "start_seconds": 20.63,
+            "end_seconds": 20.85
+          },
+          {
+            "word": "authored",
+            "start_seconds": 20.89,
+            "end_seconds": 21.11
+          },
+          {
+            "word": "balance",
+            "start_seconds": 21.15,
+            "end_seconds": 21.37
+          },
+          {
+            "word": "equation.",
+            "start_seconds": 21.41,
+            "end_seconds": 21.63
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "repair-benchmark",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#0c1118",
+        "foreground": "#f4efe5",
+        "muted": "#91a0ad"
+      },
+      "semantic_colors": {
+        "primary": "#58b8aa",
+        "changing": "#f08064",
+        "fixed": "#77a6d8"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 38,
+        "body_size": 24,
+        "math_size": 42
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "clipped-caption",
+      "title": "Invariant",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "clipped-caption",
+      "duration_seconds": 2.3,
+      "blocks": [
+        {
+          "id": "caption.reveal",
+          "start_at": null,
+          "run_time": 0.55,
+          "hold_seconds": 1.4,
+          "type": "equation_reveal",
+          "formula_id": "invariant",
+          "latex_parts": [
+            "a^2+b^2=c^2"
+          ],
+          "part_roles": [],
+          "caption": "This generated explanatory caption is intentionally too long for the reusable portrait-safe equation layout and should be shortened without touching narration."
+        }
+      ],
+      "scene_program": null
+    },
+    {
+      "id": "tiny-portrait-type",
+      "title": "Readable type",
+      "learning_objective": "Keep labels legible.",
+      "narration_utterance_id": "tiny-portrait-type",
+      "duration_seconds": 2.3000000000000003,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "tiny.formula",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "portrait": {
+                "position": null,
+                "scale": 0.1,
+                "layout": null
+              }
+            },
+            "type": "math_tex",
+            "formula_id": null,
+            "latex_parts": [
+              "\\int_0^1 x^2\\,dx=\\frac13"
+            ],
+            "part_roles": [],
+            "font_size": null,
+            "max_width": null
+          }
+        ],
+        "cues": [
+          {
+            "id": "tiny.show",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.65,
+                "type": "create",
+                "target": "tiny.formula",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "frozen-tracker",
+      "title": "Orbit",
+      "learning_objective": "Show stateful tracked motion.",
+      "narration_utterance_id": "frozen-tracker",
+      "duration_seconds": 2.8199999999999994,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [
+          {
+            "id": "orbit.time",
+            "initial_value": 0.0
+          }
+        ],
+        "objects": [
+          {
+            "id": "orbit.point",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "tracked_point",
+            "tracker": "orbit.time",
+            "x": "2*cos(t)",
+            "y": "2*sin(t)",
+            "z": "0",
+            "role": "primary",
+            "radius": 0.07,
+            "assertion_time_values": [],
+            "maximum_absolute_coordinate": null
+          },
+          {
+            "id": "orbit.trace",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "trace",
+            "target": "orbit.point",
+            "role": "changing",
+            "stroke_width": 3.0,
+            "start_value": 0.0,
+            "end_value": 6.283185307179586,
+            "sample_count": 480
+          }
+        ],
+        "cues": [
+          {
+            "id": "orbit.show",
+            "start_at": null,
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.45,
+                "type": "create",
+                "target": "orbit.point",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.45,
+                "type": "create",
+                "target": "orbit.trace",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "orbit.move",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.85,
+                "type": "animate_tracker",
+                "tracker": "orbit.time",
+                "end_value": 0.0,
+                "rate_func": "linear"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "excessive-surface-density",
+      "title": "Wave surface",
+      "learning_objective": "Use bounded geometric density.",
+      "narration_utterance_id": "excessive-surface-density",
+      "duration_seconds": 2.299999999999999,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "3d",
+        "initial_camera": {
+          "phi_degrees": 62.0,
+          "theta_degrees": -48.0,
+          "zoom": 1.2,
+          "frame_center": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "wave.surface",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "parametric_surface",
+            "u_range": [
+              -2.0,
+              2.0
+            ],
+            "v_range": [
+              -2.0,
+              2.0
+            ],
+            "x": "u",
+            "y": "v",
+            "z": "0.35*sin(2*u)*cos(2*v)",
+            "resolution": [
+              80,
+              80
+            ],
+            "role": "primary",
+            "fill_opacity": 0.65,
+            "stroke_width": 0.5,
+            "assertion_samples": 7,
+            "maximum_absolute_coordinate": null
+          }
+        ],
+        "cues": [
+          {
+            "id": "wave.show",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "wave.surface",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "overlong-cue",
+      "title": "Aligned timing",
+      "learning_objective": "Respect narration duration.",
+      "narration_utterance_id": "overlong-cue",
+      "duration_seconds": 2.3000000000000007,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "timing.label",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "text",
+            "text": "Narration-aligned",
+            "role": "foreground",
+            "font_size": 26,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "timing.show",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 5.0,
+                "type": "create",
+                "target": "timing.label",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "offscreen-object",
+      "title": "Safe framing",
+      "learning_objective": "Keep content in frame.",
+      "narration_utterance_id": "offscreen-object",
+      "duration_seconds": 2.3000000000000007,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "offscreen.label",
+            "position": [
+              99.0,
+              -99.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "text",
+            "text": "Back in frame",
+            "role": "foreground",
+            "font_size": 26,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "offscreen.show",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.65,
+                "type": "create",
+                "target": "offscreen.label",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "unbounded-portrait-text",
+      "title": "Width bound",
+      "learning_objective": "Fit explanatory text safely.",
+      "narration_utterance_id": "unbounded-portrait-text",
+      "duration_seconds": 2.5599999999999987,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "width.label",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "text",
+            "text": "A long explanation remains readable because the repair layer adds a deterministic portrait width bound before the scene reaches Manim.",
+            "role": "foreground",
+            "font_size": 24,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "width.show",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.65,
+                "type": "create",
+                "target": "width.label",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wrong-template",
+      "title": "Balance equation",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "narration_utterance_id": "wrong-template",
+      "duration_seconds": 2.3000000000000007,
+      "blocks": [
+        {
+          "id": "wrong.fallback",
+          "start_at": null,
+          "run_time": 0.55,
+          "hold_seconds": 1.4000000000000008,
+          "type": "title_card",
+          "title": "Generic fallback",
+          "subtitle": null
+        }
+      ],
+      "scene_program": null
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 360,
+    "pixel_height": 640,
+    "frame_rate": 12,
+    "transparent": false,
+    "seed": 73
+  }
+}

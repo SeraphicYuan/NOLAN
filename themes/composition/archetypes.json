@@ -176,7 +176,8 @@
         "geo",
         "media_ground",
         "annotate",
-        "detail_zoom"
+        "detail_zoom",
+        "math"
       ],
       "exemplar": null,
       "zone": {

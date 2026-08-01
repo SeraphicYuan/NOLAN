@@ -1,0 +1,6 @@
+{
+  "baseline": "v0.5",
+  "diagnostic_schema_sha256": "b9bf6414b682dc61bbe404c25626585e65bff34ddfe0f259300ee41ecc752dd9",
+  "repair_plan_schema_sha256": "e8451a2b9d351b260d5d2574230e8211758baa674a2912c30f7637c712305527",
+  "repair_policy_schema_sha256": "6395d00fdafba254d7592a8074887e836ba99dc201891aff223117d65487f57c"
+}

@@ -1,0 +1,77 @@
+{
+  "schema_version": "math-animation.planner-benchmark.v1",
+  "cases": [
+    {
+      "id": "algebra-balance",
+      "domain": "algebra",
+      "script": "Explain that solving $3x+5=20$ means preserving equality on both sides.",
+      "expected_template": "equation_reveal"
+    },
+    {
+      "id": "equation-transform",
+      "domain": "algebra",
+      "script": "Rewrite $2x+6=14$, then simplify it to $x=4$ without changing the solution.",
+      "expected_template": "equation_transform"
+    },
+    {
+      "id": "negative-number-line",
+      "domain": "arithmetic",
+      "script": "Place -4, -1, 0, and 3 on a number line and compare their order.",
+      "expected_template": "number_line"
+    },
+    {
+      "id": "pythagorean",
+      "domain": "geometry",
+      "script": "Connect the side lengths of a right triangle with $a^2+b^2=c^2$.",
+      "expected_template": "equation_reveal"
+    },
+    {
+      "id": "secant-limit",
+      "domain": "calculus",
+      "script": "For the function `0.25*x**2`, move a secant toward the tangent to explain the derivative.",
+      "expected_template": "secant_to_tangent"
+    },
+    {
+      "id": "sine-graph",
+      "domain": "functions",
+      "script": "Graph the function `sin(x)` and point out its repeating oscillation.",
+      "expected_template": "function_plot"
+    },
+    {
+      "id": "conditional-probability",
+      "domain": "probability",
+      "script": "Introduce conditional probability with $P(A\\mid B)=\\frac{P(A\\cap B)}{P(B)}$.",
+      "expected_template": "equation_reveal"
+    },
+    {
+      "id": "matrix-action",
+      "domain": "linear-algebra",
+      "script": "State the linear transformation $T(\\mathbf{x})=A\\mathbf{x}$ before discussing its geometry.",
+      "expected_template": "equation_reveal"
+    },
+    {
+      "id": "fourier-sum",
+      "domain": "fourier-analysis",
+      "script": "Introduce rotating harmonics with $z(t)=\\sum_n a_n e^{int}$.",
+      "expected_template": "equation_reveal"
+    },
+    {
+      "id": "gaussian-curve",
+      "domain": "statistics",
+      "script": "Plot the curve `exp(-(x**2))` as a simple bell-shaped density profile.",
+      "expected_template": "function_plot"
+    },
+    {
+      "id": "surface-level",
+      "domain": "multivariable-calculus",
+      "script": "Relate the bowl to its zero level equation $x^2+y^2-1=0$.",
+      "expected_template": "equation_reveal"
+    },
+    {
+      "id": "research-extreme",
+      "domain": "research-mathematics",
+      "script": "Contrast an approached infimum with the attained upper width $2\\sqrt{2}$.",
+      "expected_template": "equation_reveal"
+    }
+  ]
+}

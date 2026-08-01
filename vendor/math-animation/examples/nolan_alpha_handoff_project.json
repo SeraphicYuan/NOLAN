@@ -1,0 +1,503 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "nolan-alpha-handoff-smoke",
+  "title": "Transparent Manim overlay handoff",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "Deliver one transparent Manim beat and one opaque GSAP placeholder as independently orchestratable Nolan assets.",
+    "audience": "general",
+    "script_policy": "locked",
+    "target_duration_seconds": 4.9
+  },
+  "math_ledger": {
+    "claims": [],
+    "formulas": [
+      {
+        "id": "formula.balance",
+        "latex_parts": [
+          "3x+5",
+          "=",
+          "20"
+        ],
+        "plain_language": "The two expressions have equal value.",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_algebra.wav",
+    "utterances": [
+      {
+        "id": "u1",
+        "text": "An equation is a balance with equal weight on both sides",
+        "words": [
+          {
+            "word": "An",
+            "start_seconds": 0.0,
+            "end_seconds": 0.36
+          },
+          {
+            "word": "equation",
+            "start_seconds": 0.44,
+            "end_seconds": 0.8
+          },
+          {
+            "word": "is",
+            "start_seconds": 0.88,
+            "end_seconds": 1.24
+          },
+          {
+            "word": "a",
+            "start_seconds": 1.32,
+            "end_seconds": 1.68
+          },
+          {
+            "word": "balance",
+            "start_seconds": 1.76,
+            "end_seconds": 2.12
+          },
+          {
+            "word": "with",
+            "start_seconds": 2.2,
+            "end_seconds": 2.56
+          },
+          {
+            "word": "equal",
+            "start_seconds": 2.64,
+            "end_seconds": 3.0
+          },
+          {
+            "word": "weight",
+            "start_seconds": 3.08,
+            "end_seconds": 3.44
+          },
+          {
+            "word": "on",
+            "start_seconds": 3.52,
+            "end_seconds": 3.88
+          },
+          {
+            "word": "both",
+            "start_seconds": 3.96,
+            "end_seconds": 4.32
+          },
+          {
+            "word": "sides",
+            "start_seconds": 4.4,
+            "end_seconds": 4.76
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "synthetic-nolan-light",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#f5efe3",
+        "foreground": "#211b17",
+        "muted": "#71685e"
+      },
+      "semantic_colors": {
+        "primary": "#256b68",
+        "changing": "#b64e3b",
+        "fixed": "#416188",
+        "secondary": "#9a772f",
+        "positive": "#4d7a4c"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 54,
+        "body_size": 27,
+        "math_size": 52
+      }
+    }
+  },
+  "assets": [
+    {
+      "id": "gsap.placeholder",
+      "path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/gsap_placeholder.mp4",
+      "media_type": "video",
+      "sha256": "230a0edae9a2beae39a425339b3392e5a9ce50e7ef7ce596d4d667a8ebe1fced",
+      "attribution": "Synthetic Nolan/GSAP handoff fixture"
+    }
+  ],
+  "beats": [
+    {
+      "id": "balance",
+      "title": "Equality is balance",
+      "learning_objective": "Interpret equality as preserved balance.",
+      "narration_utterance_id": "u1",
+      "duration_seconds": 4.9,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "title",
+            "position": [
+              0.0,
+              3.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  3.0,
+                  0.0
+                ],
+                "scale": 0.9,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  3.0,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "text",
+            "text": "An equation is a balance",
+            "role": "foreground",
+            "font_size": 44,
+            "font": null,
+            "max_width": 11.0,
+            "weight": "bold"
+          },
+          {
+            "id": "beam",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.82,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "line",
+            "start": [
+              -3.0,
+              0.0,
+              0.0
+            ],
+            "end": [
+              3.0,
+              0.0,
+              0.0
+            ],
+            "role": "foreground",
+            "stroke_width": 7.0
+          },
+          {
+            "id": "fulcrum",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.82,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "polygon",
+            "vertices": [
+              [
+                -0.5,
+                -1.4,
+                0.0
+              ],
+              [
+                0.5,
+                -1.4,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "role": "secondary",
+            "stroke_width": 4.0,
+            "fill_role": "secondary",
+            "fill_opacity": 0.25
+          },
+          {
+            "id": "left.weight",
+            "position": [
+              -2.1,
+              0.58,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  -1.512,
+                  0.58,
+                  0.0
+                ],
+                "scale": 0.82,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  -0.756,
+                  0.58,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "circle",
+            "radius": 0.42,
+            "role": "changing",
+            "stroke_width": 4.0,
+            "fill_role": "changing",
+            "fill_opacity": 0.2
+          },
+          {
+            "id": "right.weight",
+            "position": [
+              2.1,
+              0.58,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  1.512,
+                  0.58,
+                  0.0
+                ],
+                "scale": 0.82,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.756,
+                  0.58,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "circle",
+            "radius": 0.42,
+            "role": "fixed",
+            "stroke_width": 4.0,
+            "fill_role": "fixed",
+            "fill_opacity": 0.2
+          },
+          {
+            "id": "balance.diagram",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "group",
+            "members": [
+              "beam",
+              "fulcrum",
+              "left.weight",
+              "right.weight"
+            ]
+          },
+          {
+            "id": "balance.equation",
+            "position": [
+              0.0,
+              -2.55,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  -2.55,
+                  0.0
+                ],
+                "scale": 0.9,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  -2.55,
+                  0.0
+                ],
+                "scale": 0.68,
+                "layout": null
+              }
+            },
+            "type": "math_tex",
+            "formula_id": "formula.balance",
+            "latex_parts": [
+              "3x+5",
+              "=",
+              "20"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "fixed"
+            ],
+            "font_size": 42,
+            "max_width": null
+          }
+        ],
+        "cues": [
+          {
+            "id": "title",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u1",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.4,
+                "type": "create",
+                "target": "title",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "balance",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u1",
+              "word_index": 2,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "balance.diagram",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "equation",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u1",
+              "word_index": 6,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "balance.equation",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 640,
+    "pixel_height": 360,
+    "frame_rate": 24,
+    "transparent": true,
+    "seed": 43
+  }
+}

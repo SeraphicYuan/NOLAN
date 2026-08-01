@@ -1,0 +1,1554 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "determinant-area-stress",
+  "title": "Why the determinant measures area",
+  "request": {
+    "source_kind": "script",
+    "content": "Begin with a unit square. This matrix stretches one direction and shears the other. The square becomes a parallelogram with three times the area, exactly the absolute determinant.\n\nA reflection flips the orientation of an asymmetric shape. Its determinant is negative one. The sign records the flip, while the absolute value preserves the area.\n\nA singular matrix sends both basis directions onto the same line. The square collapses, its area becomes zero, and so does the determinant. Absolute determinant is the universal area scale.",
+    "audience": "introductory linear algebra learners",
+    "script_policy": "locked",
+    "target_duration_seconds": 22.97150000000001
+  },
+  "math_ledger": {
+    "claims": [
+      {
+        "id": "claim.area-scale",
+        "statement": "For a two-dimensional linear map, absolute determinant is the multiplicative area scale.",
+        "verification": "verified",
+        "assumptions": [
+          "The map is linear and acts on planar area."
+        ],
+        "evidence": [
+          "Direct determinant calculations in all three beats."
+        ]
+      },
+      {
+        "id": "claim.orientation",
+        "statement": "A negative determinant reverses orientation while its absolute value remains the area scale.",
+        "verification": "verified",
+        "assumptions": [],
+        "evidence": [
+          "Reflection matrix B has determinant negative one."
+        ]
+      }
+    ],
+    "formulas": [
+      {
+        "id": "matrix.A",
+        "latex_parts": [
+          "A=\\begin{bmatrix}2&1\\\\0&\\frac{3}{2}\\end{bmatrix}"
+        ],
+        "plain_language": "A shear and stretch with determinant three.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "det.A",
+        "latex_parts": [
+          "|\\det A|=|3|=3"
+        ],
+        "plain_language": "The transformation triples area.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "matrix.B",
+        "latex_parts": [
+          "B=\\begin{bmatrix}-1&0\\\\0&1\\end{bmatrix}"
+        ],
+        "plain_language": "A reflection across the vertical axis.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "det.B",
+        "latex_parts": [
+          "\\det B=-1"
+        ],
+        "plain_language": "The negative sign records orientation reversal.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "matrix.C",
+        "latex_parts": [
+          "C=\\begin{bmatrix}1&1\\\\1&1\\end{bmatrix}"
+        ],
+        "plain_language": "Both basis directions map to the same line.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "det.C",
+        "latex_parts": [
+          "\\det C=0"
+        ],
+        "plain_language": "A singular map collapses planar area.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "det.general",
+        "latex_parts": [
+          "\\text{area scale}=|\\det M|"
+        ],
+        "plain_language": "Absolute determinant is the planar area scale.",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/determinant_area_narration.wav",
+    "utterances": [
+      {
+        "id": "triple.words",
+        "text": "Begin with a unit square. This matrix stretches one direction and shears the other. The square becomes a parallelogram with three times the area, exactly the absolute determinant.",
+        "words": [
+          {
+            "word": "Begin",
+            "start_seconds": 0.0,
+            "end_seconds": 0.23934684684684684
+          },
+          {
+            "word": "with",
+            "start_seconds": 0.23934684684684684,
+            "end_seconds": 0.43082432432432427
+          },
+          {
+            "word": "a",
+            "start_seconds": 0.43082432432432427,
+            "end_seconds": 0.47869369369369363
+          },
+          {
+            "word": "unit",
+            "start_seconds": 0.47869369369369363,
+            "end_seconds": 0.6701711711711711
+          },
+          {
+            "word": "square.",
+            "start_seconds": 0.6701711711711711,
+            "end_seconds": 0.9573873873873873
+          },
+          {
+            "word": "This",
+            "start_seconds": 0.9573873873873873,
+            "end_seconds": 1.1488648648648647
+          },
+          {
+            "word": "matrix",
+            "start_seconds": 1.1488648648648647,
+            "end_seconds": 1.436081081081081
+          },
+          {
+            "word": "stretches",
+            "start_seconds": 1.436081081081081,
+            "end_seconds": 1.8669054054054053
+          },
+          {
+            "word": "one",
+            "start_seconds": 1.8669054054054053,
+            "end_seconds": 2.0105135135135135
+          },
+          {
+            "word": "direction",
+            "start_seconds": 2.0105135135135135,
+            "end_seconds": 2.4413378378378376
+          },
+          {
+            "word": "and",
+            "start_seconds": 2.4413378378378376,
+            "end_seconds": 2.584945945945946
+          },
+          {
+            "word": "shears",
+            "start_seconds": 2.584945945945946,
+            "end_seconds": 2.8721621621621622
+          },
+          {
+            "word": "the",
+            "start_seconds": 2.8721621621621622,
+            "end_seconds": 3.0157702702702704
+          },
+          {
+            "word": "other.",
+            "start_seconds": 3.0157702702702704,
+            "end_seconds": 3.255117117117117
+          },
+          {
+            "word": "The",
+            "start_seconds": 3.255117117117117,
+            "end_seconds": 3.3987252252252254
+          },
+          {
+            "word": "square",
+            "start_seconds": 3.3987252252252254,
+            "end_seconds": 3.6859414414414413
+          },
+          {
+            "word": "becomes",
+            "start_seconds": 3.6859414414414413,
+            "end_seconds": 4.021027027027027
+          },
+          {
+            "word": "a",
+            "start_seconds": 4.021027027027027,
+            "end_seconds": 4.068896396396396
+          },
+          {
+            "word": "parallelogram",
+            "start_seconds": 4.068896396396396,
+            "end_seconds": 4.691198198198198
+          },
+          {
+            "word": "with",
+            "start_seconds": 4.691198198198198,
+            "end_seconds": 4.882675675675676
+          },
+          {
+            "word": "three",
+            "start_seconds": 4.882675675675676,
+            "end_seconds": 5.122022522522523
+          },
+          {
+            "word": "times",
+            "start_seconds": 5.122022522522523,
+            "end_seconds": 5.3613693693693705
+          },
+          {
+            "word": "the",
+            "start_seconds": 5.3613693693693705,
+            "end_seconds": 5.504977477477478
+          },
+          {
+            "word": "area,",
+            "start_seconds": 5.504977477477478,
+            "end_seconds": 5.696454954954955
+          },
+          {
+            "word": "exactly",
+            "start_seconds": 5.696454954954955,
+            "end_seconds": 6.031540540540541
+          },
+          {
+            "word": "the",
+            "start_seconds": 6.031540540540541,
+            "end_seconds": 6.175148648648649
+          },
+          {
+            "word": "absolute",
+            "start_seconds": 6.175148648648649,
+            "end_seconds": 6.558103603603604
+          },
+          {
+            "word": "determinant.",
+            "start_seconds": 6.558103603603604,
+            "end_seconds": 7.084666666666666
+          }
+        ]
+      },
+      {
+        "id": "flip.words",
+        "text": "A reflection flips the orientation of an asymmetric shape. Its determinant is negative one. The sign records the flip, while the absolute value preserves the area.",
+        "words": [
+          {
+            "word": "A",
+            "start_seconds": 7.584666666666666,
+            "end_seconds": 7.6345830223880595
+          },
+          {
+            "word": "reflection",
+            "start_seconds": 7.6345830223880595,
+            "end_seconds": 8.13374657960199
+          },
+          {
+            "word": "flips",
+            "start_seconds": 8.13374657960199,
+            "end_seconds": 8.383328358208955
+          },
+          {
+            "word": "the",
+            "start_seconds": 8.383328358208955,
+            "end_seconds": 8.533077425373135
+          },
+          {
+            "word": "orientation",
+            "start_seconds": 8.533077425373135,
+            "end_seconds": 9.082157338308457
+          },
+          {
+            "word": "of",
+            "start_seconds": 9.082157338308457,
+            "end_seconds": 9.181990049751244
+          },
+          {
+            "word": "an",
+            "start_seconds": 9.181990049751244,
+            "end_seconds": 9.28182276119403
+          },
+          {
+            "word": "asymmetric",
+            "start_seconds": 9.28182276119403,
+            "end_seconds": 9.780986318407962
+          },
+          {
+            "word": "shape.",
+            "start_seconds": 9.780986318407962,
+            "end_seconds": 10.030568097014926
+          },
+          {
+            "word": "Its",
+            "start_seconds": 10.030568097014926,
+            "end_seconds": 10.180317164179106
+          },
+          {
+            "word": "determinant",
+            "start_seconds": 10.180317164179106,
+            "end_seconds": 10.72939707711443
+          },
+          {
+            "word": "is",
+            "start_seconds": 10.72939707711443,
+            "end_seconds": 10.829229788557216
+          },
+          {
+            "word": "negative",
+            "start_seconds": 10.829229788557216,
+            "end_seconds": 11.22856063432836
+          },
+          {
+            "word": "one.",
+            "start_seconds": 11.22856063432836,
+            "end_seconds": 11.37830970149254
+          },
+          {
+            "word": "The",
+            "start_seconds": 11.37830970149254,
+            "end_seconds": 11.52805876865672
+          },
+          {
+            "word": "sign",
+            "start_seconds": 11.52805876865672,
+            "end_seconds": 11.727724191542292
+          },
+          {
+            "word": "records",
+            "start_seconds": 11.727724191542292,
+            "end_seconds": 12.077138681592043
+          },
+          {
+            "word": "the",
+            "start_seconds": 12.077138681592043,
+            "end_seconds": 12.226887748756223
+          },
+          {
+            "word": "flip,",
+            "start_seconds": 12.226887748756223,
+            "end_seconds": 12.426553171641794
+          },
+          {
+            "word": "while",
+            "start_seconds": 12.426553171641794,
+            "end_seconds": 12.676134950248759
+          },
+          {
+            "word": "the",
+            "start_seconds": 12.676134950248759,
+            "end_seconds": 12.825884017412939
+          },
+          {
+            "word": "absolute",
+            "start_seconds": 12.825884017412939,
+            "end_seconds": 13.225214863184084
+          },
+          {
+            "word": "value",
+            "start_seconds": 13.225214863184084,
+            "end_seconds": 13.474796641791048
+          },
+          {
+            "word": "preserves",
+            "start_seconds": 13.474796641791048,
+            "end_seconds": 13.924043843283586
+          },
+          {
+            "word": "the",
+            "start_seconds": 13.924043843283586,
+            "end_seconds": 14.073792910447766
+          },
+          {
+            "word": "area.",
+            "start_seconds": 14.073792910447766,
+            "end_seconds": 14.273458333333338
+          }
+        ]
+      },
+      {
+        "id": "collapse.words",
+        "text": "A singular matrix sends both basis directions onto the same line. The square collapses, its area becomes zero, and so does the determinant. Absolute determinant is the universal area scale.",
+        "words": [
+          {
+            "word": "A",
+            "start_seconds": 14.773458333333334,
+            "end_seconds": 14.826348924731183
+          },
+          {
+            "word": "singular",
+            "start_seconds": 14.826348924731183,
+            "end_seconds": 15.24947365591398
+          },
+          {
+            "word": "matrix",
+            "start_seconds": 15.24947365591398,
+            "end_seconds": 15.566817204301076
+          },
+          {
+            "word": "sends",
+            "start_seconds": 15.566817204301076,
+            "end_seconds": 15.831270161290323
+          },
+          {
+            "word": "both",
+            "start_seconds": 15.831270161290323,
+            "end_seconds": 16.04283252688172
+          },
+          {
+            "word": "basis",
+            "start_seconds": 16.04283252688172,
+            "end_seconds": 16.30728548387097
+          },
+          {
+            "word": "directions",
+            "start_seconds": 16.30728548387097,
+            "end_seconds": 16.836191397849465
+          },
+          {
+            "word": "onto",
+            "start_seconds": 16.836191397849465,
+            "end_seconds": 17.047753763440863
+          },
+          {
+            "word": "the",
+            "start_seconds": 17.047753763440863,
+            "end_seconds": 17.20642553763441
+          },
+          {
+            "word": "same",
+            "start_seconds": 17.20642553763441,
+            "end_seconds": 17.417987903225807
+          },
+          {
+            "word": "line.",
+            "start_seconds": 17.417987903225807,
+            "end_seconds": 17.629550268817205
+          },
+          {
+            "word": "The",
+            "start_seconds": 17.629550268817205,
+            "end_seconds": 17.788222043010755
+          },
+          {
+            "word": "square",
+            "start_seconds": 17.788222043010755,
+            "end_seconds": 18.105565591397852
+          },
+          {
+            "word": "collapses,",
+            "start_seconds": 18.105565591397852,
+            "end_seconds": 18.5815809139785
+          },
+          {
+            "word": "its",
+            "start_seconds": 18.5815809139785,
+            "end_seconds": 18.74025268817205
+          },
+          {
+            "word": "area",
+            "start_seconds": 18.74025268817205,
+            "end_seconds": 18.951815053763447
+          },
+          {
+            "word": "becomes",
+            "start_seconds": 18.951815053763447,
+            "end_seconds": 19.322049193548395
+          },
+          {
+            "word": "zero,",
+            "start_seconds": 19.322049193548395,
+            "end_seconds": 19.533611559139793
+          },
+          {
+            "word": "and",
+            "start_seconds": 19.533611559139793,
+            "end_seconds": 19.692283333333343
+          },
+          {
+            "word": "so",
+            "start_seconds": 19.692283333333343,
+            "end_seconds": 19.798064516129042
+          },
+          {
+            "word": "does",
+            "start_seconds": 19.798064516129042,
+            "end_seconds": 20.00962688172044
+          },
+          {
+            "word": "the",
+            "start_seconds": 20.00962688172044,
+            "end_seconds": 20.168298655913986
+          },
+          {
+            "word": "determinant.",
+            "start_seconds": 20.168298655913986,
+            "end_seconds": 20.750095161290332
+          },
+          {
+            "word": "Absolute",
+            "start_seconds": 20.750095161290332,
+            "end_seconds": 21.173219892473128
+          },
+          {
+            "word": "determinant",
+            "start_seconds": 21.173219892473128,
+            "end_seconds": 21.755016397849474
+          },
+          {
+            "word": "is",
+            "start_seconds": 21.755016397849474,
+            "end_seconds": 21.860797580645173
+          },
+          {
+            "word": "the",
+            "start_seconds": 21.860797580645173,
+            "end_seconds": 22.01946935483872
+          },
+          {
+            "word": "universal",
+            "start_seconds": 22.01946935483872,
+            "end_seconds": 22.495484677419363
+          },
+          {
+            "word": "area",
+            "start_seconds": 22.495484677419363,
+            "end_seconds": 22.70704704301076
+          },
+          {
+            "word": "scale.",
+            "start_seconds": 22.70704704301076,
+            "end_seconds": 22.971500000000006
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "linear-algebra-neon",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#07101c",
+        "foreground": "#f3f0e8",
+        "muted": "#52687d"
+      },
+      "semantic_colors": {
+        "primary": "#4ecdc4",
+        "changing": "#ff7a68",
+        "fixed": "#7da7ff",
+        "positive": "#92d36e"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 46,
+        "body_size": 28,
+        "math_size": 58
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "area-triples",
+      "title": "Determinant three",
+      "learning_objective": "Transform a unit square and connect determinant three to the resulting area multiplier.",
+      "narration_utterance_id": "triple.words",
+      "duration_seconds": 7.084666666666666,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 22.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "triple.axes",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "axes",
+            "x_range": [
+              -4.0,
+              4.0,
+              1.0
+            ],
+            "y_range": [
+              -3.0,
+              3.0,
+              1.0
+            ],
+            "x_length": 10.0,
+            "y_length": 6.5,
+            "role": "muted",
+            "tips": false
+          },
+          {
+            "id": "triple.square",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "polygon",
+            "vertices": [
+              [
+                -1.0,
+                -1.0,
+                0.0
+              ],
+              [
+                1.0,
+                -1.0,
+                0.0
+              ],
+              [
+                1.0,
+                1.0,
+                0.0
+              ],
+              [
+                -1.0,
+                1.0,
+                0.0
+              ]
+            ],
+            "role": "primary",
+            "stroke_width": 5.0,
+            "fill_role": "primary",
+            "fill_opacity": 0.22
+          },
+          {
+            "id": "triple.e1",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "arrow",
+            "start": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "end": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "role": "changing",
+            "stroke_width": 7.0,
+            "tip_length": 0.25
+          },
+          {
+            "id": "triple.e2",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "arrow",
+            "start": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "end": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "role": "fixed",
+            "stroke_width": 7.0,
+            "tip_length": 0.25
+          },
+          {
+            "id": "triple.region",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "group",
+            "members": [
+              "triple.square",
+              "triple.e1",
+              "triple.e2"
+            ]
+          },
+          {
+            "id": "triple.unit",
+            "position": [
+              0.0,
+              -2.25,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "text",
+            "text": "Unit square",
+            "role": "muted",
+            "font_size": 28,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          },
+          {
+            "id": "triple.formula",
+            "position": [
+              -4.7,
+              2.65,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "math_tex",
+            "formula_id": "matrix.A",
+            "latex_parts": [
+              "A=\\begin{bmatrix}2&1\\\\0&\\frac{3}{2}\\end{bmatrix}"
+            ],
+            "part_roles": [],
+            "font_size": 48,
+            "max_width": 4.2
+          },
+          {
+            "id": "triple.result",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "annotation",
+            "text": "Area triples",
+            "point": [
+              1.5,
+              0.8,
+              0.0
+            ],
+            "label_position": [
+              4.7,
+              2.2,
+              0.0
+            ],
+            "role": "positive",
+            "font_size": 30,
+            "max_width": 2.8
+          }
+        ],
+        "cues": [
+          {
+            "id": "triple.show-unit",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "triple.words",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "triple.axes",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "triple.region",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "triple.unit",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "triple.show-matrix",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "triple.words",
+              "word_index": 5,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.75,
+                "type": "create",
+                "target": "triple.formula",
+                "animation": "write"
+              }
+            ]
+          },
+          {
+            "id": "triple.apply-matrix",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "triple.words",
+              "word_index": 14,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 1.5,
+                "type": "apply_matrix",
+                "target": "triple.region",
+                "matrix": [
+                  [
+                    2.0,
+                    1.0
+                  ],
+                  [
+                    0.0,
+                    1.5
+                  ]
+                ],
+                "expected_determinant": 3.0,
+                "determinant_tolerance": 1e-9
+              },
+              {
+                "run_time": 1.5,
+                "type": "transform_math",
+                "target": "triple.formula",
+                "formula_id": "det.A",
+                "latex_parts": [
+                  "|\\det A|=|3|=3"
+                ],
+                "part_roles": [],
+                "rate_func": "smooth"
+              },
+              {
+                "run_time": 1.5,
+                "type": "fade_out",
+                "target": "triple.unit"
+              }
+            ]
+          },
+          {
+            "id": "triple.explain-result",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "triple.words",
+              "word_index": 24,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "triple.result",
+                "animation": "fade_in"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "orientation-flips",
+      "title": "The sign records orientation",
+      "learning_objective": "Transform an asymmetric shape to show why a negative determinant reverses orientation.",
+      "narration_utterance_id": "flip.words",
+      "duration_seconds": 6.688791666666671,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 22.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "flip.axes",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "axes",
+            "x_range": [
+              -4.0,
+              4.0,
+              1.0
+            ],
+            "y_range": [
+              -3.0,
+              3.0,
+              1.0
+            ],
+            "x_length": 10.0,
+            "y_length": 6.5,
+            "role": "muted",
+            "tips": false
+          },
+          {
+            "id": "flip.triangle",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "polygon",
+            "vertices": [
+              [
+                -1.6,
+                -1.0,
+                0.0
+              ],
+              [
+                1.25,
+                -0.65,
+                0.0
+              ],
+              [
+                0.35,
+                1.45,
+                0.0
+              ]
+            ],
+            "role": "primary",
+            "stroke_width": 5.0,
+            "fill_role": "primary",
+            "fill_opacity": 0.24
+          },
+          {
+            "id": "flip.p1",
+            "position": [
+              -1.6,
+              -1.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "dot",
+            "role": "changing",
+            "radius": 0.11
+          },
+          {
+            "id": "flip.p2",
+            "position": [
+              1.25,
+              -0.65,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "dot",
+            "role": "fixed",
+            "radius": 0.11
+          },
+          {
+            "id": "flip.p3",
+            "position": [
+              0.35,
+              1.45,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "dot",
+            "role": "positive",
+            "radius": 0.11
+          },
+          {
+            "id": "flip.shape",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "group",
+            "members": [
+              "flip.triangle",
+              "flip.p1",
+              "flip.p2",
+              "flip.p3"
+            ]
+          },
+          {
+            "id": "flip.orientation",
+            "position": [
+              0.0,
+              -2.35,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "text",
+            "text": "1 → 2 → 3",
+            "role": "muted",
+            "font_size": 30,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          },
+          {
+            "id": "flip.formula",
+            "position": [
+              -4.7,
+              2.65,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "math_tex",
+            "formula_id": "matrix.B",
+            "latex_parts": [
+              "B=\\begin{bmatrix}-1&0\\\\0&1\\end{bmatrix}"
+            ],
+            "part_roles": [],
+            "font_size": 50,
+            "max_width": 4.0
+          },
+          {
+            "id": "flip.result",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "annotation",
+            "text": "Same area • orientation flips",
+            "point": [
+              -1.0,
+              0.8,
+              0.0
+            ],
+            "label_position": [
+              4.45,
+              2.15,
+              0.0
+            ],
+            "role": "changing",
+            "font_size": 27,
+            "max_width": 4.4
+          }
+        ],
+        "cues": [
+          {
+            "id": "flip.show-shape",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "flip.words",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "flip.axes",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "flip.shape",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "flip.orientation",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "flip.show-matrix",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "flip.words",
+              "word_index": 9,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.75,
+                "type": "create",
+                "target": "flip.formula",
+                "animation": "write"
+              }
+            ]
+          },
+          {
+            "id": "flip.reflect",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "flip.words",
+              "word_index": 14,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 1.4,
+                "type": "apply_matrix",
+                "target": "flip.shape",
+                "matrix": [
+                  [
+                    -1.0,
+                    0.0
+                  ],
+                  [
+                    0.0,
+                    1.0
+                  ]
+                ],
+                "expected_determinant": -1.0,
+                "determinant_tolerance": 1e-9
+              },
+              {
+                "run_time": 1.4,
+                "type": "transform_math",
+                "target": "flip.formula",
+                "formula_id": "det.B",
+                "latex_parts": [
+                  "\\det B=-1"
+                ],
+                "part_roles": [],
+                "rate_func": "smooth"
+              },
+              {
+                "run_time": 1.4,
+                "type": "fade_out",
+                "target": "flip.orientation"
+              }
+            ]
+          },
+          {
+            "id": "flip.explain-result",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "flip.words",
+              "word_index": 23,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "flip.result",
+                "animation": "fade_in"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "area-collapses",
+      "title": "Singular means zero area",
+      "learning_objective": "Transform a square into a line and connect the collapse to determinant zero.",
+      "narration_utterance_id": "collapse.words",
+      "duration_seconds": 8.198041666666672,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 22.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "collapse.axes",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "axes",
+            "x_range": [
+              -4.0,
+              4.0,
+              1.0
+            ],
+            "y_range": [
+              -3.0,
+              3.0,
+              1.0
+            ],
+            "x_length": 10.0,
+            "y_length": 6.5,
+            "role": "muted",
+            "tips": false
+          },
+          {
+            "id": "collapse.square",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "polygon",
+            "vertices": [
+              [
+                -1.0,
+                -1.0,
+                0.0
+              ],
+              [
+                1.0,
+                -1.0,
+                0.0
+              ],
+              [
+                1.0,
+                1.0,
+                0.0
+              ],
+              [
+                -1.0,
+                1.0,
+                0.0
+              ]
+            ],
+            "role": "primary",
+            "stroke_width": 5.0,
+            "fill_role": "primary",
+            "fill_opacity": 0.22
+          },
+          {
+            "id": "collapse.e1",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "arrow",
+            "start": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "end": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "role": "changing",
+            "stroke_width": 7.0,
+            "tip_length": 0.25
+          },
+          {
+            "id": "collapse.e2",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "arrow",
+            "start": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "end": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "role": "fixed",
+            "stroke_width": 7.0,
+            "tip_length": 0.25
+          },
+          {
+            "id": "collapse.region",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "group",
+            "members": [
+              "collapse.square",
+              "collapse.e1",
+              "collapse.e2"
+            ]
+          },
+          {
+            "id": "collapse.formula",
+            "position": [
+              -4.7,
+              2.65,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "math_tex",
+            "formula_id": "matrix.C",
+            "latex_parts": [
+              "C=\\begin{bmatrix}1&1\\\\1&1\\end{bmatrix}"
+            ],
+            "part_roles": [],
+            "font_size": 50,
+            "max_width": 4.0
+          },
+          {
+            "id": "collapse.result",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "annotation",
+            "text": "Area collapses to zero",
+            "point": [
+              1.1,
+              1.1,
+              0.0
+            ],
+            "label_position": [
+              4.55,
+              2.05,
+              0.0
+            ],
+            "role": "changing",
+            "font_size": 27,
+            "max_width": 3.5
+          }
+        ],
+        "cues": [
+          {
+            "id": "collapse.show-square",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "collapse.words",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "collapse.axes",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "collapse.region",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "collapse.show-matrix",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "collapse.words",
+              "word_index": 5,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.75,
+                "type": "create",
+                "target": "collapse.formula",
+                "animation": "write"
+              }
+            ]
+          },
+          {
+            "id": "collapse.flatten",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "collapse.words",
+              "word_index": 11,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 1.5,
+                "type": "apply_matrix",
+                "target": "collapse.region",
+                "matrix": [
+                  [
+                    1.0,
+                    1.0
+                  ],
+                  [
+                    1.0,
+                    1.0
+                  ]
+                ],
+                "expected_determinant": 0.0,
+                "determinant_tolerance": 1e-9
+              },
+              {
+                "run_time": 1.5,
+                "type": "transform_math",
+                "target": "collapse.formula",
+                "formula_id": "det.C",
+                "latex_parts": [
+                  "\\det C=0"
+                ],
+                "part_roles": [],
+                "rate_func": "smooth"
+              }
+            ]
+          },
+          {
+            "id": "collapse.explain-result",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "collapse.words",
+              "word_index": 18,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "collapse.result",
+                "animation": "fade_in"
+              }
+            ]
+          },
+          {
+            "id": "collapse.generalize",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "collapse.words",
+              "word_index": 23,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 1.0,
+                "type": "transform_math",
+                "target": "collapse.formula",
+                "formula_id": "det.general",
+                "latex_parts": [
+                  "\\text{area scale}=|\\det M|"
+                ],
+                "part_roles": [],
+                "rate_func": "smooth"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 960,
+    "pixel_height": 540,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 149
+  }
+}

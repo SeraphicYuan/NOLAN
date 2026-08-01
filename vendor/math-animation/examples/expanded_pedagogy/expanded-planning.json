@@ -1,0 +1,40 @@
+{
+  "schema_version": "math-animation.expanded-planning.v1",
+  "planner_id": "heuristic-expanded-v1",
+  "request_sha256": "6b3678bc9073661764031c540e9a7bc7c11691a13e777c28738d45f9ef502135",
+  "project_sha256": "1a74a81f3834b30f48be8794376624641631bdd1e63fa082c93096a888172894",
+  "beats": [
+    {
+      "beat_id": "beat-001",
+      "source_text": "Derive the solution step by step: $3x+5=20$, then $3x=15$, and finally $x=5$.",
+      "selected_template": "equation_sequence",
+      "teaching_strategy": "procedural",
+      "learning_goal": "Derive the solution step by s...",
+      "rationale": "Three or more authored formulas and sequential language match progressive equation disclosure.",
+      "confidence": 0.95,
+      "formula_ids": [
+        "formula.001.01",
+        "formula.001.02",
+        "formula.001.03"
+      ]
+    },
+    {
+      "beat_id": "beat-002",
+      "source_text": "Compare $y=x^2$ versus $y=2x^2$ and explain the difference.",
+      "selected_template": "concept_comparison",
+      "teaching_strategy": "comparison",
+      "learning_goal": "Compare equation versus equat...",
+      "rationale": "Two authored formulas and comparison language match the responsive comparison template.",
+      "confidence": 0.94,
+      "formula_ids": [
+        "formula.002.01",
+        "formula.002.02"
+      ]
+    }
+  ],
+  "template_counts": {
+    "concept_comparison": 1,
+    "equation_sequence": 1
+  },
+  "custom_python_requests": []
+}

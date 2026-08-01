@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "math-animation"
+version = "0.7.1"
+description = "Artifact-first mathematical animation authoring and Manim compilation."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+# pydantic ONLY. The authoring path (contracts -> math_validation -> pedagogy ->
+# timing -> blocks/scene_compiler -> compiler -> handoff -> cache) needs nothing
+# else, so NOLAN's pipeline env can install this package without pulling Manim,
+# LangGraph or OpenAI anywhere near its numpy/Pillow pins. Everything heavier is
+# an extra, installed only in the env that actually needs it.
+dependencies = [
+  "pydantic>=2.10,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9"]
+model = ["openai>=2.50,<3"]
+render = ["manim==0.20.1", "pillow>=10"]
+# the bounded LangGraph repair control plane (math_animation.workflow). NOLAN
+# does not use it — it has its own finish-DAG gates and the /hyperframes edit loop.
+workflow = ["langgraph>=1.0,<2"]
+
+[project.scripts]
+math-animation = "math_animation.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"

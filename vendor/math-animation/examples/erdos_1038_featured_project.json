@@ -1,0 +1,885 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "erdos-1038-potential-landscape",
+  "title": "ERDŐS 1038: the potential landscape",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "Explain the polynomial footprint and distinguish its unattained lower limit from its attained upper width.",
+    "audience": "mathematically mature general audience",
+    "script_policy": "locked",
+    "target_duration_seconds": 16.5
+  },
+  "math_ledger": {
+    "claims": [
+      {
+        "id": "claim.lower-limit",
+        "statement": "The width infimum is 1.834430475762661… and is not attained by a finite polynomial.",
+        "verification": "verified",
+        "assumptions": [],
+        "evidence": [
+          "Math-To-Manim ERDŐS 1038 reference explainer"
+        ]
+      },
+      {
+        "id": "claim.upper-width",
+        "statement": "For (x²−1)^m the subunit interval has width 2√2.",
+        "verification": "verified",
+        "assumptions": [],
+        "evidence": [
+          "|(x²−1)^m|<1 iff |x²−1|<1 iff |x|<√2"
+        ]
+      }
+    ],
+    "formulas": [
+      {
+        "id": "formula.endpoint-family",
+        "latex_parts": [
+          "f_m(x)",
+          "=",
+          "(x^2-1)^m"
+        ],
+        "plain_language": "Equal root piles at minus and plus one.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.waterline",
+        "latex_parts": [
+          "|f_2(x)|-1",
+          "=",
+          "0"
+        ],
+        "plain_language": "The waterline marks where the polynomial has size one.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.upper-width",
+        "latex_parts": [
+          "(-\\sqrt2,\\sqrt2)",
+          "\\Longrightarrow",
+          "\\text{width}=2\\sqrt2"
+        ],
+        "plain_language": "The endpoint family attains width two root two.",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_erdos_1038.wav",
+    "utterances": [
+      {
+        "id": "landscape",
+        "text": "Treat the polynomial as a landscape and zero as the waterline the submerged footprint is where its size is below one",
+        "words": [
+          {
+            "word": "Treat",
+            "start_seconds": 0.0,
+            "end_seconds": 0.3
+          },
+          {
+            "word": "the",
+            "start_seconds": 0.365,
+            "end_seconds": 0.665
+          },
+          {
+            "word": "polynomial",
+            "start_seconds": 0.73,
+            "end_seconds": 1.03
+          },
+          {
+            "word": "as",
+            "start_seconds": 1.095,
+            "end_seconds": 1.395
+          },
+          {
+            "word": "a",
+            "start_seconds": 1.46,
+            "end_seconds": 1.76
+          },
+          {
+            "word": "landscape",
+            "start_seconds": 1.825,
+            "end_seconds": 2.125
+          },
+          {
+            "word": "and",
+            "start_seconds": 2.19,
+            "end_seconds": 2.49
+          },
+          {
+            "word": "zero",
+            "start_seconds": 2.555,
+            "end_seconds": 2.855
+          },
+          {
+            "word": "as",
+            "start_seconds": 2.92,
+            "end_seconds": 3.22
+          },
+          {
+            "word": "the",
+            "start_seconds": 3.285,
+            "end_seconds": 3.585
+          },
+          {
+            "word": "waterline",
+            "start_seconds": 3.65,
+            "end_seconds": 3.95
+          },
+          {
+            "word": "the",
+            "start_seconds": 4.015,
+            "end_seconds": 4.315
+          },
+          {
+            "word": "submerged",
+            "start_seconds": 4.38,
+            "end_seconds": 4.68
+          },
+          {
+            "word": "footprint",
+            "start_seconds": 4.745,
+            "end_seconds": 5.045
+          },
+          {
+            "word": "is",
+            "start_seconds": 5.11,
+            "end_seconds": 5.41
+          },
+          {
+            "word": "where",
+            "start_seconds": 5.475,
+            "end_seconds": 5.775
+          },
+          {
+            "word": "its",
+            "start_seconds": 5.84,
+            "end_seconds": 6.14
+          },
+          {
+            "word": "size",
+            "start_seconds": 6.205,
+            "end_seconds": 6.505
+          },
+          {
+            "word": "is",
+            "start_seconds": 6.57,
+            "end_seconds": 6.87
+          },
+          {
+            "word": "below",
+            "start_seconds": 6.935,
+            "end_seconds": 7.235
+          },
+          {
+            "word": "one",
+            "start_seconds": 7.3,
+            "end_seconds": 7.6
+          }
+        ]
+      },
+      {
+        "id": "extremes",
+        "text": "The narrow width approaches one point eight three four but no finite polynomial attains it while endpoint roots attain two root two",
+        "words": [
+          {
+            "word": "The",
+            "start_seconds": 8.25,
+            "end_seconds": 8.55
+          },
+          {
+            "word": "narrow",
+            "start_seconds": 8.615,
+            "end_seconds": 8.915
+          },
+          {
+            "word": "width",
+            "start_seconds": 8.98,
+            "end_seconds": 9.28
+          },
+          {
+            "word": "approaches",
+            "start_seconds": 9.345,
+            "end_seconds": 9.645
+          },
+          {
+            "word": "one",
+            "start_seconds": 9.71,
+            "end_seconds": 10.01
+          },
+          {
+            "word": "point",
+            "start_seconds": 10.075,
+            "end_seconds": 10.375
+          },
+          {
+            "word": "eight",
+            "start_seconds": 10.44,
+            "end_seconds": 10.74
+          },
+          {
+            "word": "three",
+            "start_seconds": 10.805,
+            "end_seconds": 11.105
+          },
+          {
+            "word": "four",
+            "start_seconds": 11.17,
+            "end_seconds": 11.47
+          },
+          {
+            "word": "but",
+            "start_seconds": 11.535,
+            "end_seconds": 11.835
+          },
+          {
+            "word": "no",
+            "start_seconds": 11.9,
+            "end_seconds": 12.2
+          },
+          {
+            "word": "finite",
+            "start_seconds": 12.265,
+            "end_seconds": 12.565
+          },
+          {
+            "word": "polynomial",
+            "start_seconds": 12.63,
+            "end_seconds": 12.93
+          },
+          {
+            "word": "attains",
+            "start_seconds": 12.995,
+            "end_seconds": 13.295
+          },
+          {
+            "word": "it",
+            "start_seconds": 13.36,
+            "end_seconds": 13.66
+          },
+          {
+            "word": "while",
+            "start_seconds": 13.725,
+            "end_seconds": 14.025
+          },
+          {
+            "word": "endpoint",
+            "start_seconds": 14.09,
+            "end_seconds": 14.39
+          },
+          {
+            "word": "roots",
+            "start_seconds": 14.455,
+            "end_seconds": 14.755
+          },
+          {
+            "word": "attain",
+            "start_seconds": 14.82,
+            "end_seconds": 15.12
+          },
+          {
+            "word": "two",
+            "start_seconds": 15.185,
+            "end_seconds": 15.485
+          },
+          {
+            "word": "root",
+            "start_seconds": 15.55,
+            "end_seconds": 15.85
+          },
+          {
+            "word": "two",
+            "start_seconds": 15.915,
+            "end_seconds": 16.215
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "erdos-copper-night",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#0c1015",
+        "foreground": "#f1ede4",
+        "muted": "#7f8a94"
+      },
+      "semantic_colors": {
+        "changing": "#d97855",
+        "fixed": "#5a8dbf",
+        "positive": "#66b985"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 49,
+        "body_size": 23,
+        "math_size": 43
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "landscape",
+      "title": "The potential landscape",
+      "learning_objective": "Interpret the subunit set as a footprint.",
+      "narration_utterance_id": "landscape",
+      "duration_seconds": 7.6,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "3d",
+        "initial_camera": {
+          "phi_degrees": 66.0,
+          "theta_degrees": -58.0,
+          "zoom": 0.72,
+          "frame_center": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "landscape.title",
+            "position": [
+              0.0,
+              3.25,
+              0.0
+            ],
+            "fixed_in_frame": true,
+            "layout": null,
+            "responsive": {},
+            "type": "text",
+            "text": "ERDŐS 1038 — the potential landscape",
+            "role": "foreground",
+            "font_size": 38,
+            "font": null,
+            "max_width": 11.2,
+            "weight": "bold"
+          },
+          {
+            "id": "landscape.surface",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "parametric_surface",
+            "u_range": [
+              -1.75,
+              1.75
+            ],
+            "v_range": [
+              -2.2,
+              2.2
+            ],
+            "x": "u",
+            "y": "v",
+            "z": "0.55*((u**2-1)**2-1)",
+            "resolution": [
+              30,
+              12
+            ],
+            "role": "changing",
+            "fill_opacity": 0.52,
+            "stroke_width": 0.3,
+            "assertion_samples": 11,
+            "maximum_absolute_coordinate": 4.0
+          },
+          {
+            "id": "landscape.zero",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "parametric_surface",
+            "u_range": [
+              -2.0,
+              2.0
+            ],
+            "v_range": [
+              -2.35,
+              2.35
+            ],
+            "x": "u",
+            "y": "v",
+            "z": "0",
+            "resolution": [
+              8,
+              8
+            ],
+            "role": "fixed",
+            "fill_opacity": 0.2,
+            "stroke_width": 0.2,
+            "assertion_samples": 11,
+            "maximum_absolute_coordinate": 3.0
+          },
+          {
+            "id": "landscape.left-boundary",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "parametric_curve",
+            "parameter_range": [
+              -2.2,
+              2.2,
+              0.04
+            ],
+            "x": "-sqrt(2)",
+            "y": "t",
+            "z": "0",
+            "role": "positive",
+            "stroke_width": 7.0
+          },
+          {
+            "id": "landscape.right-boundary",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "parametric_curve",
+            "parameter_range": [
+              -2.2,
+              2.2,
+              0.04
+            ],
+            "x": "sqrt(2)",
+            "y": "t",
+            "z": "0",
+            "role": "positive",
+            "stroke_width": 7.0
+          },
+          {
+            "id": "landscape.formula",
+            "position": [
+              0.0,
+              -3.25,
+              0.0
+            ],
+            "fixed_in_frame": true,
+            "layout": null,
+            "responsive": {},
+            "type": "math_tex",
+            "formula_id": "formula.waterline",
+            "latex_parts": [
+              "|f_2(x)|-1",
+              "=",
+              "0"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "fixed"
+            ],
+            "font_size": 41,
+            "max_width": 7.0
+          }
+        ],
+        "cues": [
+          {
+            "id": "landscape-title",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "landscape",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.45,
+                "type": "create",
+                "target": "landscape.title",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "landscape-sheet",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "landscape",
+              "word_index": 2,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 1.0,
+                "type": "create",
+                "target": "landscape.surface",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "landscape-waterline",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "landscape",
+              "word_index": 7,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.75,
+                "type": "create",
+                "target": "landscape.zero",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "landscape-boundaries",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "landscape",
+              "word_index": 12,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.75,
+                "type": "create",
+                "target": "landscape.left-boundary",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.75,
+                "type": "create",
+                "target": "landscape.right-boundary",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.75,
+                "type": "create",
+                "target": "landscape.formula",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "extremes",
+      "title": "Approached versus attained",
+      "learning_objective": "Distinguish an infimum from a maximum.",
+      "narration_utterance_id": "extremes",
+      "duration_seconds": 8.2,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "extremes.title",
+            "position": [
+              0.0,
+              3.15,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "text",
+            "text": "Two different kinds of extreme",
+            "role": "foreground",
+            "font_size": 41,
+            "font": null,
+            "max_width": 11.0,
+            "weight": "bold"
+          },
+          {
+            "id": "extremes.axes",
+            "position": [
+              -2.6,
+              0.55,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "axes",
+            "x_range": [
+              -1.8,
+              1.8,
+              0.5
+            ],
+            "y_range": [
+              -1.1,
+              2.0,
+              0.5
+            ],
+            "x_length": 7.0,
+            "y_length": 3.4,
+            "role": "muted",
+            "tips": false
+          },
+          {
+            "id": "extremes.curve",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "function_graph",
+            "axes": "extremes.axes",
+            "expression": "(x**2-1)**2-1",
+            "x_range": [
+              -1.7,
+              1.7
+            ],
+            "role": "changing",
+            "stroke_width": 6.0
+          },
+          {
+            "id": "extremes.footprint",
+            "position": [
+              -2.6,
+              -1.55,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "scalar_field_footprint",
+            "expression": "(x**2-1)**2-1",
+            "x_range": [
+              -1.7,
+              1.7
+            ],
+            "y_range": [
+              -0.16,
+              0.16
+            ],
+            "threshold": 0.0,
+            "resolution": [
+              85,
+              5
+            ],
+            "role": "positive",
+            "fill_opacity": 0.58,
+            "stroke_width": 0.0,
+            "minimum_selected_fraction": 0.7,
+            "maximum_selected_fraction": 0.9
+          },
+          {
+            "id": "extremes.lower",
+            "position": [
+              2.55,
+              0.65,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "interval",
+            "start": -0.9172152378813305,
+            "end": 0.9172152378813305,
+            "left_closed": false,
+            "right_closed": false,
+            "role": "changing",
+            "stroke_width": 6.0,
+            "marker_radius": 0.11,
+            "label": "infimum 1.834430… — approached",
+            "expected_width": 1.834430475762661,
+            "absolute_tolerance": 1e-9
+          },
+          {
+            "id": "extremes.upper",
+            "position": [
+              2.55,
+              -1.35,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "interval",
+            "start": -1.4142135623730951,
+            "end": 1.4142135623730951,
+            "left_closed": false,
+            "right_closed": false,
+            "role": "positive",
+            "stroke_width": 6.0,
+            "marker_radius": 0.11,
+            "label": "maximum 2√2 — attained",
+            "expected_width": 2.8284271247461903,
+            "absolute_tolerance": 1e-9
+          },
+          {
+            "id": "extremes.width",
+            "position": [
+              2.7,
+              2.25,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "math_tex",
+            "formula_id": "formula.upper-width",
+            "latex_parts": [
+              "(-\\sqrt2,\\sqrt2)",
+              "\\Longrightarrow",
+              "\\text{width}=2\\sqrt2"
+            ],
+            "part_roles": [
+              "fixed",
+              "foreground",
+              "positive"
+            ],
+            "font_size": 34,
+            "max_width": 5.0
+          }
+        ],
+        "cues": [
+          {
+            "id": "extremes-title",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "extremes",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.45,
+                "type": "create",
+                "target": "extremes.title",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "extremes-curve",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "extremes",
+              "word_index": 2,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "extremes.axes",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "extremes.curve",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "extremes.footprint",
+                "animation": "fade_in"
+              }
+            ]
+          },
+          {
+            "id": "extremes-lower",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "extremes",
+              "word_index": 6,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "extremes.lower",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "extremes-upper",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "extremes",
+              "word_index": 14,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "extremes.upper",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "extremes.width",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 1280,
+    "pixel_height": 720,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 41
+  }
+}

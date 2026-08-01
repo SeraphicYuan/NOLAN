@@ -1,0 +1,149 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "derivative-secants",
+  "title": "From Secant to Tangent",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "Explain the derivative as the limit of secant slopes.",
+    "audience": "high-school algebra",
+    "script_policy": "review",
+    "target_duration_seconds": 11.0
+  },
+  "math_ledger": {
+    "claims": [
+      {
+        "id": "claim.derivative-as-limit",
+        "statement": "For a differentiable function, the tangent slope at x0 is the limit of secant slopes as h approaches zero.",
+        "verification": "verified",
+        "assumptions": [
+          "The displayed function is differentiable at x0.",
+          "h remains nonzero during the animation."
+        ],
+        "evidence": [
+          "For f(x)=0.25x^2+0.5, the difference quotient simplifies algebraically and converges as h approaches zero."
+        ]
+      }
+    ],
+    "formulas": []
+  },
+  "narration": {
+    "provider": "nolan",
+    "audio_path": null,
+    "utterances": [
+      {
+        "id": "intro",
+        "text": "A derivative is the slope seen at one instant.",
+        "words": [
+          {"word": "A", "start_seconds": 0.0, "end_seconds": 0.2},
+          {"word": "derivative", "start_seconds": 0.2, "end_seconds": 0.8},
+          {"word": "is", "start_seconds": 0.8, "end_seconds": 1.0},
+          {"word": "the", "start_seconds": 1.0, "end_seconds": 1.2},
+          {"word": "slope", "start_seconds": 1.2, "end_seconds": 1.7},
+          {"word": "seen", "start_seconds": 1.7, "end_seconds": 2.0},
+          {"word": "at", "start_seconds": 2.0, "end_seconds": 2.2},
+          {"word": "one", "start_seconds": 2.2, "end_seconds": 2.6},
+          {"word": "instant.", "start_seconds": 2.6, "end_seconds": 3.8}
+        ]
+      },
+      {
+        "id": "limit",
+        "text": "Move the second point closer until the secant settles into the tangent.",
+        "words": [
+          {"word": "Move", "start_seconds": 4.0, "end_seconds": 4.4},
+          {"word": "the", "start_seconds": 4.4, "end_seconds": 4.6},
+          {"word": "second", "start_seconds": 4.6, "end_seconds": 5.0},
+          {"word": "point", "start_seconds": 5.0, "end_seconds": 5.4},
+          {"word": "closer", "start_seconds": 5.4, "end_seconds": 6.0},
+          {"word": "until", "start_seconds": 6.0, "end_seconds": 6.5},
+          {"word": "the", "start_seconds": 6.5, "end_seconds": 6.7},
+          {"word": "secant", "start_seconds": 6.7, "end_seconds": 7.3},
+          {"word": "settles", "start_seconds": 7.3, "end_seconds": 8.0},
+          {"word": "into", "start_seconds": 8.0, "end_seconds": 8.4},
+          {"word": "the", "start_seconds": 8.4, "end_seconds": 8.6},
+          {"word": "tangent.", "start_seconds": 8.6, "end_seconds": 11.0}
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "placeholder-paper",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#f5f0e6",
+        "foreground": "#1b1b1b",
+        "muted": "#67635d"
+      },
+      "semantic_colors": {
+        "primary": "#315c8c",
+        "changing": "#bd4f3a",
+        "fixed": "#4f7752",
+        "secondary": "#a06a2b"
+      },
+      "typography": {
+        "title_size": 64,
+        "body_size": 30,
+        "math_size": 58
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "intro",
+      "title": "The slope at one instant",
+      "learning_objective": "State the destination before introducing notation.",
+      "narration_utterance_id": "intro",
+      "duration_seconds": 3.8,
+      "blocks": [
+        {
+          "id": "intro.title",
+          "type": "title_card",
+          "title": "A slope at one instant",
+          "subtitle": "That is what a derivative measures.",
+          "run_time": 1.0,
+          "hold_seconds": 2.45
+        }
+      ]
+    },
+    {
+      "id": "limit",
+      "title": "Let the second point approach",
+      "learning_objective": "Show a secant line converging to a tangent line.",
+      "narration_utterance_id": "limit",
+      "duration_seconds": 7.0,
+      "blocks": [
+        {
+          "id": "limit.motion",
+          "type": "secant_to_tangent",
+          "expression": "0.25*x**2 + 0.5",
+          "x_range": [-4.0, 4.0, 1.0],
+          "y_range": [-1.0, 5.0, 1.0],
+          "x0": 0.5,
+          "h_start": 2.5,
+          "h_end": 0.08,
+          "caption": "The secant settles into the tangent.",
+          "start_at": {
+            "type": "word",
+            "utterance_id": "limit",
+            "word_index": 0,
+            "edge": "start",
+            "offset_seconds": 0.0
+          },
+          "run_time": 5.0,
+          "hold_seconds": 1.4
+        }
+      ]
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 1920,
+    "pixel_height": 1080,
+    "frame_rate": 30,
+    "transparent": false,
+    "seed": 17
+  }
+}

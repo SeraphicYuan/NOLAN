@@ -1,0 +1,268 @@
+{
+  "schema_version": "math-animation.review.v2",
+  "status": "passed",
+  "clips": [
+    {
+      "beat_id": "beat-001",
+      "decoder": "passed",
+      "declared_duration_seconds": 5.365,
+      "media_duration_seconds": 5.333333,
+      "media": {
+        "duration_seconds": 5.333333,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 640,
+        "height": 360,
+        "frame_rate": 15.0,
+        "frame_count": 80,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "beat-001.sequence.show",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "beat-001.sequence.step-01",
+          "desired_seconds": 0.8,
+          "output_frame": 12,
+          "quantized_seconds": 0.8,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        },
+        {
+          "cue_id": "beat-001.sequence.step-02",
+          "desired_seconds": 1.6,
+          "output_frame": 24,
+          "quantized_seconds": 1.6,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/beat-001/000-opening.png",
+          "metrics": {
+            "luma_stddev": 3.1655268790089273,
+            "foreground_fraction": 0.0013715277777777777
+          }
+        },
+        {
+          "id": "beat-001.sequence.show.stable",
+          "time_seconds": 0.8500000000000001,
+          "kind": "stable",
+          "path": "review/frames/beat-001/001-beat-001.sequence.show.stable.png",
+          "metrics": {
+            "luma_stddev": 9.131954087773218,
+            "foreground_fraction": 0.007361111111111111
+          }
+        },
+        {
+          "id": "beat-001.sequence.show.motion-a",
+          "time_seconds": 0.2,
+          "kind": "motion-a",
+          "motion_group": "beat-001.sequence.show",
+          "path": "review/frames/beat-001/002-beat-001.sequence.show.motion-a.png",
+          "metrics": {
+            "luma_stddev": 4.4026899400584005,
+            "foreground_fraction": 0.0025694444444444445
+          }
+        },
+        {
+          "id": "beat-001.sequence.show.motion-b",
+          "time_seconds": 0.6000000000000001,
+          "kind": "motion-b",
+          "motion_group": "beat-001.sequence.show",
+          "path": "review/frames/beat-001/003-beat-001.sequence.show.motion-b.png",
+          "metrics": {
+            "luma_stddev": 8.268693835914615,
+            "foreground_fraction": 0.008020833333333333
+          }
+        },
+        {
+          "id": "beat-001.sequence.step-01.stable",
+          "time_seconds": 1.6500000000000001,
+          "kind": "stable",
+          "path": "review/frames/beat-001/004-beat-001.sequence.step-01.stable.png",
+          "metrics": {
+            "luma_stddev": 7.454927801964668,
+            "foreground_fraction": 0.0049479166666666664
+          }
+        },
+        {
+          "id": "beat-001.sequence.step-01.motion-a",
+          "time_seconds": 1.0,
+          "kind": "motion-a",
+          "motion_group": "beat-001.sequence.step-01",
+          "path": "review/frames/beat-001/005-beat-001.sequence.step-01.motion-a.png",
+          "metrics": {
+            "luma_stddev": 8.63090212366153,
+            "foreground_fraction": 0.0074131944444444445
+          }
+        },
+        {
+          "id": "beat-001.sequence.step-01.motion-b",
+          "time_seconds": 1.4000000000000001,
+          "kind": "motion-b",
+          "motion_group": "beat-001.sequence.step-01",
+          "path": "review/frames/beat-001/006-beat-001.sequence.step-01.motion-b.png",
+          "metrics": {
+            "luma_stddev": 6.991810574593714,
+            "foreground_fraction": 0.0050347222222222225
+          }
+        },
+        {
+          "id": "beat-001.sequence.step-02.stable",
+          "time_seconds": 2.45,
+          "kind": "stable",
+          "path": "review/frames/beat-001/007-beat-001.sequence.step-02.stable.png",
+          "metrics": {
+            "luma_stddev": 5.413705218876504,
+            "foreground_fraction": 0.0029861111111111113
+          }
+        },
+        {
+          "id": "beat-001.sequence.step-02.motion-a",
+          "time_seconds": 1.8,
+          "kind": "motion-a",
+          "motion_group": "beat-001.sequence.step-02",
+          "path": "review/frames/beat-001/008-beat-001.sequence.step-02.motion-a.png",
+          "metrics": {
+            "luma_stddev": 6.971020576415751,
+            "foreground_fraction": 0.0048090277777777775
+          }
+        },
+        {
+          "id": "beat-001.sequence.step-02.motion-b",
+          "time_seconds": 2.2,
+          "kind": "motion-b",
+          "motion_group": "beat-001.sequence.step-02",
+          "path": "review/frames/beat-001/009-beat-001.sequence.step-02.motion-b.png",
+          "metrics": {
+            "luma_stddev": 5.158054788864606,
+            "foreground_fraction": 0.0035243055555555557
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 5.199999666666666,
+          "expect_blank": false,
+          "path": "review/frames/beat-001/010-closing.png",
+          "metrics": {
+            "luma_stddev": 5.411130787321731,
+            "foreground_fraction": 0.0029861111111111113
+          }
+        }
+      ],
+      "contact_sheet": "review/beat-001.contact-sheet.png"
+    },
+    {
+      "beat_id": "beat-002",
+      "decoder": "passed",
+      "declared_duration_seconds": 5.589999999999999,
+      "media_duration_seconds": 5.533333,
+      "media": {
+        "duration_seconds": 5.533333,
+        "video_codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 640,
+        "height": 360,
+        "frame_rate": 15.0,
+        "frame_count": 83,
+        "audio_streams": []
+      },
+      "cue_timing": [
+        {
+          "cue_id": "beat-002.comparison.show",
+          "desired_seconds": 0.0,
+          "output_frame": 0,
+          "quantized_seconds": 0.0,
+          "absolute_error_seconds": 0.0,
+          "within_one_frame": true
+        }
+      ],
+      "frames": [
+        {
+          "id": "opening",
+          "time_seconds": 0.1,
+          "path": "review/frames/beat-002/000-opening.png",
+          "metrics": {
+            "luma_stddev": 4.323754340531512,
+            "foreground_fraction": 0.0027604166666666667
+          }
+        },
+        {
+          "id": "beat-002.comparison.show.stable",
+          "time_seconds": 1.05,
+          "kind": "stable",
+          "path": "review/frames/beat-002/001-beat-002.comparison.show.stable.png",
+          "metrics": {
+            "luma_stddev": 10.37001174279898,
+            "foreground_fraction": 0.014739583333333334
+          }
+        },
+        {
+          "id": "beat-002.comparison.show.motion-a",
+          "time_seconds": 0.25,
+          "kind": "motion-a",
+          "motion_group": "beat-002.comparison.show",
+          "path": "review/frames/beat-002/002-beat-002.comparison.show.motion-a.png",
+          "metrics": {
+            "luma_stddev": 6.684549481178856,
+            "foreground_fraction": 0.005729166666666666
+          }
+        },
+        {
+          "id": "beat-002.comparison.show.motion-b",
+          "time_seconds": 0.75,
+          "kind": "motion-b",
+          "motion_group": "beat-002.comparison.show",
+          "path": "review/frames/beat-002/003-beat-002.comparison.show.motion-b.png",
+          "metrics": {
+            "luma_stddev": 10.851579809478368,
+            "foreground_fraction": 0.015329861111111112
+          }
+        },
+        {
+          "id": "closing",
+          "time_seconds": 5.399999666666666,
+          "expect_blank": false,
+          "path": "review/frames/beat-002/004-closing.png",
+          "metrics": {
+            "luma_stddev": 10.369803619418443,
+            "foreground_fraction": 0.014739583333333334
+          }
+        }
+      ],
+      "contact_sheet": "review/beat-002.contact-sheet.png"
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "diagnostics": [],
+  "final_video_decoder": {
+    "status": "passed"
+  },
+  "final_video_media": {
+    "duration_seconds": 11.333333,
+    "video_codec": "h264",
+    "pixel_format": "yuv420p",
+    "width": 640,
+    "height": 360,
+    "frame_rate": 15.0,
+    "frame_count": 170,
+    "audio_streams": [
+      {
+        "codec": "aac",
+        "sample_rate": "24000",
+        "channels": 1
+      }
+    ]
+  }
+}

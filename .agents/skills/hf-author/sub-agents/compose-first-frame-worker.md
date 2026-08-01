@@ -27,6 +27,11 @@ so the assembler, captions, transitions, and lint all treat it identically. You 
      a words-carried claim or turn → `statement`;  an object-as-evidence → attach a
      `prop_cutout` via `data.props`;  a full-bleed ground (image dimmed+Ken-Burns / paper /
      transparent over a root video) → `data.ground`.
+   - **Mathematics the viewer must FOLLOW** (an equation that changes, a function's shape, a
+     limit argument, a geometric proof) → `math`: a typed template + a `formulas` ledger,
+     compiled to a Manim clip in this essay's theme. Maths/science essays only — DATA belongs
+     in `chart`/`stat` with a bound dataset, and a formula that is never reasoned about is a
+     `statement`. Every render costs 10-60s. Depth: the `organ.math-animation` skill.
    - **No template fits** (a drawn line/bar chart, a custom multi-column layout, a blueprint
      signature move no template realizes) → a **`raw`** scene: hand-author its `html` +
      `tl` per the `raw` constraints in `catalog.json` (ids prefixed with the scene id,

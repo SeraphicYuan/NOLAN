@@ -1,0 +1,120 @@
+{
+  "schema_version": "math-animation.repair-benchmark-report.v1",
+  "status": "passed",
+  "render_enabled": false,
+  "repairable_case_count": 8,
+  "repair_success_rate": 1.0,
+  "refusal_case_count": 3,
+  "refusal_success_rate": 1.0,
+  "custom_python_rate": 0.0,
+  "pipeline_attempts": 1,
+  "repair_passes": 1,
+  "original_project_sha256": "f5a4b6598a0f14eb2d8d5a25ee55e99f5932472559520fa906076a850997d6d8",
+  "repaired_project_sha256": "fda58e310d7feef7adbbea01f9f70bc49ae3d1c34d4ad112cddb5be283848729",
+  "workflow_status": "completed",
+  "workflow_session_dir": "/tmp/math-animation-repair-final-v07/20260730-230707-repair-featured-explainer-repair",
+  "render_run_dir": "/tmp/math-animation-repair-final-v07/pipeline-runs/20260730-230707-repair-featured-explainer",
+  "cache_scope_evidence": null,
+  "repairable_cases": [
+    {
+      "case_id": "clipped-caption",
+      "expected_diagnostic": "text_overflow",
+      "actual_diagnostic": "text_overflow",
+      "expected_operation": "shorten_generated_caption",
+      "actual_operation": "shorten_generated_caption",
+      "changed_only_in_declared_scope": true,
+      "accepted": true
+    },
+    {
+      "case_id": "tiny-portrait-type",
+      "expected_diagnostic": "illegible_type",
+      "actual_diagnostic": "illegible_type",
+      "expected_operation": "set_responsive_scale",
+      "actual_operation": "set_responsive_scale",
+      "changed_only_in_declared_scope": true,
+      "accepted": true
+    },
+    {
+      "case_id": "frozen-tracker",
+      "expected_diagnostic": "frozen_motion",
+      "actual_diagnostic": "frozen_motion",
+      "expected_operation": "set_tracker_end_value",
+      "actual_operation": "set_tracker_end_value",
+      "changed_only_in_declared_scope": true,
+      "accepted": true
+    },
+    {
+      "case_id": "excessive-surface-density",
+      "expected_diagnostic": "excessive_density",
+      "actual_diagnostic": "excessive_density",
+      "expected_operation": "reduce_density",
+      "actual_operation": "reduce_density",
+      "changed_only_in_declared_scope": true,
+      "accepted": true
+    },
+    {
+      "case_id": "overlong-cue",
+      "expected_diagnostic": "timing_drift",
+      "actual_diagnostic": "timing_drift",
+      "expected_operation": "scale_timing",
+      "actual_operation": "scale_timing",
+      "changed_only_in_declared_scope": true,
+      "accepted": true
+    },
+    {
+      "case_id": "offscreen-object",
+      "expected_diagnostic": "text_overflow",
+      "actual_diagnostic": "text_overflow",
+      "expected_operation": "reposition_object",
+      "actual_operation": "reposition_object",
+      "changed_only_in_declared_scope": true,
+      "accepted": true
+    },
+    {
+      "case_id": "unbounded-portrait-text",
+      "expected_diagnostic": "text_overflow",
+      "actual_diagnostic": "text_overflow",
+      "expected_operation": "set_max_width",
+      "actual_operation": "set_max_width",
+      "changed_only_in_declared_scope": true,
+      "accepted": true
+    },
+    {
+      "case_id": "wrong-template",
+      "expected_diagnostic": "template_mismatch",
+      "actual_diagnostic": "template_mismatch",
+      "expected_operation": "swap_template",
+      "actual_operation": "swap_template",
+      "changed_only_in_declared_scope": true,
+      "accepted": true
+    }
+  ],
+  "refusal_cases": [
+    {
+      "case_id": "missing-asset",
+      "expected_diagnostic": "missing_input",
+      "actual_diagnostics": [
+        "missing_input"
+      ],
+      "workflow_status": "refused",
+      "pipeline_attempts": 0,
+      "accepted": true
+    },
+    {
+      "case_id": "invalid-math-ledger",
+      "expected_diagnostic": "math_validation_failed",
+      "actual_diagnostics": [
+        "math_validation_failed"
+      ],
+      "workflow_status": "refused",
+      "pipeline_attempts": 0,
+      "accepted": true
+    },
+    {
+      "case_id": "nonfinite-surface-domain",
+      "expected_diagnostic": "invariant_failure",
+      "status": "skipped_without_render",
+      "accepted": true
+    }
+  ]
+}

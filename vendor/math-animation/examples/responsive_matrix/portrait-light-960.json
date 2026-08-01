@@ -1,0 +1,1123 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "synthetic-nolan-algebra-portrait-light-960",
+  "title": "Solving an equation means preserving balance [portrait-light-960]",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "Use a balance, symbolic transformations, and a graph to solve 3x+5=20.",
+    "audience": "beginning algebra students",
+    "script_policy": "locked",
+    "target_duration_seconds": 15.1
+  },
+  "math_ledger": {
+    "claims": [],
+    "formulas": [
+      {
+        "id": "formula.balance",
+        "latex_parts": [
+          "3x+5",
+          "=",
+          "20"
+        ],
+        "plain_language": "The two expressions have equal value.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.subtract",
+        "latex_parts": [
+          "3x",
+          "=",
+          "15"
+        ],
+        "plain_language": "Subtracting five from both sides preserves equality.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.solution",
+        "latex_parts": [
+          "x",
+          "=",
+          "5"
+        ],
+        "plain_language": "Dividing both sides by three isolates x.",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_algebra.wav",
+    "utterances": [
+      {
+        "id": "u1",
+        "text": "An equation is a balance with equal weight on both sides",
+        "words": [
+          {
+            "word": "An",
+            "start_seconds": 0.0,
+            "end_seconds": 0.36
+          },
+          {
+            "word": "equation",
+            "start_seconds": 0.44,
+            "end_seconds": 0.8
+          },
+          {
+            "word": "is",
+            "start_seconds": 0.88,
+            "end_seconds": 1.24
+          },
+          {
+            "word": "a",
+            "start_seconds": 1.32,
+            "end_seconds": 1.68
+          },
+          {
+            "word": "balance",
+            "start_seconds": 1.76,
+            "end_seconds": 2.12
+          },
+          {
+            "word": "with",
+            "start_seconds": 2.2,
+            "end_seconds": 2.56
+          },
+          {
+            "word": "equal",
+            "start_seconds": 2.64,
+            "end_seconds": 3.0
+          },
+          {
+            "word": "weight",
+            "start_seconds": 3.08,
+            "end_seconds": 3.44
+          },
+          {
+            "word": "on",
+            "start_seconds": 3.52,
+            "end_seconds": 3.88
+          },
+          {
+            "word": "both",
+            "start_seconds": 3.96,
+            "end_seconds": 4.32
+          },
+          {
+            "word": "sides",
+            "start_seconds": 4.4,
+            "end_seconds": 4.76
+          }
+        ]
+      },
+      {
+        "id": "u2",
+        "text": "Remove five from both sides then divide both sides by three",
+        "words": [
+          {
+            "word": "Remove",
+            "start_seconds": 5.26,
+            "end_seconds": 5.62
+          },
+          {
+            "word": "five",
+            "start_seconds": 5.7,
+            "end_seconds": 6.06
+          },
+          {
+            "word": "from",
+            "start_seconds": 6.14,
+            "end_seconds": 6.5
+          },
+          {
+            "word": "both",
+            "start_seconds": 6.58,
+            "end_seconds": 6.94
+          },
+          {
+            "word": "sides",
+            "start_seconds": 7.02,
+            "end_seconds": 7.38
+          },
+          {
+            "word": "then",
+            "start_seconds": 7.46,
+            "end_seconds": 7.82
+          },
+          {
+            "word": "divide",
+            "start_seconds": 7.9,
+            "end_seconds": 8.26
+          },
+          {
+            "word": "both",
+            "start_seconds": 8.34,
+            "end_seconds": 8.7
+          },
+          {
+            "word": "sides",
+            "start_seconds": 8.78,
+            "end_seconds": 9.14
+          },
+          {
+            "word": "by",
+            "start_seconds": 9.22,
+            "end_seconds": 9.58
+          },
+          {
+            "word": "three",
+            "start_seconds": 9.66,
+            "end_seconds": 10.02
+          }
+        ]
+      },
+      {
+        "id": "u3",
+        "text": "The solution five is where the two sides agree",
+        "words": [
+          {
+            "word": "The",
+            "start_seconds": 10.52,
+            "end_seconds": 10.88
+          },
+          {
+            "word": "solution",
+            "start_seconds": 10.96,
+            "end_seconds": 11.32
+          },
+          {
+            "word": "five",
+            "start_seconds": 11.4,
+            "end_seconds": 11.76
+          },
+          {
+            "word": "is",
+            "start_seconds": 11.84,
+            "end_seconds": 12.2
+          },
+          {
+            "word": "where",
+            "start_seconds": 12.28,
+            "end_seconds": 12.64
+          },
+          {
+            "word": "the",
+            "start_seconds": 12.72,
+            "end_seconds": 13.08
+          },
+          {
+            "word": "two",
+            "start_seconds": 13.16,
+            "end_seconds": 13.52
+          },
+          {
+            "word": "sides",
+            "start_seconds": 13.6,
+            "end_seconds": 13.96
+          },
+          {
+            "word": "agree",
+            "start_seconds": 14.04,
+            "end_seconds": 14.4
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "synthetic-nolan-light",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#f5efe3",
+        "foreground": "#211b17",
+        "muted": "#71685e"
+      },
+      "semantic_colors": {
+        "primary": "#256b68",
+        "changing": "#b64e3b",
+        "fixed": "#416188",
+        "secondary": "#9a772f",
+        "positive": "#4d7a4c"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 54,
+        "body_size": 27,
+        "math_size": 52
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "balance",
+      "title": "Equality is balance",
+      "learning_objective": "Interpret equality as preserved balance.",
+      "narration_utterance_id": "u1",
+      "duration_seconds": 4.9,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "title",
+            "position": [
+              0.0,
+              3.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  3.0,
+                  0.0
+                ],
+                "scale": 0.9,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  3.0,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "text",
+            "text": "An equation is a balance",
+            "role": "foreground",
+            "font_size": 44,
+            "font": null,
+            "max_width": 11.0,
+            "weight": "bold"
+          },
+          {
+            "id": "beam",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.82,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "line",
+            "start": [
+              -3.0,
+              0.0,
+              0.0
+            ],
+            "end": [
+              3.0,
+              0.0,
+              0.0
+            ],
+            "role": "foreground",
+            "stroke_width": 7.0
+          },
+          {
+            "id": "fulcrum",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.82,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "polygon",
+            "vertices": [
+              [
+                -0.5,
+                -1.4,
+                0.0
+              ],
+              [
+                0.5,
+                -1.4,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "role": "secondary",
+            "stroke_width": 4.0,
+            "fill_role": "secondary",
+            "fill_opacity": 0.25
+          },
+          {
+            "id": "left.weight",
+            "position": [
+              -2.1,
+              0.58,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  -1.512,
+                  0.58,
+                  0.0
+                ],
+                "scale": 0.82,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  -0.756,
+                  0.58,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "circle",
+            "radius": 0.42,
+            "role": "changing",
+            "stroke_width": 4.0,
+            "fill_role": "changing",
+            "fill_opacity": 0.2
+          },
+          {
+            "id": "right.weight",
+            "position": [
+              2.1,
+              0.58,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  1.512,
+                  0.58,
+                  0.0
+                ],
+                "scale": 0.82,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.756,
+                  0.58,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "circle",
+            "radius": 0.42,
+            "role": "fixed",
+            "stroke_width": 4.0,
+            "fill_role": "fixed",
+            "fill_opacity": 0.2
+          },
+          {
+            "id": "balance.diagram",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "group",
+            "members": [
+              "beam",
+              "fulcrum",
+              "left.weight",
+              "right.weight"
+            ]
+          },
+          {
+            "id": "balance.equation",
+            "position": [
+              0.0,
+              -2.55,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  -2.55,
+                  0.0
+                ],
+                "scale": 0.9,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  -2.55,
+                  0.0
+                ],
+                "scale": 0.68,
+                "layout": null
+              }
+            },
+            "type": "math_tex",
+            "formula_id": "formula.balance",
+            "latex_parts": [
+              "3x+5",
+              "=",
+              "20"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "fixed"
+            ],
+            "font_size": 42,
+            "max_width": null
+          }
+        ],
+        "cues": [
+          {
+            "id": "title",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u1",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.4,
+                "type": "create",
+                "target": "title",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "balance",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u1",
+              "word_index": 2,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "balance.diagram",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "equation",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u1",
+              "word_index": 6,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "balance.equation",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "solve",
+      "title": "Apply equal operations",
+      "learning_objective": "Solve while preserving equality.",
+      "narration_utterance_id": "u2",
+      "duration_seconds": 5.0,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "solve.equation",
+            "position": [
+              0.0,
+              0.5,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.5,
+                  0.0
+                ],
+                "scale": 0.9,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.5,
+                  0.0
+                ],
+                "scale": 0.68,
+                "layout": null
+              }
+            },
+            "type": "math_tex",
+            "formula_id": "formula.balance",
+            "latex_parts": [
+              "3x+5",
+              "=",
+              "20"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "fixed"
+            ],
+            "font_size": 62,
+            "max_width": 10.0
+          },
+          {
+            "id": "solve.caption",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": {
+              "relative_to": "solve.equation",
+              "direction": "down",
+              "buffer": 0.8,
+              "aligned_edge": null
+            },
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.9,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.68,
+                "layout": null
+              }
+            },
+            "type": "text",
+            "text": "Whatever we do, we do to both sides.",
+            "role": "muted",
+            "font_size": 26,
+            "font": null,
+            "max_width": 10.5,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "show-rule",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u2",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.5,
+                "type": "create",
+                "target": "solve.equation",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.5,
+                "type": "create",
+                "target": "solve.caption",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "subtract-five",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u2",
+              "word_index": 3,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "transform_math",
+                "target": "solve.equation",
+                "formula_id": "formula.subtract",
+                "latex_parts": [
+                  "3x",
+                  "=",
+                  "15"
+                ],
+                "part_roles": [
+                  "changing",
+                  "foreground",
+                  "fixed"
+                ],
+                "rate_func": "smooth"
+              }
+            ]
+          },
+          {
+            "id": "divide-three",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u2",
+              "word_index": 7,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "transform_math",
+                "target": "solve.equation",
+                "formula_id": "formula.solution",
+                "latex_parts": [
+                  "x",
+                  "=",
+                  "5"
+                ],
+                "part_roles": [
+                  "changing",
+                  "foreground",
+                  "positive"
+                ],
+                "rate_func": "smooth"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "check",
+      "title": "Verify the intersection",
+      "learning_objective": "Interpret the solution as agreement.",
+      "narration_utterance_id": "u3",
+      "duration_seconds": 4.5,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "check.axes",
+            "position": [
+              -0.7,
+              0.1,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  -0.504,
+                  0.1,
+                  0.0
+                ],
+                "scale": 0.82,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  -0.252,
+                  0.1,
+                  0.0
+                ],
+                "scale": 0.52,
+                "layout": null
+              }
+            },
+            "type": "axes",
+            "x_range": [
+              -1.0,
+              7.0,
+              1.0
+            ],
+            "y_range": [
+              -2.0,
+              24.0,
+              5.0
+            ],
+            "x_length": 8.0,
+            "y_length": 4.8,
+            "role": "muted",
+            "tips": false
+          },
+          {
+            "id": "check.left",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "function_graph",
+            "axes": "check.axes",
+            "expression": "3*x+5",
+            "x_range": [
+              -1.0,
+              7.0
+            ],
+            "role": "changing",
+            "stroke_width": 4.0
+          },
+          {
+            "id": "check.right",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "function_graph",
+            "axes": "check.axes",
+            "expression": "20",
+            "x_range": [
+              -1.0,
+              7.0
+            ],
+            "role": "fixed",
+            "stroke_width": 4.0
+          },
+          {
+            "id": "check.annotation",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  -0.65,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.9,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  -2.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": 0.7,
+                "layout": null
+              }
+            },
+            "type": "annotation",
+            "text": "They meet at x = 5",
+            "point": [
+              1.3,
+              1.76,
+              0.0
+            ],
+            "label_position": [
+              3.7,
+              2.45,
+              0.0
+            ],
+            "role": "positive",
+            "font_size": 25,
+            "max_width": 3.2
+          },
+          {
+            "id": "check.answer",
+            "position": [
+              4.7,
+              -2.5,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "square": {
+                "position": [
+                  2.3,
+                  -2.5,
+                  0.0
+                ],
+                "scale": 0.9,
+                "layout": null
+              },
+              "portrait": {
+                "position": [
+                  0.0,
+                  -2.75,
+                  0.0
+                ],
+                "scale": 0.72,
+                "layout": null
+              }
+            },
+            "type": "math_tex",
+            "formula_id": "formula.solution",
+            "latex_parts": [
+              "x",
+              "=",
+              "5"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "positive"
+            ],
+            "font_size": 44,
+            "max_width": null
+          }
+        ],
+        "cues": [
+          {
+            "id": "graphs",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u3",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "check.axes",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "check.left",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "check.right",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "intersection",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u3",
+              "word_index": 3,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "check.annotation",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "answer",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "u3",
+              "word_index": 7,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.45,
+                "type": "create",
+                "target": "check.answer",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 540,
+    "pixel_height": 960,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 23
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": "math-animation.regeneration-benchmark-report.v1",
+  "status": "passed",
+  "render_enabled": true,
+  "workflow_status": "completed",
+  "pipeline_attempts": 2,
+  "regeneration_provider": "synthetic-grounded-regenerator-v1",
+  "provider_call_count": 2,
+  "custom_python_rate": 0.0,
+  "elapsed_seconds": 30.18384266702924,
+  "cache_hit_beat_ids_on_final_attempt": [
+    "control"
+  ],
+  "fresh_render_beat_ids_on_final_attempt": [
+    "blank-balance",
+    "frozen-identity"
+  ],
+  "final_review_status": "passed",
+  "final_review_warning_count": 0,
+  "final_review_error_count": 0,
+  "workflow_session_dir": "/tmp/math-animation-regeneration-v06-final-cold/20260730-224406-typed-regeneration-benchmark-repair",
+  "final_run_dir": "/tmp/math-animation-regeneration-v06-final-cold/pipeline-runs/20260730-224418-typed-regeneration-benchmark",
+  "cases": [
+    {
+      "id": "blank-balance",
+      "injected_failure": "blank_frame",
+      "expected_template": "equation_reveal",
+      "formula_id": "balance",
+      "observed_diagnostics": [
+        "blank_frame",
+        "frozen_motion"
+      ],
+      "regeneration_planned": true,
+      "final_template": "equation_reveal",
+      "accepted": true
+    },
+    {
+      "id": "frozen-identity",
+      "injected_failure": "frozen_motion",
+      "expected_template": "equation_reveal",
+      "formula_id": "identity",
+      "observed_diagnostics": [
+        "frozen_motion"
+      ],
+      "regeneration_planned": true,
+      "final_template": "equation_reveal",
+      "accepted": true
+    }
+  ]
+}

@@ -4,6 +4,64 @@
 **Status:** Complete
 **Last Updated:** 2026-08-01
 
+## Mathematics is a source now, not a gap (2026-08-01)
+
+NOLAN's fifty composer blocks cover data, documents, structure and prose. A DERIVATION — an
+equation that changes and the viewer has to follow the change — was unreachable by all of them, so
+a maths or science essay could only gesture at its own subject. `github.com/SeraphicYuan/Animation-Math`
+v0.7.1 is vendored at `vendor/math-animation/` and wired as the FOURTH typed source beside media,
+data and document: a `math` scene declares a template plus a formula ledger, and the finish DAG
+compiles it into a Manim clip in the essay's own theme, mounted as that scene's video ground.
+
+Two interpreters, and that is not a preference. Installing Manim beside the pipeline landed numpy
+2.5.1 and Pillow 12.3.0 — both outside NOLAN's `numpy<2.3` / `Pillow<12` pins. But the engine's
+whole authoring path (contracts → math_validation → pedagogy → timing → compiler → handoff → cache)
+imports only pydantic: numpy appears solely inside GENERATED Manim source, PIL only in the review
+pass, langgraph only in the repair workflow, and manim is never imported, only probed and
+subprocessed. So NOLAN authors, validates and gates in-process and shells out to `D:\env\mas` for
+the render alone. Five deltas from upstream make one checkout serve both envs (lazy `__init__`,
+lazy langgraph in `workflow`/`cli`, an optional `python_executable` threaded through the renderer /
+toolchain / preflight, and a LaTeX check that runs only when something typesets); two macOS-only
+tests that failed on Windows in PRISTINE upstream were fixed rather than skipped.
+
+**Narration owns duration, by construction rather than by convention.** `scene.dur` becomes the
+beat duration; the compiler pads the Manim scene to exactly that and REFUSES to compile when the
+animation needs more. Measured on the acceptance comp: |clip − window| of 0.02, 0.02, 0.02 and
+0.09s. That exactness is why math clips opt OUT of `heal_video_freezes` — its heal is a boomerang
+(forward, then reversed), and a derivation played backwards is worse than the freeze it fixes.
+`params.at` anchors each step to the phrase that describes it through the repo's OWN phrase matcher
+(`sync._phrase_time`), so there is one answer to "when is this said?"; un-anchored steps spread
+across the beat, so front-loading is impossible.
+
+**The gate is the whole safety story.** Every displayed formula is an INDEX into the scene's
+`data.formulas`, so templates cannot go off-ledger at all; a bespoke `scene_program` carries its own
+`latex_parts`, and that door is closed by walking the program and matching every string against the
+ledger. The whole set is built and checked before ANY of it renders — a formula that traces to
+nothing costs milliseconds, not minutes of Manim. Uncited formulas are ADVISORY: demanding a
+citation for `y = x^2 - 6x + 5` would only teach authors to paste a fake one. `custom_scene` is
+refused by name — the engine allows it only behind an asserted isolated renderer, and NOLAN has none.
+
+Two checks were rewritten after measuring them, both instances of pitfall #11. The semantic-role
+legibility check first compared all fifteen colour pairs and failed 30 of 34 shipped themes; scoped
+to the five pairs whose confusion destroys meaning, and with `fixed` derived from the FOREGROUND
+(a term that did not change should look like ordinary type) instead of a constructed mid-grey, it
+passes 34 of 34 with a tightest real margin of 0.125 against a 0.12 floor — calibrated against
+pairs a designer would and would not call the same colour. The `layout_max_share` concentration gate
+was left ALONE: 3 of 13 shipped comps already exceed it, all with `statement`, so its imprecision is
+pre-existing and not math-shaped, and no math essay yet exists to prove otherwise.
+
+Rendering found what no check could. The first real clip came back with INVISIBLE axes: Manim's
+`Axes` defaults to WHITE, which reads on the engine's own dark background and vanishes on a cream
+editorial theme. Axes are not a semantic role, so nothing scored them — only looking at the frames
+did. Acceptance: four templates over 19.5s of narration, 30.5s cold / 7.9s fully cached, every
+frame inspected; `equation_sequence` renders all three derivation steps on their spoken phrases.
+
+Wired: `nolan/mathanim/` (registry · style · adapter · render · resolve · gate),
+`hyperframes/math_source.py` in the finish DAG, the `math` composer block + catalog entry generated
+from the registry, `author.py` delegation, `block_registry` / `style_contract` / composition-archetype
+classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
+honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
+
 ## The survey's four quiet shortfalls (2026-08-01)
 
 Answering "is the survey a cache, or do I refetch?" (it is a cache — `surveys.json`, reused until

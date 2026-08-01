@@ -1,0 +1,144 @@
+{
+  "schema_version": "math-animation.pedagogy-report.v1",
+  "status": "failed",
+  "total_score": 0.49060000000000004,
+  "dimensions": [
+    {
+      "dimension": "mathematical_grounding",
+      "score": 0.78,
+      "weight": 0.12,
+      "beat_scores": {
+        "risk": 0.78
+      }
+    },
+    {
+      "dimension": "objective_alignment",
+      "score": 0.25,
+      "weight": 0.2,
+      "beat_scores": {
+        "risk": 0.25
+      }
+    },
+    {
+      "dimension": "progressive_disclosure",
+      "score": 0.58,
+      "weight": 0.16,
+      "beat_scores": {
+        "risk": 0.58
+      }
+    },
+    {
+      "dimension": "pacing",
+      "score": 0.45,
+      "weight": 0.14,
+      "beat_scores": {
+        "risk": 0.45
+      }
+    },
+    {
+      "dimension": "cognitive_load",
+      "score": 0.0,
+      "weight": 0.16,
+      "beat_scores": {
+        "risk": 0.0
+      }
+    },
+    {
+      "dimension": "narration_sync",
+      "score": 0.76,
+      "weight": 0.12,
+      "beat_scores": {
+        "risk": 0.76
+      }
+    },
+    {
+      "dimension": "legibility",
+      "score": 1.0,
+      "weight": 0.1,
+      "beat_scores": {
+        "risk": 1.0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "grounding.math-review",
+      "dimension": "mathematical_grounding",
+      "severity": "warning",
+      "message": "Mathematical claims or formulas require review before pedagogical acceptance.",
+      "beat_id": null,
+      "evidence": {
+        "warnings": [
+          "the project contains no recorded mathematical claims"
+        ],
+        "errors": []
+      },
+      "suggested_action": "Verify the math ledger independently."
+    },
+    {
+      "id": "risk.alignment",
+      "dimension": "objective_alignment",
+      "severity": "warning",
+      "message": "The objective mentions a graph but no graph is shown.",
+      "beat_id": "risk",
+      "evidence": {
+        "block_types": [],
+        "math_count": 0,
+        "graph_count": 0,
+        "number_line": false,
+        "transform_count": 0,
+        "object_count": 10,
+        "cue_count": 1,
+        "max_parallel_actions": 10,
+        "text_characters": 840
+      },
+      "suggested_action": "Choose a template that directly represents the learning objective."
+    },
+    {
+      "id": "risk.progressive",
+      "dimension": "progressive_disclosure",
+      "severity": "warning",
+      "message": "The beat presents one static idea without staged disclosure.",
+      "beat_id": "risk",
+      "evidence": {},
+      "suggested_action": "Introduce or transform the central representation in two or more meaningful stages."
+    },
+    {
+      "id": "risk.pacing",
+      "dimension": "pacing",
+      "severity": "warning",
+      "message": "Visual action is poorly balanced against beat duration.",
+      "beat_id": "risk",
+      "evidence": {
+        "active_seconds": 0.2,
+        "duration_seconds": 5.0,
+        "active_fraction": 0.04
+      },
+      "suggested_action": "Reserve time for both visual change and a stable inspection hold."
+    },
+    {
+      "id": "risk.load",
+      "dimension": "cognitive_load",
+      "severity": "warning",
+      "message": "The beat risks excessive simultaneous visual load.",
+      "beat_id": "risk",
+      "evidence": {
+        "block_types": [],
+        "math_count": 0,
+        "graph_count": 0,
+        "number_line": false,
+        "transform_count": 0,
+        "object_count": 10,
+        "cue_count": 1,
+        "max_parallel_actions": 10,
+        "text_characters": 840
+      },
+      "suggested_action": "Split the beat or reveal fewer objects concurrently."
+    }
+  ],
+  "evaluator_id": "deterministic-pedagogy-v1",
+  "limitations": [
+    "This rubric detects structural teaching risks; it does not prove that a learner will understand the explanation.",
+    "Semantic alignment is keyword- and contract-based, not a human expert judgment."
+  ]
+}

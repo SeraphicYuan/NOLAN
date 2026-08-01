@@ -1,0 +1,1202 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "jacobian-local-global",
+  "title": "The Jacobian: local certainty versus global truth",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "Explain geometrically why a nonzero Jacobian is a local, not global, guarantee.",
+    "audience": "multivariable calculus students",
+    "script_policy": "locked",
+    "target_duration_seconds": 12.5
+  },
+  "math_ledger": {
+    "claims": [],
+    "formulas": [
+      {
+        "id": "formula.jacobian",
+        "latex_parts": [
+          "J",
+          "=",
+          "\\begin{pmatrix}2&1\\\\[2pt]1/2&3/2\\end{pmatrix}"
+        ],
+        "plain_language": "A concrete local linearization.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.determinant",
+        "latex_parts": [
+          "\\det J",
+          "=",
+          "5/2"
+        ],
+        "plain_language": "The local oriented area scale is five halves.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.polar-map",
+        "latex_parts": [
+          "F(r,\\theta)",
+          "=",
+          "(e^r\\cos\\theta,\\ e^r\\sin\\theta)"
+        ],
+        "plain_language": "A locally invertible polar exponential map.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.collision",
+        "latex_parts": [
+          "F(r,0)",
+          "=",
+          "F(r,2\\pi)"
+        ],
+        "plain_language": "Periodicity identifies distinct angular inputs.",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_jacobian.wav",
+    "utterances": [
+      {
+        "id": "j1",
+        "text": "Near one point a smooth map behaves like its Jacobian matrix and scales area by its determinant",
+        "words": [
+          {
+            "word": "Near",
+            "start_seconds": 0.0,
+            "end_seconds": 0.33
+          },
+          {
+            "word": "one",
+            "start_seconds": 0.4,
+            "end_seconds": 0.73
+          },
+          {
+            "word": "point",
+            "start_seconds": 0.8,
+            "end_seconds": 1.13
+          },
+          {
+            "word": "a",
+            "start_seconds": 1.2,
+            "end_seconds": 1.53
+          },
+          {
+            "word": "smooth",
+            "start_seconds": 1.6,
+            "end_seconds": 1.93
+          },
+          {
+            "word": "map",
+            "start_seconds": 2.0,
+            "end_seconds": 2.33
+          },
+          {
+            "word": "behaves",
+            "start_seconds": 2.4,
+            "end_seconds": 2.73
+          },
+          {
+            "word": "like",
+            "start_seconds": 2.8,
+            "end_seconds": 3.13
+          },
+          {
+            "word": "its",
+            "start_seconds": 3.2,
+            "end_seconds": 3.53
+          },
+          {
+            "word": "Jacobian",
+            "start_seconds": 3.6,
+            "end_seconds": 3.93
+          },
+          {
+            "word": "matrix",
+            "start_seconds": 4.0,
+            "end_seconds": 4.33
+          },
+          {
+            "word": "and",
+            "start_seconds": 4.4,
+            "end_seconds": 4.73
+          },
+          {
+            "word": "scales",
+            "start_seconds": 4.8,
+            "end_seconds": 5.13
+          },
+          {
+            "word": "area",
+            "start_seconds": 5.2,
+            "end_seconds": 5.53
+          },
+          {
+            "word": "by",
+            "start_seconds": 5.6,
+            "end_seconds": 5.93
+          },
+          {
+            "word": "its",
+            "start_seconds": 6.0,
+            "end_seconds": 6.33
+          },
+          {
+            "word": "determinant",
+            "start_seconds": 6.4,
+            "end_seconds": 6.73
+          }
+        ]
+      },
+      {
+        "id": "j2",
+        "text": "But local reversal cannot stop distant inputs from meeting at the same global output point",
+        "words": [
+          {
+            "word": "But",
+            "start_seconds": 7.23,
+            "end_seconds": 7.56
+          },
+          {
+            "word": "local",
+            "start_seconds": 7.63,
+            "end_seconds": 7.96
+          },
+          {
+            "word": "reversal",
+            "start_seconds": 8.03,
+            "end_seconds": 8.36
+          },
+          {
+            "word": "cannot",
+            "start_seconds": 8.43,
+            "end_seconds": 8.76
+          },
+          {
+            "word": "stop",
+            "start_seconds": 8.83,
+            "end_seconds": 9.16
+          },
+          {
+            "word": "distant",
+            "start_seconds": 9.23,
+            "end_seconds": 9.56
+          },
+          {
+            "word": "inputs",
+            "start_seconds": 9.63,
+            "end_seconds": 9.96
+          },
+          {
+            "word": "from",
+            "start_seconds": 10.03,
+            "end_seconds": 10.36
+          },
+          {
+            "word": "meeting",
+            "start_seconds": 10.43,
+            "end_seconds": 10.76
+          },
+          {
+            "word": "at",
+            "start_seconds": 10.83,
+            "end_seconds": 11.16
+          },
+          {
+            "word": "the",
+            "start_seconds": 11.23,
+            "end_seconds": 11.56
+          },
+          {
+            "word": "same",
+            "start_seconds": 11.63,
+            "end_seconds": 11.96
+          },
+          {
+            "word": "global",
+            "start_seconds": 12.03,
+            "end_seconds": 12.36
+          },
+          {
+            "word": "output",
+            "start_seconds": 12.43,
+            "end_seconds": 12.76
+          },
+          {
+            "word": "point",
+            "start_seconds": 12.83,
+            "end_seconds": 13.16
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "jacobian-dark",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#111416",
+        "foreground": "#f4f1e8",
+        "muted": "#8d989d"
+      },
+      "semantic_colors": {
+        "primary": "#4da9a4",
+        "changing": "#ef7b5d",
+        "fixed": "#6e9bd1",
+        "secondary": "#d7ad54",
+        "positive": "#7fc47a"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 52,
+        "body_size": 27,
+        "math_size": 48
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "local",
+      "title": "The local linear map",
+      "learning_objective": "See the determinant as local area scale.",
+      "narration_utterance_id": "j1",
+      "duration_seconds": 7.0,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "objects": [
+          {
+            "id": "local.title",
+            "position": [
+              0.0,
+              3.15,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "text",
+            "text": "The Jacobian is a local linear lens",
+            "role": "foreground",
+            "font_size": 43,
+            "font": null,
+            "max_width": 11.5,
+            "weight": "bold"
+          },
+          {
+            "id": "grid.v0",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              -1.2,
+              -1.2,
+              0.0
+            ],
+            "end": [
+              -1.2,
+              1.2,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "grid.h0",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              -1.2,
+              -1.2,
+              0.0
+            ],
+            "end": [
+              1.2,
+              -1.2,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "grid.v1",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              -0.6,
+              -1.2,
+              0.0
+            ],
+            "end": [
+              -0.6,
+              1.2,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "grid.h1",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              -1.2,
+              -0.6,
+              0.0
+            ],
+            "end": [
+              1.2,
+              -0.6,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "grid.v2",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              0.0,
+              -1.2,
+              0.0
+            ],
+            "end": [
+              0.0,
+              1.2,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "grid.h2",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              -1.2,
+              0.0,
+              0.0
+            ],
+            "end": [
+              1.2,
+              0.0,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "grid.v3",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              0.6,
+              -1.2,
+              0.0
+            ],
+            "end": [
+              0.6,
+              1.2,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "grid.h3",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              -1.2,
+              0.6,
+              0.0
+            ],
+            "end": [
+              1.2,
+              0.6,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "grid.v4",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              1.2,
+              -1.2,
+              0.0
+            ],
+            "end": [
+              1.2,
+              1.2,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "grid.h4",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "line",
+            "start": [
+              -1.2,
+              1.2,
+              0.0
+            ],
+            "end": [
+              1.2,
+              1.2,
+              0.0
+            ],
+            "role": "muted",
+            "stroke_width": 1.5
+          },
+          {
+            "id": "local.square",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "polygon",
+            "vertices": [
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.6,
+                0.0,
+                0.0
+              ],
+              [
+                0.6,
+                0.6,
+                0.0
+              ],
+              [
+                0.0,
+                0.6,
+                0.0
+              ]
+            ],
+            "role": "primary",
+            "stroke_width": 5.0,
+            "fill_role": "primary",
+            "fill_opacity": 0.2
+          },
+          {
+            "id": "basis.x",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "arrow",
+            "start": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "end": [
+              0.6,
+              0.0,
+              0.0
+            ],
+            "role": "changing",
+            "stroke_width": 6.0,
+            "tip_length": 0.25
+          },
+          {
+            "id": "basis.y",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "arrow",
+            "start": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "end": [
+              0.0,
+              0.6,
+              0.0
+            ],
+            "role": "fixed",
+            "stroke_width": 6.0,
+            "tip_length": 0.25
+          },
+          {
+            "id": "local.geometry",
+            "position": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "group",
+            "members": [
+              "grid.v0",
+              "grid.h0",
+              "grid.v1",
+              "grid.h1",
+              "grid.v2",
+              "grid.h2",
+              "grid.v3",
+              "grid.h3",
+              "grid.v4",
+              "grid.h4",
+              "local.square",
+              "basis.x",
+              "basis.y"
+            ]
+          },
+          {
+            "id": "local.matrix",
+            "position": [
+              4.5,
+              0.7,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "math_tex",
+            "formula_id": "formula.jacobian",
+            "latex_parts": [
+              "J",
+              "=",
+              "\\begin{pmatrix}2&1\\\\[2pt]1/2&3/2\\end{pmatrix}"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "foreground"
+            ],
+            "font_size": 38,
+            "max_width": 4.0
+          },
+          {
+            "id": "local.det",
+            "position": [
+              4.5,
+              -1.1,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "math_tex",
+            "formula_id": "formula.determinant",
+            "latex_parts": [
+              "\\det J",
+              "=",
+              "5/2"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "positive"
+            ],
+            "font_size": 40,
+            "max_width": null
+          },
+          {
+            "id": "local.caption",
+            "position": [
+              0.0,
+              -3.25,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "text",
+            "text": "Area scales by 5/2 near this point.",
+            "role": "muted",
+            "font_size": 24,
+            "font": null,
+            "max_width": 11.0,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "headline",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "j1",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.5,
+                "type": "create",
+                "target": "local.title",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "grid",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "j1",
+              "word_index": 3,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "local.geometry",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "matrix",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "j1",
+              "word_index": 6,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "local.matrix",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "local.det",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "deform",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "j1",
+              "word_index": 9,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 1.25,
+                "type": "apply_matrix",
+                "target": "local.geometry",
+                "matrix": [
+                  [
+                    2.0,
+                    1.0
+                  ],
+                  [
+                    0.5,
+                    1.5
+                  ]
+                ],
+                "expected_determinant": 2.5,
+                "determinant_tolerance": 1e-9
+              }
+            ]
+          },
+          {
+            "id": "caption",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "j1",
+              "word_index": 14,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.4,
+                "type": "create",
+                "target": "local.caption",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "global",
+      "title": "The global caveat",
+      "learning_objective": "Distinguish local inversion from global uniqueness.",
+      "narration_utterance_id": "j2",
+      "duration_seconds": 6.5,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "objects": [
+          {
+            "id": "global.title",
+            "position": [
+              0.0,
+              3.15,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "text",
+            "text": "Local reversibility is not global uniqueness",
+            "role": "foreground",
+            "font_size": 42,
+            "font": null,
+            "max_width": 11.5,
+            "weight": "bold"
+          },
+          {
+            "id": "domain.circle",
+            "position": [
+              -3.2,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "circle",
+            "radius": 2.0,
+            "role": "muted",
+            "stroke_width": 3.0,
+            "fill_role": null,
+            "fill_opacity": 0.0
+          },
+          {
+            "id": "domain.a",
+            "position": [
+              -3.2,
+              2.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "dot",
+            "role": "changing",
+            "radius": 0.12
+          },
+          {
+            "id": "domain.b",
+            "position": [
+              -3.2,
+              -2.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "dot",
+            "role": "fixed",
+            "radius": 0.12
+          },
+          {
+            "id": "domain.a-label",
+            "position": [
+              -4.5,
+              2.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "text",
+            "text": "θ = 0",
+            "role": "changing",
+            "font_size": 24,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          },
+          {
+            "id": "domain.b-label",
+            "position": [
+              -4.6,
+              -2.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "text",
+            "text": "θ = 2π",
+            "role": "fixed",
+            "font_size": 24,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          },
+          {
+            "id": "range.point",
+            "position": [
+              2.8,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "dot",
+            "role": "positive",
+            "radius": 0.16
+          },
+          {
+            "id": "map.a",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "arrow",
+            "start": [
+              -2.7,
+              1.7,
+              0.0
+            ],
+            "end": [
+              2.55,
+              0.15,
+              0.0
+            ],
+            "role": "changing",
+            "stroke_width": 4.0,
+            "tip_length": 0.25
+          },
+          {
+            "id": "map.b",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "arrow",
+            "start": [
+              -2.7,
+              -1.7,
+              0.0
+            ],
+            "end": [
+              2.55,
+              -0.15,
+              0.0
+            ],
+            "role": "fixed",
+            "stroke_width": 4.0,
+            "tip_length": 0.25
+          },
+          {
+            "id": "global.diagram",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "group",
+            "members": [
+              "domain.circle",
+              "domain.a",
+              "domain.b",
+              "domain.a-label",
+              "domain.b-label",
+              "range.point",
+              "map.a",
+              "map.b"
+            ]
+          },
+          {
+            "id": "global.map",
+            "position": [
+              1.8,
+              2.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "math_tex",
+            "formula_id": "formula.polar-map",
+            "latex_parts": [
+              "F(r,\\theta)",
+              "=",
+              "(e^r\\cos\\theta,\\ e^r\\sin\\theta)"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "foreground"
+            ],
+            "font_size": 35,
+            "max_width": 6.0
+          },
+          {
+            "id": "global.collision",
+            "position": [
+              2.8,
+              -1.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "math_tex",
+            "formula_id": "formula.collision",
+            "latex_parts": [
+              "F(r,0)",
+              "=",
+              "F(r,2\\pi)"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "fixed"
+            ],
+            "font_size": 38,
+            "max_width": 5.0
+          },
+          {
+            "id": "global.note",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "annotation",
+            "text": "Two inputs. One output.",
+            "point": [
+              2.8,
+              0.0,
+              0.0
+            ],
+            "label_position": [
+              4.2,
+              1.0,
+              0.0
+            ],
+            "role": "positive",
+            "font_size": 24,
+            "max_width": 3.0
+          },
+          {
+            "id": "global.caption",
+            "position": [
+              0.0,
+              -3.25,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "type": "text",
+            "text": "A nonzero determinant guarantees a local inverse—not a global one.",
+            "role": "muted",
+            "font_size": 23,
+            "font": null,
+            "max_width": 11.0,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "headline",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "j2",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.5,
+                "type": "create",
+                "target": "global.title",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "map",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "j2",
+              "word_index": 3,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "global.diagram",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "global.map",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "collision",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "j2",
+              "word_index": 8,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "global.collision",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.6,
+                "type": "create",
+                "target": "global.note",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "conclusion",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "j2",
+              "word_index": 12,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.5,
+                "type": "create",
+                "target": "global.caption",
+                "animation": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 1280,
+    "pixel_height": 720,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 29
+  }
+}

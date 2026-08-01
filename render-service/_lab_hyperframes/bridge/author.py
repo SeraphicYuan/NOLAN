@@ -65,7 +65,10 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"],
             "slope": ["series"], "isotype": ["items"], "dumbbell": ["items"],
             "small_multiples": ["panels"], "histogram": ["bins"],
-            "gauge": ["items"], "process": ["steps"], "layout": ["slots"]}
+            "gauge": ["items"], "process": ["steps"], "layout": ["slots"],
+            # `math` also gets a FULL structural check below (_math_errors) against
+            # nolan.mathanim.registry — template, params and the formula ledger.
+            "math": ["template"]}
 
 
 # A4: fields the dataset resolver (nolan.data) fills from a bound `data.dataset` at finish/accept time. When a
@@ -141,6 +144,27 @@ def _document_annotation_errors(fid, sid, d):
     return errs
 
 
+def _math_errors(fid, sid, d):
+    """Validate a math scene against `nolan.mathanim.registry` — the ONE math vocabulary.
+
+    Delegated, never re-implemented: the registry is also what the finish-DAG resolver validates
+    against before it spends a Manim render, and a gate that accepts what the resolver then refuses
+    is the phantom-field class in docs/WIRING_CHECKLIST.md #1. It refuses an unknown template, a
+    formula index pointing outside the ledger, a parameter the template does not consume, and any
+    attempt to smuggle in Manim source.
+
+    If `nolan` is not importable (the bridge runs standalone in some contexts) the check is SKIPPED
+    LOUDLY rather than silently passing — a math scene that reached the resolver would be validated
+    there anyway, but the author deserves to know the gate did not run.
+    """
+    try:
+        from nolan.mathanim.registry import validate_scene_data
+    except ImportError as exc:
+        return [f"{fid}/{sid} (math): cannot validate — nolan.mathanim is not importable ({exc}). "
+                f"Install NOLAN (`pip install -e .`) or author this scene through `nolan hf-finish`."]
+    return validate_scene_data(d, f"{fid}/{sid}")
+
+
 # layout (curated container) validation — arrange in the menu + each slot a known cell kind with its
 # required field. A bounded recursive check (the cell vocabulary is small + fixed), NOT arbitrary nesting.
 _LAYOUT_ARRANGES = {"split", "triptych", "hero-rail", "grid", "stack", "overlay", "spotlight", "filmstrip"}
@@ -210,6 +234,8 @@ def validate_spec(spec):
                     errs.append(f"{fid}/{sid} ({t}): data.{req} required and non-empty")
             if t == "raw":
                 errs.extend(_raw_seek_errors(fid, sid, d))
+            if t == "math":
+                errs.extend(_math_errors(fid, sid, d))
             tr = sc.get("transition_out")
             if tr is not None:
                 tk = tr.get("kind") if isinstance(tr, dict) else None

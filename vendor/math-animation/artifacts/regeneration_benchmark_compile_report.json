@@ -1,0 +1,26 @@
+{
+  "schema_version": "math-animation.regeneration-benchmark-report.v1",
+  "status": "passed",
+  "render_enabled": false,
+  "provider_call_count": 2,
+  "custom_python_rate": 0.0,
+  "compile_run_dir": "/tmp/math-animation-regeneration-final-v07/20260730-230707-typed-regeneration-benchmark",
+  "cases": [
+    {
+      "id": "blank-balance",
+      "injected_failure": "blank_frame",
+      "expected_template": "equation_reveal",
+      "formula_id": "balance",
+      "final_template": "equation_reveal",
+      "accepted": true
+    },
+    {
+      "id": "frozen-identity",
+      "injected_failure": "frozen_motion",
+      "expected_template": "equation_reveal",
+      "formula_id": "identity",
+      "final_template": "equation_reveal",
+      "accepted": true
+    }
+  ]
+}

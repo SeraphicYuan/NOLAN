@@ -1,0 +1,622 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "vertex-form-featured",
+  "title": "Completing the square reveals the vertex",
+  "request": {
+    "source_kind": "script",
+    "content": "Derive the vertex form step by step: $y=x^2-6x+5$, then $y=(x^2-6x+9)-9+5$, and finally $y=(x-3)^2-4$.\n\nCompare standard form $y=x^2-6x+5$ with vertex form $y=(x-3)^2-4$; they describe the same parabola, but vertex form reveals the turning point.",
+    "audience": "algebra learners",
+    "script_policy": "review",
+    "target_duration_seconds": 12.378291666666666
+  },
+  "math_ledger": {
+    "claims": [
+      {
+        "id": "claim.001.01",
+        "statement": "The authored script asserts $y=x^2-6x+5$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 1"
+        ]
+      },
+      {
+        "id": "claim.001.02",
+        "statement": "The authored script asserts $y=(x^2-6x+9)-9+5$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 1"
+        ]
+      },
+      {
+        "id": "claim.001.03",
+        "statement": "The authored script asserts $y=(x-3)^2-4$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 1"
+        ]
+      },
+      {
+        "id": "claim.002.01",
+        "statement": "The authored script asserts $y=x^2-6x+5$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 2"
+        ]
+      },
+      {
+        "id": "claim.002.02",
+        "statement": "The authored script asserts $y=(x-3)^2-4$.",
+        "verification": "assumed",
+        "assumptions": [],
+        "evidence": [
+          "script beat 2"
+        ]
+      }
+    ],
+    "formulas": [
+      {
+        "id": "formula.001.01",
+        "latex_parts": [
+          "y=x^2-6x+5"
+        ],
+        "plain_language": "Derive the vertex form step b...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.001.02",
+        "latex_parts": [
+          "y=(x^2-6x+9)-9+5"
+        ],
+        "plain_language": "Derive the vertex form step b...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.001.03",
+        "latex_parts": [
+          "y=(x-3)^2-4"
+        ],
+        "plain_language": "Derive the vertex form step b...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.002.01",
+        "latex_parts": [
+          "y=x^2-6x+5"
+        ],
+        "plain_language": "Compare standard form equatio...",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.002.02",
+        "latex_parts": [
+          "y=(x-3)^2-4"
+        ],
+        "plain_language": "Compare standard form equatio...",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/vertex_form_featured_narration.wav",
+    "utterances": [
+      {
+        "id": "derive.words",
+        "text": "Start with standard form. Add and subtract nine, then factor the perfect square. The final expression exposes a vertex at three, negative four.",
+        "words": [
+          {
+            "word": "Start",
+            "start_seconds": 0.0,
+            "end_seconds": 0.31006106321839083
+          },
+          {
+            "word": "with",
+            "start_seconds": 0.31006106321839083,
+            "end_seconds": 0.5581099137931035
+          },
+          {
+            "word": "standard",
+            "start_seconds": 0.5581099137931035,
+            "end_seconds": 1.0542076149425288
+          },
+          {
+            "word": "form.",
+            "start_seconds": 1.0542076149425288,
+            "end_seconds": 1.3022564655172415
+          },
+          {
+            "word": "Add",
+            "start_seconds": 1.3022564655172415,
+            "end_seconds": 1.488293103448276
+          },
+          {
+            "word": "and",
+            "start_seconds": 1.488293103448276,
+            "end_seconds": 1.6743297413793106
+          },
+          {
+            "word": "subtract",
+            "start_seconds": 1.6743297413793106,
+            "end_seconds": 2.170427442528736
+          },
+          {
+            "word": "nine,",
+            "start_seconds": 2.170427442528736,
+            "end_seconds": 2.4184762931034487
+          },
+          {
+            "word": "then",
+            "start_seconds": 2.4184762931034487,
+            "end_seconds": 2.6665251436781614
+          },
+          {
+            "word": "factor",
+            "start_seconds": 2.6665251436781614,
+            "end_seconds": 3.0385984195402305
+          },
+          {
+            "word": "the",
+            "start_seconds": 3.0385984195402305,
+            "end_seconds": 3.2246350574712648
+          },
+          {
+            "word": "perfect",
+            "start_seconds": 3.2246350574712648,
+            "end_seconds": 3.658720545977012
+          },
+          {
+            "word": "square.",
+            "start_seconds": 3.658720545977012,
+            "end_seconds": 4.03079382183908
+          },
+          {
+            "word": "The",
+            "start_seconds": 4.03079382183908,
+            "end_seconds": 4.216830459770115
+          },
+          {
+            "word": "final",
+            "start_seconds": 4.216830459770115,
+            "end_seconds": 4.526891522988506
+          },
+          {
+            "word": "expression",
+            "start_seconds": 4.526891522988506,
+            "end_seconds": 5.147013649425287
+          },
+          {
+            "word": "exposes",
+            "start_seconds": 5.147013649425287,
+            "end_seconds": 5.581099137931035
+          },
+          {
+            "word": "a",
+            "start_seconds": 5.581099137931035,
+            "end_seconds": 5.643111350574713
+          },
+          {
+            "word": "vertex",
+            "start_seconds": 5.643111350574713,
+            "end_seconds": 6.015184626436781
+          },
+          {
+            "word": "at",
+            "start_seconds": 6.015184626436781,
+            "end_seconds": 6.139209051724137
+          },
+          {
+            "word": "three,",
+            "start_seconds": 6.139209051724137,
+            "end_seconds": 6.449270114942528
+          },
+          {
+            "word": "negative",
+            "start_seconds": 6.449270114942528,
+            "end_seconds": 6.945367816091953
+          },
+          {
+            "word": "four.",
+            "start_seconds": 6.945367816091953,
+            "end_seconds": 7.193416666666666
+          }
+        ]
+      },
+      {
+        "id": "compare.words",
+        "text": "Standard form hides the turning point. Vertex form shows the same parabola and reveals its vertex immediately.",
+        "words": [
+          {
+            "word": "Standard",
+            "start_seconds": 7.643416666666667,
+            "end_seconds": 8.094275362318841
+          },
+          {
+            "word": "form",
+            "start_seconds": 8.094275362318841,
+            "end_seconds": 8.319704710144928
+          },
+          {
+            "word": "hides",
+            "start_seconds": 8.319704710144928,
+            "end_seconds": 8.601491394927535
+          },
+          {
+            "word": "the",
+            "start_seconds": 8.601491394927537,
+            "end_seconds": 8.770563405797102
+          },
+          {
+            "word": "turning",
+            "start_seconds": 8.770563405797102,
+            "end_seconds": 9.165064764492755
+          },
+          {
+            "word": "point.",
+            "start_seconds": 9.165064764492755,
+            "end_seconds": 9.446851449275362
+          },
+          {
+            "word": "Vertex",
+            "start_seconds": 9.446851449275362,
+            "end_seconds": 9.784995471014494
+          },
+          {
+            "word": "form",
+            "start_seconds": 9.784995471014494,
+            "end_seconds": 10.01042481884058
+          },
+          {
+            "word": "shows",
+            "start_seconds": 10.01042481884058,
+            "end_seconds": 10.292211503623188
+          },
+          {
+            "word": "the",
+            "start_seconds": 10.29221150362319,
+            "end_seconds": 10.461283514492754
+          },
+          {
+            "word": "same",
+            "start_seconds": 10.461283514492754,
+            "end_seconds": 10.68671286231884
+          },
+          {
+            "word": "parabola",
+            "start_seconds": 10.68671286231884,
+            "end_seconds": 11.137571557971015
+          },
+          {
+            "word": "and",
+            "start_seconds": 11.137571557971015,
+            "end_seconds": 11.30664356884058
+          },
+          {
+            "word": "reveals",
+            "start_seconds": 11.30664356884058,
+            "end_seconds": 11.701144927536232
+          },
+          {
+            "word": "its",
+            "start_seconds": 11.701144927536232,
+            "end_seconds": 11.870216938405797
+          },
+          {
+            "word": "vertex",
+            "start_seconds": 11.870216938405797,
+            "end_seconds": 12.208360960144928
+          },
+          {
+            "word": "immediately.",
+            "start_seconds": 12.208360960144928,
+            "end_seconds": 12.828291666666667
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "midnight-chalk",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#08111f",
+        "foreground": "#f5f0e6",
+        "muted": "#99a9b8"
+      },
+      "semantic_colors": {
+        "primary": "#54d1bd",
+        "changing": "#ff8b6a",
+        "fixed": "#86a8ff",
+        "positive": "#8ed081"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 46,
+        "body_size": 28,
+        "math_size": 68
+      },
+      "motion": {
+        "create_seconds": 0.7,
+        "transform_seconds": 0.8,
+        "beat_hold_seconds": 0.5
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "beat-001",
+      "title": "Derive the vertex form step b...",
+      "learning_objective": "Derive the vertex form step b...",
+      "narration_utterance_id": "derive.words",
+      "duration_seconds": 7.193416666666666,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "beat-001.sequence.formula",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "math_tex",
+            "formula_id": "formula.001.01",
+            "latex_parts": [
+              "y=x^2-6x+5"
+            ],
+            "part_roles": [],
+            "font_size": 76,
+            "max_width": 8.5
+          }
+        ],
+        "cues": [
+          {
+            "id": "beat-001.sequence.show",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "beat-001.sequence.formula",
+                "animation": "write"
+              }
+            ]
+          },
+          {
+            "id": "beat-001.sequence.step-01",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "transform_math",
+                "target": "beat-001.sequence.formula",
+                "formula_id": "formula.001.02",
+                "latex_parts": [
+                  "y=(x^2-6x+9)-9+5"
+                ],
+                "part_roles": [],
+                "rate_func": "smooth"
+              }
+            ]
+          },
+          {
+            "id": "beat-001.sequence.step-02",
+            "start_at": null,
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "transform_math",
+                "target": "beat-001.sequence.formula",
+                "formula_id": "formula.001.03",
+                "latex_parts": [
+                  "y=(x-3)^2-4"
+                ],
+                "part_roles": [],
+                "rate_func": "smooth"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "beat-002",
+      "title": "Compare standard form equatio...",
+      "learning_objective": "Compare standard form equatio...",
+      "narration_utterance_id": "compare.words",
+      "duration_seconds": 5.184875,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "minimum_effective_font_size": 16.0,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "beat-002.comparison.left",
+            "position": [
+              -3.4,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "portrait": {
+                "position": [
+                  0.0,
+                  1.2,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "math_tex",
+            "formula_id": "formula.002.01",
+            "latex_parts": [
+              "y=x^2-6x+5"
+            ],
+            "part_roles": [],
+            "font_size": 68,
+            "max_width": 5.0
+          },
+          {
+            "id": "beat-002.comparison.right",
+            "position": [
+              3.4,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "portrait": {
+                "position": [
+                  0.0,
+                  -1.2,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "math_tex",
+            "formula_id": "formula.002.02",
+            "latex_parts": [
+              "y=(x-3)^2-4"
+            ],
+            "part_roles": [],
+            "font_size": 68,
+            "max_width": 5.0
+          },
+          {
+            "id": "beat-002.comparison.left.label",
+            "position": [
+              -3.4,
+              -0.9,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "portrait": {
+                "position": [
+                  0.0,
+                  0.55,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "text",
+            "text": "Standard form",
+            "role": "foreground",
+            "font_size": 28,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          },
+          {
+            "id": "beat-002.comparison.right.label",
+            "position": [
+              3.4,
+              -0.9,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {
+              "portrait": {
+                "position": [
+                  0.0,
+                  -1.85,
+                  0.0
+                ],
+                "scale": 1.0,
+                "layout": null
+              }
+            },
+            "type": "text",
+            "text": "Vertex form",
+            "role": "foreground",
+            "font_size": 28,
+            "font": null,
+            "max_width": null,
+            "weight": "normal"
+          }
+        ],
+        "cues": [
+          {
+            "id": "beat-002.comparison.show",
+            "start_at": null,
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 1.0,
+                "type": "create",
+                "target": "beat-002.comparison.left",
+                "animation": "write"
+              },
+              {
+                "run_time": 1.0,
+                "type": "create",
+                "target": "beat-002.comparison.right",
+                "animation": "write"
+              },
+              {
+                "run_time": 1.0,
+                "type": "create",
+                "target": "beat-002.comparison.left.label",
+                "animation": "write"
+              },
+              {
+                "run_time": 1.0,
+                "type": "create",
+                "target": "beat-002.comparison.right.label",
+                "animation": "write"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 960,
+    "pixel_height": 540,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 131
+  }
+}

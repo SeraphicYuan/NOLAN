@@ -1,0 +1,19 @@
+{
+  "baseline": "v0.3",
+  "project_schema_sha256": "c3e6894345f07cfbbc11051d45e77ba76dd71c6f18057ff237e6a31c7b691d03",
+  "scene_program_schema_sha256": "4ff819bd8c84e5c35a040b0846eaa8660c36748d10f06897c87c74f8356d31e6",
+  "available_blocks": [
+    "equation_reveal",
+    "equation_transform",
+    "function_plot",
+    "number_line",
+    "secant_to_tangent",
+    "title_card"
+  ],
+  "schema_versions": {
+    "project": "math-animation.project.v1",
+    "scene_program": "math-animation.scene-program.v1",
+    "timeline": "math-animation.timeline.v1",
+    "manifest": "math-animation.manifest.v1"
+  }
+}

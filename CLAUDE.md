@@ -100,11 +100,18 @@ drifts, or an undocumented DAG step, fails CI). Find the right skill via the
   ComfyUI 8080 (Windows-only reachable). Hub restart: find the python.exe
   PID on 127.0.0.1:8011 via netstat, taskkill it (NEVER the tailscaled PID
   also on 8011), relaunch `D:\tmp\start_hub.cmd` detached.
-- **Two renderers, don't conflate them**: the DOMINANT HF path renders a composition's
+- **Three renderers, don't conflate them**: the DOMINANT HF path renders a composition's
   HTML in a headless browser with animation via **GSAP** (`npx hyperframes render` via
   cmd.exe; incremental `nolan hf-render`). **Remotion** is the LEGACY Director/FLOW
-  renderer only (render-service). Skills: `pipeline.hyperframes` (GSAP) vs `organ.render` /
-  `organ.layout-blocks` (Remotion).
+  renderer only (render-service). **Manim** renders ONE scene at a time — a `math` scene's
+  clip, mounted as that scene's video ground; it never renders a composition. Skills:
+  `pipeline.hyperframes` (GSAP) vs `organ.render` / `organ.layout-blocks` (Remotion) vs
+  `organ.math-animation` (Manim).
+- Manim + LaTeX live in a SEPARATE conda env — python `D:\env\mas\python.exe` (they land
+  numpy/Pillow outside NOLAN's pins). Only the render subprocess crosses; everything else
+  in `nolan.mathanim` runs in the `nolan` env. `NOLAN_MATHANIM_PYTHON` overrides. Check it
+  with `D:\env\mas\python.exe -m math_animation doctor` — `latex: missing` is the usual
+  first failure, and a shell opened BEFORE MiKTeX was installed has a stale PATH.
 - Node (render-service) runs Windows-side; render.mjs/still.mjs bundle per
   invocation — TSX edits take effect on the next render, no build step.
   stage.mjs needs ABSOLUTE media paths (node CWD = render-service/).

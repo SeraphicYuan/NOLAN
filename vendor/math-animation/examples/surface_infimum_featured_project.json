@@ -1,0 +1,763 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "surface-level-set-infimum",
+  "title": "Surfaces, sublevel sets, and unattained infima",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "Show a surface meeting the zero plane, its sublevel footprint, and contrast a minimum with an unattained infimum.",
+    "audience": "multivariable calculus students",
+    "script_policy": "locked",
+    "target_duration_seconds": 13.7
+  },
+  "math_ledger": {
+    "claims": [],
+    "formulas": [
+      {
+        "id": "formula.level-set",
+        "latex_parts": [
+          "x^2+y^2-1",
+          "=",
+          "0"
+        ],
+        "plain_language": "The zero level set is the unit circle.",
+        "symbol_roles": {},
+        "assumptions": []
+      },
+      {
+        "id": "formula.infimum",
+        "latex_parts": [
+          "\\inf_{x\\ge 1}\\frac{1}{x}",
+          "=",
+          "0",
+          "\\quad(\\text{not attained})"
+        ],
+        "plain_language": "The values approach zero without equaling it.",
+        "symbol_roles": {},
+        "assumptions": []
+      }
+    ]
+  },
+  "narration": {
+    "provider": "external",
+    "audio_path": "/Users/yuan/ClaudeProjects/Animation_Lib/examples/assets/synthetic_surface_infimum.wav",
+    "utterances": [
+      {
+        "id": "surface",
+        "text": "The bowl crosses the zero plane on a unit circle and its nonpositive footprint is the disk inside",
+        "words": [
+          {
+            "word": "The",
+            "start_seconds": 0.0,
+            "end_seconds": 0.31
+          },
+          {
+            "word": "bowl",
+            "start_seconds": 0.38,
+            "end_seconds": 0.69
+          },
+          {
+            "word": "crosses",
+            "start_seconds": 0.76,
+            "end_seconds": 1.07
+          },
+          {
+            "word": "the",
+            "start_seconds": 1.14,
+            "end_seconds": 1.45
+          },
+          {
+            "word": "zero",
+            "start_seconds": 1.52,
+            "end_seconds": 1.83
+          },
+          {
+            "word": "plane",
+            "start_seconds": 1.9,
+            "end_seconds": 2.21
+          },
+          {
+            "word": "on",
+            "start_seconds": 2.28,
+            "end_seconds": 2.59
+          },
+          {
+            "word": "a",
+            "start_seconds": 2.66,
+            "end_seconds": 2.97
+          },
+          {
+            "word": "unit",
+            "start_seconds": 3.04,
+            "end_seconds": 3.35
+          },
+          {
+            "word": "circle",
+            "start_seconds": 3.42,
+            "end_seconds": 3.73
+          },
+          {
+            "word": "and",
+            "start_seconds": 3.8,
+            "end_seconds": 4.11
+          },
+          {
+            "word": "its",
+            "start_seconds": 4.18,
+            "end_seconds": 4.49
+          },
+          {
+            "word": "nonpositive",
+            "start_seconds": 4.56,
+            "end_seconds": 4.87
+          },
+          {
+            "word": "footprint",
+            "start_seconds": 4.94,
+            "end_seconds": 5.25
+          },
+          {
+            "word": "is",
+            "start_seconds": 5.32,
+            "end_seconds": 5.63
+          },
+          {
+            "word": "the",
+            "start_seconds": 5.7,
+            "end_seconds": 6.01
+          },
+          {
+            "word": "disk",
+            "start_seconds": 6.08,
+            "end_seconds": 6.39
+          },
+          {
+            "word": "inside",
+            "start_seconds": 6.46,
+            "end_seconds": 6.77
+          }
+        ]
+      },
+      {
+        "id": "infimum",
+        "text": "One over x approaches zero forever but never reaches zero so the infimum is not attained",
+        "words": [
+          {
+            "word": "One",
+            "start_seconds": 7.37,
+            "end_seconds": 7.68
+          },
+          {
+            "word": "over",
+            "start_seconds": 7.75,
+            "end_seconds": 8.06
+          },
+          {
+            "word": "x",
+            "start_seconds": 8.13,
+            "end_seconds": 8.44
+          },
+          {
+            "word": "approaches",
+            "start_seconds": 8.51,
+            "end_seconds": 8.82
+          },
+          {
+            "word": "zero",
+            "start_seconds": 8.89,
+            "end_seconds": 9.2
+          },
+          {
+            "word": "forever",
+            "start_seconds": 9.27,
+            "end_seconds": 9.58
+          },
+          {
+            "word": "but",
+            "start_seconds": 9.65,
+            "end_seconds": 9.96
+          },
+          {
+            "word": "never",
+            "start_seconds": 10.03,
+            "end_seconds": 10.34
+          },
+          {
+            "word": "reaches",
+            "start_seconds": 10.41,
+            "end_seconds": 10.72
+          },
+          {
+            "word": "zero",
+            "start_seconds": 10.79,
+            "end_seconds": 11.1
+          },
+          {
+            "word": "so",
+            "start_seconds": 11.17,
+            "end_seconds": 11.48
+          },
+          {
+            "word": "the",
+            "start_seconds": 11.55,
+            "end_seconds": 11.86
+          },
+          {
+            "word": "infimum",
+            "start_seconds": 11.93,
+            "end_seconds": 12.24
+          },
+          {
+            "word": "is",
+            "start_seconds": 12.31,
+            "end_seconds": 12.62
+          },
+          {
+            "word": "not",
+            "start_seconds": 12.69,
+            "end_seconds": 13.0
+          },
+          {
+            "word": "attained",
+            "start_seconds": 13.07,
+            "end_seconds": 13.38
+          }
+        ]
+      }
+    ]
+  },
+  "style": {
+    "template_id": "surface-night",
+    "version": "placeholder-v1",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#0b1016",
+        "foreground": "#f4f0e8",
+        "muted": "#82909c"
+      },
+      "semantic_colors": {
+        "changing": "#e46f51",
+        "fixed": "#5e91c9",
+        "positive": "#62bc83"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 50,
+        "body_size": 25,
+        "math_size": 46
+      }
+    }
+  },
+  "assets": [],
+  "beats": [
+    {
+      "id": "surface",
+      "title": "The zero plane",
+      "learning_objective": "Relate a level set to a surface intersection.",
+      "narration_utterance_id": "surface",
+      "duration_seconds": 6.9,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "3d",
+        "initial_camera": {
+          "phi_degrees": 64.0,
+          "theta_degrees": -52.0,
+          "zoom": 0.72,
+          "frame_center": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "surface.title",
+            "position": [
+              0.0,
+              3.25,
+              0.0
+            ],
+            "fixed_in_frame": true,
+            "layout": null,
+            "responsive": {},
+            "type": "text",
+            "text": "A zero level set cuts a surface",
+            "role": "foreground",
+            "font_size": 38,
+            "font": null,
+            "max_width": 10.5,
+            "weight": "bold"
+          },
+          {
+            "id": "surface.bowl",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "parametric_surface",
+            "u_range": [
+              -1.7,
+              1.7
+            ],
+            "v_range": [
+              -1.7,
+              1.7
+            ],
+            "x": "u",
+            "y": "v",
+            "z": "0.6*(u**2 + v**2 - 1)",
+            "resolution": [
+              22,
+              22
+            ],
+            "role": "changing",
+            "fill_opacity": 0.48,
+            "stroke_width": 0.35,
+            "assertion_samples": 11,
+            "maximum_absolute_coordinate": 4.0
+          },
+          {
+            "id": "surface.zero-plane",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "parametric_surface",
+            "u_range": [
+              -2.2,
+              2.2
+            ],
+            "v_range": [
+              -2.2,
+              2.2
+            ],
+            "x": "u",
+            "y": "v",
+            "z": "0",
+            "resolution": [
+              8,
+              8
+            ],
+            "role": "fixed",
+            "fill_opacity": 0.22,
+            "stroke_width": 0.25,
+            "assertion_samples": 11,
+            "maximum_absolute_coordinate": 3.0
+          },
+          {
+            "id": "surface.intersection",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "parametric_curve",
+            "parameter_range": [
+              0.0,
+              6.283185307179586,
+              0.035
+            ],
+            "x": "cos(t)",
+            "y": "sin(t)",
+            "z": "0",
+            "role": "positive",
+            "stroke_width": 7.0
+          },
+          {
+            "id": "surface.formula",
+            "position": [
+              0.0,
+              -3.25,
+              0.0
+            ],
+            "fixed_in_frame": true,
+            "layout": null,
+            "responsive": {},
+            "type": "math_tex",
+            "formula_id": "formula.level-set",
+            "latex_parts": [
+              "x^2+y^2-1",
+              "=",
+              "0"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "fixed"
+            ],
+            "font_size": 42,
+            "max_width": 7.0
+          }
+        ],
+        "cues": [
+          {
+            "id": "surface-title",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "surface",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.45,
+                "type": "create",
+                "target": "surface.title",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "surface-bowl",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "surface",
+              "word_index": 2,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 1.1,
+                "type": "create",
+                "target": "surface.bowl",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "surface-plane",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "surface",
+              "word_index": 5,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.85,
+                "type": "create",
+                "target": "surface.zero-plane",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "surface-intersection",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "surface",
+              "word_index": 8,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "surface.intersection",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.8,
+                "type": "create",
+                "target": "surface.formula",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.8,
+                "type": "camera",
+                "phi_degrees": null,
+                "theta_degrees": -28.0,
+                "zoom": 0.92,
+                "frame_center": null
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "infimum",
+      "title": "Approach without attainment",
+      "learning_objective": "Distinguish a minimum from an infimum.",
+      "narration_utterance_id": "infimum",
+      "duration_seconds": 6.2,
+      "blocks": [],
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "2d",
+        "initial_camera": null,
+        "enforce_safe_area": true,
+        "safe_area_margin": 0.15,
+        "trackers": [],
+        "objects": [
+          {
+            "id": "infimum.title",
+            "position": [
+              0.0,
+              3.15,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "text",
+            "text": "Approached is not the same as attained",
+            "role": "foreground",
+            "font_size": 40,
+            "font": null,
+            "max_width": 11.0,
+            "weight": "bold"
+          },
+          {
+            "id": "infimum.axes",
+            "position": [
+              -1.3,
+              0.4,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "axes",
+            "x_range": [
+              1.0,
+              10.0,
+              1.0
+            ],
+            "y_range": [
+              0.0,
+              1.1,
+              0.2
+            ],
+            "x_length": 7.2,
+            "y_length": 3.5,
+            "role": "muted",
+            "tips": false
+          },
+          {
+            "id": "infimum.curve",
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "function_graph",
+            "axes": "infimum.axes",
+            "expression": "1/x",
+            "x_range": [
+              1.0,
+              10.0
+            ],
+            "role": "changing",
+            "stroke_width": 6.0
+          },
+          {
+            "id": "infimum.range",
+            "position": [
+              3.6,
+              -1.85,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "interval",
+            "start": 0.0,
+            "end": 1.0,
+            "left_closed": false,
+            "right_closed": true,
+            "role": "positive",
+            "stroke_width": 6.0,
+            "marker_radius": 0.11,
+            "label": "range: (0, 1]",
+            "expected_width": 1.0,
+            "absolute_tolerance": 1e-9
+          },
+          {
+            "id": "infimum.formula",
+            "position": [
+              3.65,
+              0.35,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "math_tex",
+            "formula_id": "formula.infimum",
+            "latex_parts": [
+              "\\inf_{x\\ge 1}\\frac{1}{x}",
+              "=",
+              "0",
+              "\\quad(\\text{not attained})"
+            ],
+            "part_roles": [
+              "changing",
+              "foreground",
+              "fixed",
+              "muted"
+            ],
+            "font_size": 37,
+            "max_width": 5.0
+          },
+          {
+            "id": "surface.footprint",
+            "position": [
+              -4.8,
+              -2.15,
+              0.0
+            ],
+            "fixed_in_frame": false,
+            "layout": null,
+            "responsive": {},
+            "type": "scalar_field_footprint",
+            "expression": "x**2 + y**2 - 1",
+            "x_range": [
+              -1.5,
+              1.5
+            ],
+            "y_range": [
+              -1.5,
+              1.5
+            ],
+            "threshold": 0.0,
+            "resolution": [
+              25,
+              25
+            ],
+            "role": "positive",
+            "fill_opacity": 0.3,
+            "stroke_width": 0.0,
+            "minimum_selected_fraction": 0.25,
+            "maximum_selected_fraction": 0.5
+          }
+        ],
+        "cues": [
+          {
+            "id": "infimum-title",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "infimum",
+              "word_index": 0,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.45,
+                "type": "create",
+                "target": "infimum.title",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "infimum-graph",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "infimum",
+              "word_index": 2,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "infimum.axes",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "infimum.curve",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "infimum-range",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "infimum",
+              "word_index": 5,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "parallel",
+            "actions": [
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "infimum.range",
+                "animation": "auto"
+              },
+              {
+                "run_time": 0.7,
+                "type": "create",
+                "target": "infimum.formula",
+                "animation": "auto"
+              }
+            ]
+          },
+          {
+            "id": "sublevel-footprint",
+            "start_at": {
+              "type": "word",
+              "utterance_id": "infimum",
+              "word_index": 11,
+              "edge": "start",
+              "offset_seconds": 0.0
+            },
+            "mode": "sequential",
+            "actions": [
+              {
+                "run_time": 0.55,
+                "type": "create",
+                "target": "surface.footprint",
+                "animation": "fade_in"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 1280,
+    "pixel_height": 720,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 37
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "schema_version": "math-animation.vertex-form-featured-report.v1",
+  "status": "passed",
+  "topic": "Completing the square reveals the vertex",
+  "narration_mode": "macos_system_tts_proportional_alignment",
+  "alignment_note": "The standalone macOS voice is timed proportionally per word. Nolan's production aligner remains authoritative.",
+  "selected_templates": [
+    "equation_sequence",
+    "concept_comparison"
+  ],
+  "pedagogy_status": "passed",
+  "pedagogy_score": 0.9574,
+  "dimension_scores": {
+    "mathematical_grounding": 1.0,
+    "objective_alignment": 1.0,
+    "progressive_disclosure": 0.9199999999999999,
+    "pacing": 0.89,
+    "cognitive_load": 1.0,
+    "narration_sync": 0.88,
+    "legibility": 1.0
+  },
+  "review_status": "passed",
+  "review_warning_count": 0,
+  "review_error_count": 0,
+  "performance": {
+    "schema_version": "math-animation.performance.v1",
+    "rendered_beats": {
+      "beat-001": 20.10984854196431,
+      "beat-002": 13.597236875037197
+    },
+    "cache_reused_beats": [],
+    "compile_seconds": 0.0011410830193199217,
+    "latex_preflight_seconds": 2.5790246659889817,
+    "compose_seconds": 0.2992539590341039,
+    "review_seconds": 0.9231927079963498,
+    "total_seconds": 37.565904124989174
+  },
+  "final_video_media": {
+    "duration_seconds": 12.828,
+    "video_codec": "h264",
+    "pixel_format": "yuv420p",
+    "width": 960,
+    "height": 540,
+    "frame_rate": 24.0,
+    "frame_count": 307,
+    "audio_streams": [
+      {
+        "codec": "aac",
+        "sample_rate": "24000",
+        "channels": 1
+      }
+    ]
+  },
+  "custom_python_rate": 0.0,
+  "run_dir": "/tmp/math-animation-vertex-form-final-cold-2-20260730/20260731-014818-vertex-form-featured",
+  "video_artifact": "/Users/yuan/ClaudeProjects/Animation_Lib/artifacts/vertex_form_featured.mp4",
+  "keyframes_artifact": "/Users/yuan/ClaudeProjects/Animation_Lib/artifacts/vertex_form_featured_keyframes.png",
+  "review_artifact": "/Users/yuan/ClaudeProjects/Animation_Lib/artifacts/vertex_form_featured_review.json"
+}

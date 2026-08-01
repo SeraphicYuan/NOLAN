@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 41,
+  "count": 42,
   "skills": [
     {
       "id": "art.flow",
@@ -490,14 +490,15 @@
       "status": "active",
       "version": 1,
       "tier": "lab",
-      "description": "The library of pictures we do NOT hold \u2014 museum and archive collections harvested as catalog metadata plus a 512px thumbnail, so a search over a corpus far larger than any local library can answer \"this image exists, here, under these terms\", and one promotion edge fetches the bytes when a beat earns it. Covers the collection \u2192 harvest \u2192 (on-demand) caption loop, the THREE knowledge tiers (collection-only / shallow item / captioned item), the ROUTED retrieval (catalog identity for named works, CLIP over thumbnails for look), the promotion edge into the held Picture Library, and the invariants (the tier is opt-in on every read path, identity is catalog-derived never model-asserted, collection rights are sticky, coverage is stated honestly). Read before touching imagelib/harvest.py, the `held` tier in imagelib/catalog.py + store.py, or the `nolan images harvest / discover / fetch / collections` commands.\n",
+      "description": "The library of pictures we do NOT hold \u2014 museum and archive collections harvested as catalog metadata plus a 512px thumbnail, so a search over a corpus far larger than any local library can answer \"this image exists, here, under these terms\", and one promotion edge fetches the bytes when a beat earns it. Covers the collection \u2192 harvest \u2192 (on-demand) caption loop, the THREE knowledge tiers (collection-only / shallow item / captioned item), the ROUTED retrieval (catalog identity for named works, CLIP over thumbnails for look), the promotion edge into the held Picture Library, and the invariants (the tier is opt-in on every read path, identity is catalog-derived never model-asserted, collection rights are sticky, coverage is stated honestly). Read before touching imagelib/harvest.py, the `held` tier in imagelib/catalog.py + store.py, the `/visual-lib` page, or the `nolan images harvest / discover / fetch / collections` commands.\n",
       "handoffs": [],
       "uses": [],
       "overrides": [],
       "loaded_by": [],
       "documents": {
         "module": "src/nolan/imagelib/harvest.py",
-        "store": "src/nolan/imagelib/store.py"
+        "store": "src/nolan/imagelib/store.py",
+        "page": "src/nolan/webui/routes/visual_lib.py"
       },
       "evals": [
         "scripts/eval_visuallib_recall.py"
@@ -813,6 +814,36 @@
       },
       "evals": [],
       "path": "skills/organ/layout-blocks.md"
+    },
+    {
+      "id": "organ.math-animation",
+      "name": "Math animation source (Manim)",
+      "kind": "grammar",
+      "purpose": "Author a mathematical beat correctly the first time \u2014 pick the right template, write the ledger the gate demands, anchor the steps to the narration, and know when NOT to spend a Manim render.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "organ",
+      "description": "How NOLAN puts real mathematics on screen: a `math` scene declares a typed template plus a formula ledger, and the finish DAG compiles it into a Manim clip in the essay's own theme, mounted as that scene's video ground. Read before authoring a math/science beat, before touching `nolan.mathanim` or `vendor/math-animation`, or when the math-provenance gate blocks a render. Covers the nine templates, the ledger contract, the two-interpreter split (Manim and LaTeX live in a separate conda env), and what this source is deliberately NOT for.\n",
+      "handoffs": [
+        {
+          "process": "hyperframes",
+          "stage": "author",
+          "gate": "A"
+        }
+      ],
+      "uses": [
+        "pipeline.hyperframes"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "registry": "src/nolan/mathanim/registry.py",
+        "resolver": "src/nolan/mathanim/resolve.py",
+        "gate": "src/nolan/mathanim/gate.py",
+        "engine": "vendor/math-animation/src/math_animation/contracts.py"
+      },
+      "evals": [],
+      "path": "skills/organ/math-animation.md"
     },
     {
       "id": "organ.render",

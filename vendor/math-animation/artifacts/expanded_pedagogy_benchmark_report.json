@@ -1,0 +1,68 @@
+{
+  "schema_version": "math-animation.expanded-pedagogy-benchmark-report.v1",
+  "status": "passed",
+  "render_enabled": true,
+  "run_dir": "/tmp/math-animation-expanded-pedagogy-final-cold-20260730/20260730-230523-expanded-pedagogy-benchmark",
+  "selected_templates": [
+    "equation_sequence",
+    "concept_comparison"
+  ],
+  "custom_python_rate": 0.0,
+  "pedagogy_status": "passed",
+  "pedagogy_score": 0.9574,
+  "dimension_scores": {
+    "mathematical_grounding": 1.0,
+    "objective_alignment": 1.0,
+    "progressive_disclosure": 0.9199999999999999,
+    "pacing": 0.89,
+    "cognitive_load": 1.0,
+    "narration_sync": 0.88,
+    "legibility": 1.0
+  },
+  "synthetic_risk_status": "failed",
+  "synthetic_risk_score": 0.49060000000000004,
+  "synthetic_risk_findings": [
+    "grounding.math-review",
+    "risk.alignment",
+    "risk.progressive",
+    "risk.pacing",
+    "risk.load"
+  ],
+  "review_status": "passed",
+  "review_warning_count": 0,
+  "review_error_count": 0,
+  "fresh_render_count": 2,
+  "cache_reused_count": 0,
+  "performance": {
+    "schema_version": "math-animation.performance.v1",
+    "rendered_beats": {
+      "beat-001": 19.00742233399069,
+      "beat-002": 13.199425750004593
+    },
+    "cache_reused_beats": [],
+    "compile_seconds": 0.0011432920000515878,
+    "latex_preflight_seconds": 2.6458356250077486,
+    "compose_seconds": 0.16165887500392273,
+    "review_seconds": 0.8024668339639902,
+    "total_seconds": 35.87169416702818
+  },
+  "final_video_media": {
+    "duration_seconds": 11.333333,
+    "video_codec": "h264",
+    "pixel_format": "yuv420p",
+    "width": 640,
+    "height": 360,
+    "frame_rate": 15.0,
+    "frame_count": 170,
+    "audio_streams": [
+      {
+        "codec": "aac",
+        "sample_rate": "24000",
+        "channels": 1
+      }
+    ]
+  },
+  "video_artifact": "/Users/yuan/ClaudeProjects/Animation_Lib/artifacts/expanded_pedagogy_benchmark.mp4",
+  "keyframes_artifact": "/Users/yuan/ClaudeProjects/Animation_Lib/artifacts/expanded_pedagogy_benchmark_keyframes.png",
+  "review_artifact": "/Users/yuan/ClaudeProjects/Animation_Lib/artifacts/expanded_pedagogy_benchmark_review.json"
+}

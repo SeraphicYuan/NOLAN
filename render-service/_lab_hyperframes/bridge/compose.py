@@ -29,6 +29,15 @@ CSS = """
    decks). Universal + theme-painted (var(--accent)); a theme opts out with --stub-w:0. */
 .kick::after{content:"";display:block;width:var(--stub-w,2.6cqw);height:var(--stub-h,0.34cqh);
   background:var(--accent);margin-top:0.95cqh;border-radius:var(--stub-r,1px);}
+/* math chrome — the caption (a spoken restatement) and the source credit under a Manim scene. Both sit
+   above 17cqh so their box bottoms clear the composition grid's caption_keep_out_y=0.85; the Manim clip
+   owns the middle of the frame and neither line may crowd it. */
+.mathcap{position:absolute;left:calc(5.5cqw*var(--density,1));right:calc(5.5cqw*var(--density,1));
+  bottom:23cqh;max-width:80cqw;font-family:var(--font-body);
+  font-size:calc(1.35cqw*var(--type-scale,1));line-height:1.28;color:var(--text);opacity:0;}
+.mathsrc{position:absolute;left:calc(5.5cqw*var(--density,1));right:calc(5.5cqw*var(--density,1));
+  bottom:17cqh;font-family:var(--font-body);font-size:calc(0.95cqw*var(--type-scale,1));
+  color:var(--text-mute,var(--text));letter-spacing:0.04em;opacity:0;}
 .stmt{position:absolute;left:calc(5.5cqw*var(--density,1));bottom:16cqh;max-width:80cqw;font-weight:var(--display-weight,800);font-style:var(--display-style,normal);font-size:calc(4.6cqw*var(--type-scale,1));line-height:1.08;
   letter-spacing:-0.012em;}
 .stmt .ln{display:block;opacity:0;}
@@ -6118,7 +6127,64 @@ def layout(sid, sc):
     return frag, tl
 
 
+def math_scene(sid, sc):
+    """Reusable BLOCK: a MANIM mathematical scene — a derivation, a plotted function, a 3D surface.
+
+    The pixels come from Manim, not from here. `nolan.mathanim.resolve` (a finish-DAG step, alongside
+    the dataset and document sources) compiles the scene's typed `template` + `params` + `formulas`
+    ledger into a Manim clip in the essay's own theme, and stamps `data.ground = {kind:"video", src}`.
+    `assemble_media.collect_video_grounds` then root-mounts that clip BELOW the frame track — the same
+    path a pool b-roll clip takes, because a <video> cannot live inside a frame sub-comp.
+
+    So this composer paints ONLY chrome, over a transparent hole:
+
+      * NO ground div and NO scrim. The video-ground component darkens footage so overlaid text stays
+        legible; a math clip has no text to protect and a scrim would just grey out the equations. The
+        clip already carries the theme's own background (StyleTokens.background <- the theme's --shell).
+      * `kicker`, `caption` and `source` are HTML, in the theme's type — the things Manim should not
+        be asked to typeset, and the ones that keep a math beat looking like the rest of the essay.
+      * `title` is NOT painted here. It names the beat in the run bundle and feeds the pedagogy report;
+        drawing it would double whatever the Manim template already renders. (`params.caption` is a
+        different field one level down, typeset INSIDE the clip by the Manim template.)
+
+    `caption` is the block's narration-anchorable prose — a plain-language restatement of what the
+    scene shows, which the narrator does say ("the vertex sits at x equals three"). It reveals through
+    `_prose_cue` so the aligner can pull it onto those words (docs/WIRING_CHECKLIST.md #9b). The
+    element-level reveals — each step of a derivation — are scheduled INSIDE the clip by
+    `nolan.mathanim.adapter._cue_times` from the authored `params.at` phrases, which is the same
+    "show it as you say it" contract one layer down.
+
+    data: {template, params, formulas:[{latex, says?, verified?}], objective?, title?, kicker?,
+           caption?, source?} — authored; `ground` + `_math` are stamped by the resolver. Templates:
+          see `nolan.mathanim.registry` (catalog.json carries the generated copy)."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    frag, tl = [], []
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5,'
+                  f'ease:"power2.out"}},{start + 0.35:.2f});')
+    if d.get("caption"):
+        ct = _prose_cue(d, "caption", start, dur, lead=0.6)
+        frag.append(f'<div id="{sid}-cap" class="mathcap">{esc(d["caption"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-cap",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.55,'
+                  f'ease:"power2.out"}},{ct:.2f});')
+    if d.get("source"):
+        st = _prose_cue(d, "source", start, dur, lead=0.9)
+        frag.append(f'<div id="{sid}-src" class="mathsrc">{esc(d["source"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-src",{{opacity:0}},{{opacity:1,duration:0.6}},{st:.2f});')
+    if not frag:
+        # A math scene with no chrome still needs ONE mounted clip element, or the frame
+        # sub-comp has nothing on this scene's window and the assembler has no anchor for it.
+        frag.append(f'<div id="{sid}-mathhole" class="clip" data-start="{start}" '
+                    f'data-duration="{dur}" data-track-index="0" '
+                    f'style="position:absolute;inset:0;pointer-events:none;"></div>')
+        return frag, tl
+    return [f'<section class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" '
+            f'style="position:absolute;inset:0;pointer-events:none;">'] + frag + ['</section>'], tl
+
+
 BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map, "raw": raw_scene,
+          "math": math_scene,
           "bullet_list": bullet_list, "pull_quote": pull_quote,
           "comparison_table": comparison_table, "ledger": ledger_list,
           "timeline": timeline, "newshead": newshead, "collage": collage,

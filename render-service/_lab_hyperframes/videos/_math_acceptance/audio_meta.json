@@ -1,0 +1,291 @@
+{
+  "voices": [
+    {
+      "frame": 1,
+      "path": "assets/voice/01.wav",
+      "duration_s": 19.5,
+      "words": [
+        {
+          "word": "Start",
+          "start": 0.0,
+          "end": 0.335
+        },
+        {
+          "word": "with",
+          "start": 0.38,
+          "end": 0.68
+        },
+        {
+          "word": "a",
+          "start": 0.725,
+          "end": 0.92
+        },
+        {
+          "word": "parabola",
+          "start": 0.965,
+          "end": 1.405
+        },
+        {
+          "word": "and",
+          "start": 1.45,
+          "end": 1.715
+        },
+        {
+          "word": "watch",
+          "start": 1.76,
+          "end": 2.095
+        },
+        {
+          "word": "where",
+          "start": 2.14,
+          "end": 2.475
+        },
+        {
+          "word": "it",
+          "start": 2.52,
+          "end": 2.75
+        },
+        {
+          "word": "turns.",
+          "start": 2.795,
+          "end": 3.165
+        },
+        {
+          "word": "Now",
+          "start": 3.21,
+          "end": 3.475
+        },
+        {
+          "word": "take",
+          "start": 3.52,
+          "end": 3.82
+        },
+        {
+          "word": "the",
+          "start": 3.865,
+          "end": 4.13
+        },
+        {
+          "word": "standard",
+          "start": 4.175,
+          "end": 4.615
+        },
+        {
+          "word": "form",
+          "start": 4.66,
+          "end": 4.96
+        },
+        {
+          "word": "and",
+          "start": 5.005,
+          "end": 5.27
+        },
+        {
+          "word": "complete",
+          "start": 5.315,
+          "end": 5.755
+        },
+        {
+          "word": "the",
+          "start": 5.8,
+          "end": 6.065
+        },
+        {
+          "word": "square,",
+          "start": 6.11,
+          "end": 6.515
+        },
+        {
+          "word": "and",
+          "start": 6.56,
+          "end": 6.825
+        },
+        {
+          "word": "the",
+          "start": 6.87,
+          "end": 7.135
+        },
+        {
+          "word": "vertex",
+          "start": 7.18,
+          "end": 7.55
+        },
+        {
+          "word": "appears",
+          "start": 7.595,
+          "end": 8.0
+        },
+        {
+          "word": "as",
+          "start": 8.045,
+          "end": 8.275
+        },
+        {
+          "word": "a",
+          "start": 8.32,
+          "end": 8.515
+        },
+        {
+          "word": "single",
+          "start": 8.56,
+          "end": 8.93
+        },
+        {
+          "word": "number",
+          "start": 8.975,
+          "end": 9.345
+        },
+        {
+          "word": "you",
+          "start": 9.39,
+          "end": 9.655
+        },
+        {
+          "word": "can",
+          "start": 9.7,
+          "end": 9.965
+        },
+        {
+          "word": "read",
+          "start": 10.01,
+          "end": 10.31
+        },
+        {
+          "word": "off.",
+          "start": 10.355,
+          "end": 10.655
+        },
+        {
+          "word": "Put",
+          "start": 10.7,
+          "end": 10.965
+        },
+        {
+          "word": "the",
+          "start": 11.01,
+          "end": 11.275
+        },
+        {
+          "word": "two",
+          "start": 11.32,
+          "end": 11.585
+        },
+        {
+          "word": "forms",
+          "start": 11.63,
+          "end": 11.965
+        },
+        {
+          "word": "side",
+          "start": 12.01,
+          "end": 12.31
+        },
+        {
+          "word": "by",
+          "start": 12.355,
+          "end": 12.585
+        },
+        {
+          "word": "side",
+          "start": 12.63,
+          "end": 12.93
+        },
+        {
+          "word": "and",
+          "start": 12.975,
+          "end": 13.24
+        },
+        {
+          "word": "they",
+          "start": 13.285,
+          "end": 13.585
+        },
+        {
+          "word": "describe",
+          "start": 13.63,
+          "end": 14.07
+        },
+        {
+          "word": "the",
+          "start": 14.115,
+          "end": 14.38
+        },
+        {
+          "word": "same",
+          "start": 14.425,
+          "end": 14.725
+        },
+        {
+          "word": "curve.",
+          "start": 14.77,
+          "end": 15.14
+        },
+        {
+          "word": "Finally",
+          "start": 15.185,
+          "end": 15.59
+        },
+        {
+          "word": "mark",
+          "start": 15.635,
+          "end": 15.935
+        },
+        {
+          "word": "the",
+          "start": 15.98,
+          "end": 16.245
+        },
+        {
+          "word": "roots",
+          "start": 16.29,
+          "end": 16.625
+        },
+        {
+          "word": "on",
+          "start": 16.67,
+          "end": 16.9
+        },
+        {
+          "word": "a",
+          "start": 16.945,
+          "end": 17.14
+        },
+        {
+          "word": "number",
+          "start": 17.185,
+          "end": 17.555
+        },
+        {
+          "word": "line",
+          "start": 17.6,
+          "end": 17.9
+        },
+        {
+          "word": "at",
+          "start": 17.945,
+          "end": 18.175
+        },
+        {
+          "word": "one",
+          "start": 18.22,
+          "end": 18.485
+        },
+        {
+          "word": "and",
+          "start": 18.53,
+          "end": 18.795
+        },
+        {
+          "word": "at",
+          "start": 18.84,
+          "end": 19.07
+        },
+        {
+          "word": "five.",
+          "start": 19.115,
+          "end": 19.45
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,794 @@
+{
+  "schema_version": "math-animation.project.v1",
+  "project_id": "olin-featured-stress-test",
+  "title": "From One Line of Code to a Moving Mathematical World",
+  "request": {
+    "source_kind": "screenplay",
+    "content": "A caption-led visual explainer of the Olin construction: trace the coordinate recipe, reveal its 10,000-point planar shadow, animate the formula through time, prove an exact depth lift preserves that shadow, contrast it with a cylindrical reinterpretation, and close on both views together.",
+    "audience": "mathematically curious creators",
+    "script_policy": "locked",
+    "target_duration_seconds": 62.0
+  },
+  "math_ledger": {
+    "claims": [
+      {
+        "id": "claim.exact-projection",
+        "statement": "Orthographic projection of the exact lift along the y axis recovers the planar shadow for every sampled point and tested time.",
+        "verification": "verified",
+        "assumptions": [
+          "Projection is orthographic along the y axis.",
+          "The same u and v coordinates are used by the shadow and lift."
+        ],
+        "evidence": [
+          "The generated scene performs numerical allclose checks at four time values before rendering."
+        ]
+      },
+      {
+        "id": "claim.cylindrical-interpretation",
+        "statement": "The cylindrical state reinterprets q and c as radius and angle; it is not claimed to preserve the planar shadow.",
+        "verification": "verified",
+        "assumptions": [],
+        "evidence": [
+          "Its first two coordinates are (40+q)cos(c) and (40+q)sin(c)."
+        ]
+      }
+    ],
+    "formulas": [
+      {
+        "id": "formula.shadow",
+        "latex_parts": [
+          "S(i,t)",
+          "=",
+          "0.017\\bigl(q+40\\cos c,\\ 0,\\ q\\sin c+35d-200\\bigr)"
+        ],
+        "plain_language": "The original construction is drawn as a flat xz shadow.",
+        "symbol_roles": {
+          "0": "fixed",
+          "q,c,d": "changing"
+        },
+        "assumptions": []
+      },
+      {
+        "id": "formula.exact-lift-featured",
+        "latex_parts": [
+          "E(i,t)",
+          "=",
+          "0.017\\bigl(q+40\\cos c,\\ 40\\sin c,\\ q\\sin c+35d-200\\bigr)"
+        ],
+        "plain_language": "The exact lift adds a y coordinate while retaining x and z.",
+        "symbol_roles": {
+          "x,z": "fixed",
+          "y": "changing"
+        },
+        "assumptions": []
+      },
+      {
+        "id": "formula.projection",
+        "latex_parts": [
+          "\\pi_{xz}\\!\\left(E(i,t)\\right)",
+          "=",
+          "S(i,t)"
+        ],
+        "plain_language": "Dropping the lift's y coordinate exactly recovers the shadow.",
+        "symbol_roles": {
+          "E": "changing",
+          "S": "fixed"
+        },
+        "assumptions": [
+          "Projection is along the y axis."
+        ]
+      },
+      {
+        "id": "formula.cylindrical",
+        "latex_parts": [
+          "C(i,t)",
+          "=",
+          "0.017\\bigl((40+q)\\cos c,\\ (40+q)\\sin c,\\ 35d-200\\bigr)"
+        ],
+        "plain_language": "The cylindrical view treats c as an angle and 40+q as a radius.",
+        "symbol_roles": {
+          "c": "changing",
+          "40+q": "primary"
+        },
+        "assumptions": []
+      }
+    ]
+  },
+  "style": {
+    "template_id": "featured-paper",
+    "version": "placeholder-v2",
+    "provider": "placeholder",
+    "raw": {
+      "colors": {
+        "background": "#f4eddd",
+        "foreground": "#211b17",
+        "muted": "#736b61"
+      },
+      "semantic_colors": {
+        "primary": "#236b67",
+        "changing": "#b14f3d",
+        "fixed": "#405f87",
+        "secondary": "#a07a2c",
+        "positive": "#527a4f"
+      },
+      "typography": {
+        "font": "Avenir Next",
+        "title_size": 56,
+        "body_size": 26,
+        "math_size": 34
+      },
+      "motion": {
+        "create_seconds": 0.8,
+        "transform_seconds": 2.5,
+        "beat_hold_seconds": 0.5
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "olin-featured",
+      "title": "Olin, unpacked",
+      "learning_objective": "Understand how a compact generative expression becomes a moving planar image, an exact lift, and a cylindrical interpretation.",
+      "duration_seconds": 62.0,
+      "scene_program": {
+        "schema_version": "math-animation.scene-program.v1",
+        "scene_kind": "3d",
+        "initial_camera": {
+          "phi_degrees": 90.0,
+          "theta_degrees": -90.0,
+          "zoom": 0.9,
+          "frame_center": [0.5, 0.0, 0.0]
+        },
+        "objects": [
+          {
+            "id": "headline.source",
+            "type": "text",
+            "text": "Can one line of math become a world?",
+            "role": "foreground",
+            "font_size": 52,
+            "max_width": 11.5,
+            "weight": "bold",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "source.label",
+            "type": "text",
+            "text": "The source",
+            "position": [0.0, 3.15, 0.0],
+            "role": "changing",
+            "font_size": 24,
+            "weight": "bold",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "source.code",
+            "type": "text",
+            "text": "for (i = 10000; i--; ) {\n  k = (4 + cos(i/9 - 2*t)) * cos(i/35);\n  e = i/1645 - 13;\n  d = sqrt(k*k + e*e) + sin(e/9 + t/2) - 4;\n  c = d - t;\n  q = 2*sin(3*k) - (i/8225)*k*(9 + k*sin(9*cos(e)-2*d+t));\n  x.fillRect(q + 40*cos(c), q*sin(c) + 35*d, 1, 1);\n}",
+            "position": [0.0, -0.1, 0.0],
+            "role": "foreground",
+            "font_size": 19,
+            "font": "Menlo",
+            "max_width": 11.6,
+            "weight": "normal",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "headline.recipe",
+            "type": "text",
+            "text": "First, follow the coordinate recipe",
+            "role": "foreground",
+            "font_size": 48,
+            "max_width": 11.5,
+            "weight": "bold",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "recipe.k",
+            "type": "math_tex",
+            "latex_parts": ["k", "=", "(4+\\cos(i/9-2t))\\cos(i/35)"],
+            "part_roles": ["changing", "foreground", "foreground"],
+            "position": [-3.25, 2.35, 0.0],
+            "font_size": 29,
+            "max_width": 6.2,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "recipe.e",
+            "type": "math_tex",
+            "latex_parts": ["e", "=", "i/1645-13"],
+            "part_roles": ["changing", "foreground", "foreground"],
+            "position": [-3.25, 1.2, 0.0],
+            "font_size": 29,
+            "max_width": 6.2,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "recipe.d",
+            "type": "math_tex",
+            "latex_parts": ["d", "=", "\\sqrt{k^2+e^2}+\\sin(e/9+t/2)-4"],
+            "part_roles": ["changing", "foreground", "foreground"],
+            "position": [-3.25, 0.05, 0.0],
+            "font_size": 29,
+            "max_width": 6.2,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "recipe.c",
+            "type": "math_tex",
+            "latex_parts": ["c", "=", "d-t"],
+            "part_roles": ["changing", "foreground", "foreground"],
+            "position": [-3.25, -1.1, 0.0],
+            "font_size": 29,
+            "max_width": 6.2,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "recipe.q",
+            "type": "math_tex",
+            "latex_parts": ["q", "=", "2\\sin(3k)-(i/8225)k\\,[9+k\\sin(9\\cos e-2d+t)]"],
+            "part_roles": ["changing", "foreground", "foreground"],
+            "position": [-3.25, -2.25, 0.0],
+            "font_size": 27,
+            "max_width": 6.2,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "recipe.note",
+            "type": "text",
+            "text": "Each line feeds the next.\nThe final pair becomes a pixel.",
+            "position": [3.3, 0.05, 0.0],
+            "role": "muted",
+            "font_size": 28,
+            "max_width": 4.6,
+            "weight": "normal",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "headline.shadow",
+            "type": "text",
+            "text": "10,000 samples reveal the shadow",
+            "role": "foreground",
+            "font_size": 49,
+            "max_width": 11.5,
+            "weight": "bold",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "formula.shadow",
+            "type": "math_tex",
+            "formula_id": "formula.shadow",
+            "latex_parts": [
+              "S(i,t)",
+              "=",
+              "0.017\\bigl(q+40\\cos c,\\ 0,\\ q\\sin c+35d-200\\bigr)"
+            ],
+            "part_roles": ["primary", "foreground", "foreground"],
+            "position": [0.0, 3.18, 0.0],
+            "font_size": 31,
+            "max_width": 11.2,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "caption.shadow",
+            "type": "text",
+            "text": "At one instant: a planar xz shadow.",
+            "position": [0.0, -3.25, 0.0],
+            "role": "muted",
+            "font_size": 24,
+            "max_width": 11.0,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "caption.shadow-time",
+            "type": "text",
+            "text": "Advance t, and the same coordinate rule breathes.",
+            "position": [0.0, -3.25, 0.0],
+            "role": "muted",
+            "font_size": 24,
+            "max_width": 11.0,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "headline.lift",
+            "type": "text",
+            "text": "Now add depth—without losing the shadow",
+            "role": "foreground",
+            "font_size": 46,
+            "max_width": 11.5,
+            "weight": "bold",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "formula.lift",
+            "type": "math_tex",
+            "formula_id": "formula.exact-lift-featured",
+            "latex_parts": [
+              "E(i,t)",
+              "=",
+              "0.017\\bigl(q+40\\cos c,\\ 40\\sin c,\\ q\\sin c+35d-200\\bigr)"
+            ],
+            "part_roles": ["changing", "foreground", "foreground"],
+            "position": [0.0, 3.18, 0.0],
+            "font_size": 30,
+            "max_width": 11.3,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "caption.lift",
+            "type": "text",
+            "text": "Only y changes. The visible x and z coordinates stay exact.",
+            "position": [0.0, -3.25, 0.0],
+            "role": "muted",
+            "font_size": 23,
+            "max_width": 11.2,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "formula.projection",
+            "type": "math_tex",
+            "formula_id": "formula.projection",
+            "latex_parts": [
+              "\\pi_{xz}\\!\\left(E(i,t)\\right)",
+              "=",
+              "S(i,t)"
+            ],
+            "part_roles": ["changing", "foreground", "fixed"],
+            "position": [0.0, 3.18, 0.0],
+            "font_size": 38,
+            "max_width": 10.0,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "caption.projection",
+            "type": "text",
+            "text": "This identity is numerically checked before the scene renders.",
+            "position": [0.0, -3.25, 0.0],
+            "role": "positive",
+            "font_size": 23,
+            "max_width": 11.2,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "headline.cylinder",
+            "type": "text",
+            "text": "A different reading wraps the points around an axis",
+            "role": "foreground",
+            "font_size": 43,
+            "max_width": 11.5,
+            "weight": "bold",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "formula.cylinder",
+            "type": "math_tex",
+            "formula_id": "formula.cylindrical",
+            "latex_parts": [
+              "C(i,t)",
+              "=",
+              "0.017\\bigl((40+q)\\cos c,\\ (40+q)\\sin c,\\ 35d-200\\bigr)"
+            ],
+            "part_roles": ["secondary", "foreground", "foreground"],
+            "position": [0.0, 3.18, 0.0],
+            "font_size": 29,
+            "max_width": 11.3,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "caption.cylinder",
+            "type": "text",
+            "text": "Here c is an angle and 40 + q is a radius—not an exact lift.",
+            "position": [0.0, -3.25, 0.0],
+            "role": "muted",
+            "font_size": 23,
+            "max_width": 11.2,
+            "fixed_in_frame": true
+          },
+          {
+            "id": "headline.final",
+            "type": "text",
+            "text": "One rule. Three faithful ways to inspect it.",
+            "role": "foreground",
+            "font_size": 48,
+            "max_width": 11.5,
+            "weight": "bold",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "caption.final",
+            "type": "text",
+            "text": "recipe  →  shadow  →  exact lift  |  reinterpretation",
+            "position": [0.0, -3.25, 0.0],
+            "role": "foreground",
+            "font_size": 23,
+            "max_width": 11.2,
+            "weight": "bold",
+            "fixed_in_frame": true
+          },
+          {
+            "id": "cloud.full",
+            "type": "point_cloud",
+            "position": [0.8, 0.0, 0.0],
+            "sample_count": 10000,
+            "sample_start": 0.0,
+            "sample_end": 9999.0,
+            "time_value": 0.039269908169872414,
+            "bindings": [
+              {"name": "sample_y", "expression": "i / 235"},
+              {"name": "k", "expression": "(4 + cos(i / 9 - 2 * t)) * cos(i / 35)"},
+              {"name": "e", "expression": "sample_y / 7 - 13"},
+              {"name": "d", "expression": "sqrt(k**2 + e**2) + sin(e / 9 + t / 2) - 4"},
+              {"name": "c", "expression": "d - t"},
+              {"name": "q", "expression": "2 * sin(3 * k) - (sample_y / 35) * k * (9 + k * sin(9 * cos(e) - 2 * d + t))"},
+              {"name": "u", "expression": "(q + 40 * cos(c)) * 0.017"},
+              {"name": "v", "expression": "(q * sin(c) + 35 * d - 200) * 0.017"},
+              {"name": "depth", "expression": "40 * sin(c) * 0.017"}
+            ],
+            "states": [
+              {"id": "shadow", "x": "u", "y": "0 * i", "z": "v"}
+            ],
+            "initial_state": "shadow",
+            "role": "secondary",
+            "stroke_width": 2.1,
+            "opacity": 0.62
+          },
+          {
+            "id": "cloud.main",
+            "type": "point_cloud",
+            "position": [0.8, 0.0, 0.0],
+            "sample_count": 5000,
+            "sample_start": 0.0,
+            "sample_end": 9999.0,
+            "time_value": 0.039269908169872414,
+            "bindings": [
+              {"name": "sample_y", "expression": "i / 235"},
+              {"name": "k", "expression": "(4 + cos(i / 9 - 2 * t)) * cos(i / 35)"},
+              {"name": "e", "expression": "sample_y / 7 - 13"},
+              {"name": "d", "expression": "sqrt(k**2 + e**2) + sin(e / 9 + t / 2) - 4"},
+              {"name": "c", "expression": "d - t"},
+              {"name": "q", "expression": "2 * sin(3 * k) - (sample_y / 35) * k * (9 + k * sin(9 * cos(e) - 2 * d + t))"},
+              {"name": "u", "expression": "(q + 40 * cos(c)) * 0.017"},
+              {"name": "v", "expression": "(q * sin(c) + 35 * d - 200) * 0.017"},
+              {"name": "depth", "expression": "40 * sin(c) * 0.017"}
+            ],
+            "states": [
+              {"id": "shadow", "x": "u", "y": "0 * i", "z": "v"},
+              {"id": "exact-lift", "x": "u", "y": "depth", "z": "v"},
+              {
+                "id": "cylindrical",
+                "x": "(40 + q) * cos(c) * 0.017",
+                "y": "(40 + q) * sin(c) * 0.017",
+                "z": "(35 * d - 200) * 0.017"
+              }
+            ],
+            "initial_state": "shadow",
+            "projection_assertions": [
+              {
+                "id": "assert.exact-xz-shadow",
+                "source_state": "exact-lift",
+                "source_axes": ["x", "z"],
+                "target_state": "shadow",
+                "target_axes": ["x", "z"],
+                "time_values": [0.039269908169872414, 1.5, 3.8, 8.0],
+                "absolute_tolerance": 1e-09
+              }
+            ],
+            "role": "primary",
+            "stroke_width": 2.25,
+            "opacity": 0.9
+          },
+          {
+            "id": "cloud.final-shadow",
+            "type": "point_cloud",
+            "position": [0.8, 0.0, 0.0],
+            "sample_count": 2500,
+            "sample_start": 0.0,
+            "sample_end": 9999.0,
+            "time_value": 8.0,
+            "bindings": [
+              {"name": "sample_y", "expression": "i / 235"},
+              {"name": "k", "expression": "(4 + cos(i / 9 - 2 * t)) * cos(i / 35)"},
+              {"name": "e", "expression": "sample_y / 7 - 13"},
+              {"name": "d", "expression": "sqrt(k**2 + e**2) + sin(e / 9 + t / 2) - 4"},
+              {"name": "c", "expression": "d - t"},
+              {"name": "q", "expression": "2 * sin(3 * k) - (sample_y / 35) * k * (9 + k * sin(9 * cos(e) - 2 * d + t))"},
+              {"name": "u", "expression": "(q + 40 * cos(c)) * 0.017"},
+              {"name": "v", "expression": "(q * sin(c) + 35 * d - 200) * 0.017"}
+            ],
+            "states": [
+              {"id": "shadow", "x": "u", "y": "0 * i", "z": "v"}
+            ],
+            "initial_state": "shadow",
+            "role": "fixed",
+            "stroke_width": 1.8,
+            "opacity": 0.42
+          }
+        ],
+        "cues": [
+          {
+            "id": "opening-question",
+            "start_at": {"type": "seconds", "seconds": 0.0},
+            "actions": [
+              {"type": "create", "target": "headline.source", "animation": "write", "run_time": 0.8}
+            ]
+          },
+          {
+            "id": "show-source",
+            "start_at": {"type": "seconds", "seconds": 1.5},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "headline.source", "run_time": 0.6},
+              {"type": "create", "target": "source.label", "animation": "fade_in", "run_time": 0.6},
+              {"type": "create", "target": "source.code", "animation": "fade_in", "run_time": 0.6}
+            ]
+          },
+          {
+            "id": "clear-source",
+            "start_at": {"type": "seconds", "seconds": 5.5},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "source.label", "run_time": 0.5},
+              {"type": "fade_out", "target": "source.code", "run_time": 0.5}
+            ]
+          },
+          {
+            "id": "recipe-headline",
+            "start_at": {"type": "seconds", "seconds": 6.0},
+            "actions": [
+              {"type": "create", "target": "headline.recipe", "animation": "write", "run_time": 0.7}
+            ]
+          },
+          {
+            "id": "clear-recipe-headline",
+            "start_at": {"type": "seconds", "seconds": 7.5},
+            "actions": [
+              {"type": "fade_out", "target": "headline.recipe", "run_time": 0.5}
+            ]
+          },
+          {
+            "id": "build-recipe",
+            "start_at": {"type": "seconds", "seconds": 8.0},
+            "mode": "sequential",
+            "actions": [
+              {"type": "create", "target": "recipe.k", "animation": "write", "run_time": 0.55},
+              {"type": "create", "target": "recipe.e", "animation": "write", "run_time": 0.55},
+              {"type": "create", "target": "recipe.d", "animation": "write", "run_time": 0.55},
+              {"type": "create", "target": "recipe.c", "animation": "write", "run_time": 0.55},
+              {"type": "create", "target": "recipe.q", "animation": "write", "run_time": 0.55},
+              {"type": "create", "target": "recipe.note", "animation": "fade_in", "run_time": 0.45}
+            ]
+          },
+          {
+            "id": "clear-recipe",
+            "start_at": {"type": "seconds", "seconds": 13.0},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "recipe.k", "run_time": 0.5},
+              {"type": "fade_out", "target": "recipe.e", "run_time": 0.5},
+              {"type": "fade_out", "target": "recipe.d", "run_time": 0.5},
+              {"type": "fade_out", "target": "recipe.c", "run_time": 0.5},
+              {"type": "fade_out", "target": "recipe.q", "run_time": 0.5},
+              {"type": "fade_out", "target": "recipe.note", "run_time": 0.5}
+            ]
+          },
+          {
+            "id": "shadow-headline",
+            "start_at": {"type": "seconds", "seconds": 13.5},
+            "actions": [
+              {"type": "create", "target": "headline.shadow", "animation": "write", "run_time": 0.7}
+            ]
+          },
+          {
+            "id": "full-shadow",
+            "start_at": {"type": "seconds", "seconds": 15.0},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "headline.shadow", "run_time": 0.8},
+              {"type": "create", "target": "formula.shadow", "animation": "write", "run_time": 0.8},
+              {"type": "create", "target": "caption.shadow", "animation": "fade_in", "run_time": 0.8},
+              {"type": "create", "target": "cloud.full", "animation": "fade_in", "run_time": 0.8}
+            ]
+          },
+          {
+            "id": "swap-to-dynamic-cloud",
+            "start_at": {"type": "seconds", "seconds": 18.5},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "cloud.full", "run_time": 0.6},
+              {"type": "create", "target": "cloud.main", "animation": "fade_in", "run_time": 0.6}
+            ]
+          },
+          {
+            "id": "animate-shadow-time",
+            "start_at": {"type": "seconds", "seconds": 19.1},
+            "actions": [
+              {
+                "type": "animate_point_cloud_time",
+                "target": "cloud.main",
+                "state": "shadow",
+                "end_time": 3.8,
+                "rate_func": "linear",
+                "run_time": 3.4
+              }
+            ]
+          },
+          {
+            "id": "explain-time",
+            "start_at": {"type": "seconds", "seconds": 23.0},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "caption.shadow", "run_time": 0.4},
+              {"type": "create", "target": "caption.shadow-time", "animation": "fade_in", "run_time": 0.4}
+            ]
+          },
+          {
+            "id": "clear-shadow",
+            "start_at": {"type": "seconds", "seconds": 25.0},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "cloud.main", "run_time": 0.5},
+              {"type": "fade_out", "target": "formula.shadow", "run_time": 0.5},
+              {"type": "fade_out", "target": "caption.shadow-time", "run_time": 0.5}
+            ]
+          },
+          {
+            "id": "lift-headline",
+            "start_at": {"type": "seconds", "seconds": 25.5},
+            "actions": [
+              {"type": "create", "target": "headline.lift", "animation": "write", "run_time": 0.7}
+            ]
+          },
+          {
+            "id": "introduce-lift",
+            "start_at": {"type": "seconds", "seconds": 26.7},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "headline.lift", "run_time": 0.8},
+              {"type": "fade_in", "target": "cloud.main", "run_time": 0.8},
+              {"type": "create", "target": "formula.lift", "animation": "write", "run_time": 0.8},
+              {"type": "create", "target": "caption.lift", "animation": "fade_in", "run_time": 0.8}
+            ]
+          },
+          {
+            "id": "lift-and-orbit",
+            "start_at": {"type": "seconds", "seconds": 27.5},
+            "mode": "parallel",
+            "actions": [
+              {"type": "transform_point_cloud", "target": "cloud.main", "state": "exact-lift", "rate_func": "smooth", "run_time": 3.0},
+              {"type": "camera", "phi_degrees": 64.0, "theta_degrees": -42.0, "zoom": 0.94, "frame_center": [0.5, 0.0, 0.0], "run_time": 3.0}
+            ]
+          },
+          {
+            "id": "inspect-depth",
+            "start_at": {"type": "seconds", "seconds": 31.0},
+            "actions": [
+              {"type": "camera", "phi_degrees": 70.0, "theta_degrees": 24.0, "zoom": 0.9, "frame_center": [0.5, 0.0, 0.0], "run_time": 2.5}
+            ]
+          },
+          {
+            "id": "projection-proof",
+            "start_at": {"type": "seconds", "seconds": 34.0},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "formula.lift", "run_time": 2.0},
+              {"type": "fade_out", "target": "caption.lift", "run_time": 2.0},
+              {"type": "create", "target": "formula.projection", "animation": "write", "run_time": 2.0},
+              {"type": "create", "target": "caption.projection", "animation": "fade_in", "run_time": 2.0},
+              {"type": "camera", "phi_degrees": 90.0, "theta_degrees": -90.0, "zoom": 0.9, "frame_center": [0.5, 0.0, 0.0], "run_time": 2.0}
+            ]
+          },
+          {
+            "id": "clear-lift",
+            "start_at": {"type": "seconds", "seconds": 37.0},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "cloud.main", "run_time": 0.5},
+              {"type": "fade_out", "target": "formula.projection", "run_time": 0.5},
+              {"type": "fade_out", "target": "caption.projection", "run_time": 0.5}
+            ]
+          },
+          {
+            "id": "cylinder-headline",
+            "start_at": {"type": "seconds", "seconds": 37.5},
+            "actions": [
+              {"type": "create", "target": "headline.cylinder", "animation": "write", "run_time": 0.7}
+            ]
+          },
+          {
+            "id": "introduce-cylinder",
+            "start_at": {"type": "seconds", "seconds": 38.7},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "headline.cylinder", "run_time": 0.8},
+              {"type": "fade_in", "target": "cloud.main", "run_time": 0.8},
+              {"type": "create", "target": "formula.cylinder", "animation": "write", "run_time": 0.8},
+              {"type": "create", "target": "caption.cylinder", "animation": "fade_in", "run_time": 0.8}
+            ]
+          },
+          {
+            "id": "wrap-cylinder",
+            "start_at": {"type": "seconds", "seconds": 39.5},
+            "mode": "parallel",
+            "actions": [
+              {"type": "transform_point_cloud", "target": "cloud.main", "state": "cylindrical", "rate_func": "smooth", "run_time": 3.0},
+              {"type": "camera", "phi_degrees": 67.0, "theta_degrees": -52.0, "zoom": 0.91, "frame_center": [0.5, 0.0, 0.0], "run_time": 3.0}
+            ]
+          },
+          {
+            "id": "animate-cylinder-time",
+            "start_at": {"type": "seconds", "seconds": 42.5},
+            "mode": "parallel",
+            "actions": [
+              {"type": "animate_point_cloud_time", "target": "cloud.main", "state": "cylindrical", "end_time": 8.0, "rate_func": "linear", "run_time": 4.0},
+              {"type": "camera", "phi_degrees": 62.0, "theta_degrees": 20.0, "zoom": 0.88, "frame_center": [0.5, 0.0, 0.0], "run_time": 4.0}
+            ]
+          },
+          {
+            "id": "inspect-cylinder",
+            "start_at": {"type": "seconds", "seconds": 47.0},
+            "actions": [
+              {"type": "camera", "phi_degrees": 72.0, "theta_degrees": 65.0, "zoom": 0.9, "frame_center": [0.5, 0.0, 0.0], "run_time": 2.0}
+            ]
+          },
+          {
+            "id": "clear-cylinder",
+            "start_at": {"type": "seconds", "seconds": 49.5},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "cloud.main", "run_time": 0.5},
+              {"type": "fade_out", "target": "formula.cylinder", "run_time": 0.5},
+              {"type": "fade_out", "target": "caption.cylinder", "run_time": 0.5}
+            ]
+          },
+          {
+            "id": "final-headline",
+            "start_at": {"type": "seconds", "seconds": 50.0},
+            "actions": [
+              {"type": "create", "target": "headline.final", "animation": "write", "run_time": 0.7}
+            ]
+          },
+          {
+            "id": "build-final-tableau",
+            "start_at": {"type": "seconds", "seconds": 51.2},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_out", "target": "headline.final", "run_time": 0.8},
+              {"type": "fade_in", "target": "cloud.main", "run_time": 0.8},
+              {"type": "create", "target": "cloud.final-shadow", "animation": "fade_in", "run_time": 0.8},
+              {"type": "create", "target": "caption.final", "animation": "fade_in", "run_time": 0.8}
+            ]
+          },
+          {
+            "id": "final-exact-lift",
+            "start_at": {"type": "seconds", "seconds": 52.0},
+            "mode": "parallel",
+            "actions": [
+              {"type": "transform_point_cloud", "target": "cloud.main", "state": "exact-lift", "rate_func": "smooth", "run_time": 2.5},
+              {"type": "camera", "phi_degrees": 67.0, "theta_degrees": -38.0, "zoom": 0.88, "frame_center": [0.7, 0.0, 0.0], "run_time": 2.5}
+            ]
+          },
+          {
+            "id": "return-recipe",
+            "start_at": {"type": "seconds", "seconds": 55.0},
+            "mode": "parallel",
+            "actions": [
+              {"type": "fade_in", "target": "recipe.k", "run_time": 0.6},
+              {"type": "fade_in", "target": "recipe.e", "run_time": 0.6},
+              {"type": "fade_in", "target": "recipe.d", "run_time": 0.6},
+              {"type": "fade_in", "target": "recipe.c", "run_time": 0.6},
+              {"type": "fade_in", "target": "recipe.q", "run_time": 0.6}
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "render": {
+    "renderer": "cairo",
+    "quality": "l",
+    "pixel_width": 1280,
+    "pixel_height": 720,
+    "frame_rate": 24,
+    "transparent": false,
+    "seed": 17
+  }
+}

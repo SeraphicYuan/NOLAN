@@ -1,0 +1,167 @@
+{
+  "schema_version": "math-animation.planning.v1",
+  "planner_id": "heuristic-constrained-v1",
+  "request_sha256": "cb2914e05744a56a107c698c5b2da569a29e30616aa546f4630ab48ade17b3b6",
+  "project_sha256": "96505e588cf29346d236c5fafe6c0212b470fed6cb6f5be50e49dd7b945790e7",
+  "beats": [
+    {
+      "beat_id": "beat-001",
+      "source_text": "Explain that solving $3x+5=20$ means preserving equality on both sides.",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "selected_template": "equation_reveal",
+      "rationale": "The script contains authored LaTeX, so the conservative choice is a ledger-locked equation reveal.",
+      "confidence": 0.88,
+      "formula_ids": [
+        "formula.001.01"
+      ],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-002",
+      "source_text": "Rewrite $2x+6=14$, then simplify it to $x=4$ without changing the solution.",
+      "learning_objective": "Show the authored symbolic change.",
+      "selected_template": "equation_transform",
+      "rationale": "Two authored formulas plus transformation language match the semantic equation-transform block.",
+      "confidence": 0.9,
+      "formula_ids": [
+        "formula.002.01",
+        "formula.002.02"
+      ],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-003",
+      "source_text": "Place -4, -1, 0, and 3 on a number line and compare their order.",
+      "learning_objective": "Locate the narrated values on a number line.",
+      "selected_template": "number_line",
+      "rationale": "The script explicitly requests a number line and contains finite numeric landmarks.",
+      "confidence": 0.96,
+      "formula_ids": [],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-004",
+      "source_text": "Connect the side lengths of a right triangle with $a^2+b^2=c^2$.",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "selected_template": "equation_reveal",
+      "rationale": "The script contains authored LaTeX, so the conservative choice is a ledger-locked equation reveal.",
+      "confidence": 0.88,
+      "formula_ids": [
+        "formula.004.01"
+      ],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-005",
+      "source_text": "For the function `0.25*x**2`, move a secant toward the tangent to explain the derivative.",
+      "learning_objective": "Connect secant motion to tangent behavior.",
+      "selected_template": "secant_to_tangent",
+      "rationale": "A safe function expression and a derivative/secant intent match the reusable secant-to-tangent block.",
+      "confidence": 0.94,
+      "formula_ids": [],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-006",
+      "source_text": "Graph the function `sin(x)` and point out its repeating oscillation.",
+      "learning_objective": "Relate an explicit expression to its graph.",
+      "selected_template": "function_plot",
+      "rationale": "A safe explicit expression and graph intent match the function-plot block.",
+      "confidence": 0.93,
+      "formula_ids": [],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-007",
+      "source_text": "Introduce conditional probability with $P(A\\mid B)=\\frac{P(A\\cap B)}{P(B)}$.",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "selected_template": "equation_reveal",
+      "rationale": "The script contains authored LaTeX, so the conservative choice is a ledger-locked equation reveal.",
+      "confidence": 0.88,
+      "formula_ids": [
+        "formula.007.01"
+      ],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-008",
+      "source_text": "State the linear transformation $T(\\mathbf{x})=A\\mathbf{x}$ before discussing its geometry.",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "selected_template": "equation_reveal",
+      "rationale": "The script contains authored LaTeX, so the conservative choice is a ledger-locked equation reveal.",
+      "confidence": 0.88,
+      "formula_ids": [
+        "formula.008.01"
+      ],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-009",
+      "source_text": "Introduce rotating harmonics with $z(t)=\\sum_n a_n e^{int}$.",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "selected_template": "equation_reveal",
+      "rationale": "The script contains authored LaTeX, so the conservative choice is a ledger-locked equation reveal.",
+      "confidence": 0.88,
+      "formula_ids": [
+        "formula.009.01"
+      ],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-010",
+      "source_text": "Plot the curve `exp(-(x**2))` as a simple bell-shaped density profile.",
+      "learning_objective": "Relate an explicit expression to its graph.",
+      "selected_template": "function_plot",
+      "rationale": "A safe explicit expression and graph intent match the function-plot block.",
+      "confidence": 0.93,
+      "formula_ids": [],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-011",
+      "source_text": "Relate the bowl to its zero level equation $x^2+y^2-1=0$.",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "selected_template": "equation_reveal",
+      "rationale": "The script contains authored LaTeX, so the conservative choice is a ledger-locked equation reveal.",
+      "confidence": 0.88,
+      "formula_ids": [
+        "formula.011.01"
+      ],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    },
+    {
+      "beat_id": "beat-012",
+      "source_text": "Contrast an approached infimum with the attained upper width $2\\sqrt{2}$.",
+      "learning_objective": "Connect the narration to its authored formula.",
+      "selected_template": "equation_reveal",
+      "rationale": "The script contains authored LaTeX, so the conservative choice is a ledger-locked equation reveal.",
+      "confidence": 0.88,
+      "formula_ids": [
+        "formula.012.01"
+      ],
+      "unsupported_intents": [],
+      "custom_python_requested": false
+    }
+  ],
+  "template_counts": {
+    "equation_reveal": 7,
+    "equation_transform": 1,
+    "function_plot": 2,
+    "number_line": 1,
+    "secant_to_tangent": 1
+  },
+  "typed_template_ratio": 1.0,
+  "custom_python_requests": [],
+  "warnings": []
+}
