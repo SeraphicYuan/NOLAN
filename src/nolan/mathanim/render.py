@@ -13,8 +13,11 @@ takes the interpreter as a parameter (`vendor/math-animation/CLAUDE.md`).
 """
 from __future__ import annotations
 
+import json
 import os
+import re
 import shutil
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -69,6 +72,60 @@ def _has_manim(python_executable: str) -> bool:
     from math_animation.renderer import manim_available
 
     return manim_available(python_executable)
+
+
+_FONT_CACHE: Dict[str, List[str]] = {}
+
+
+def available_fonts(python_executable: Optional[str] = None) -> List[str]:
+    """Font families the RENDER environment's Pango can actually see.
+
+    Manim asks Pango for SYSTEM fonts; it cannot use the essay's webfonts, which the HTML side
+    pulls from Google Fonts at render time. So a theme face that is not installed silently
+    becomes generic Sans with mangled kerning — Pango says so, but only in a stderr log that a
+    successful render never surfaces. Asking up front turns that into a note the author reads.
+
+    Returns [] when the answer is unknown (no interpreter, no manimpango); an unknown font list
+    is not evidence that a font is missing, so callers must treat [] as "do not substitute".
+    """
+
+    try:
+        python_executable = python_executable or math_python()
+    except MathRenderError:
+        return []
+    if python_executable in _FONT_CACHE:
+        return _FONT_CACHE[python_executable]
+    probe = "import manimpango,json;print(json.dumps(sorted(manimpango.list_fonts())))"
+    fonts: List[str] = []
+    try:
+        done = subprocess.run(
+            [python_executable, "-c", probe], capture_output=True, text=True, timeout=120
+        )
+        if done.returncode == 0:
+            fonts = json.loads(done.stdout.strip().splitlines()[-1])
+    except (OSError, subprocess.SubprocessError, ValueError, json.JSONDecodeError):
+        fonts = []
+    _FONT_CACHE[python_executable] = fonts
+    return fonts
+
+
+_PANGO_MISS = re.compile(r"couldn't load font \"([^\"]+?)(?: Not-Rotated [\d.]+)?\"", re.I)
+
+
+def font_misses(run_dir: Path) -> List[str]:
+    """Font families Pango could not load during this render, from its own log.
+
+    The backstop for `available_fonts`: even with a substitution in place, anything Manim asks
+    for and does not get is a typography defect, and the render's exit code will not mention it.
+    """
+
+    missed = set()
+    for log in (run_dir / "logs").glob("*.stderr.log"):
+        try:
+            missed.update(_PANGO_MISS.findall(log.read_text(encoding="utf-8", errors="replace")))
+        except OSError:
+            continue
+    return sorted(missed)
 
 
 def toolchain_report(python_executable: Optional[str] = None) -> Dict[str, str]:
@@ -147,6 +204,13 @@ def render_project(
         )
 
     notes: List[str] = []
+    missed = font_misses(result.run_dir)
+    if missed:
+        notes.append(
+            f"Pango could not load {', '.join(repr(m) for m in missed)} — this clip's text is in a "
+            f"fallback face and will not match the essay's typography. Install the font on the "
+            f"render machine, or accept the substitution `nolan.mathanim.style` already chose."
+        )
     if review:
         try:
             from math_animation.review import review_rendered_project

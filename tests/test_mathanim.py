@@ -425,6 +425,68 @@ def test_axes_are_painted_in_the_theme_not_manim_white():
     assert any(tokens.muted in ln for ln in line.lines), "number_line carries no theme colour"
 
 
+def test_a_theme_face_manim_cannot_see_is_substituted_by_personality():
+    """Manim asks Pango for SYSTEM fonts and cannot use the essay's webfonts. Left alone, Pango
+    picks generic Sans with mangled kerning and says so only in a stderr log a successful render
+    never surfaces — so the substitution is made deliberately, and reported."""
+    installed = ["Century Gothic", "Georgia", "Consolas", "Arial", "Segoe UI"]
+    font, note = style.resolve_font("highlighter-editorial", installed)   # wants Libre Franklin
+    assert font == "Century Gothic", "a geometric-sans theme should not land on a serif"
+    assert note and "Libre Franklin" in note
+
+    serif, _ = style.resolve_font("vintage-editorial", installed)
+    assert serif == "Georgia", "an editorial-serif theme should not land on a geometric sans"
+    mono, _ = style.resolve_font("blueprint", installed)
+    assert mono == "Consolas", "a mono-technical theme should stay monospaced"
+
+
+def test_an_installed_theme_face_is_used_as_authored():
+    font, note = style.resolve_font("highlighter-editorial", ["Libre Franklin", "Arial"])
+    assert font == "Libre Franklin" and note is None
+
+
+def test_an_unknown_font_list_is_not_evidence_of_a_missing_font():
+    """[] means 'could not ask', not 'nothing installed'. Substituting on no information would
+    silently retype every clip on a machine without Manim."""
+    font, note = style.resolve_font("highlighter-editorial", [])
+    assert font == "Libre Franklin" and note is None
+
+
+def test_the_font_note_reaches_the_caller():
+    """The note lives at the payload's top level; the adapter reads it from there. An earlier
+    version wrote it there and read it from `typography` — an authored field with no consumer,
+    the exact class this repo's checklist is built around."""
+    payload = style.style_payload("highlighter-editorial", available_fonts=["Arial"])
+    assert payload.get("_font_note")
+
+    from nolan.mathanim.adapter import project_from_scene
+
+    project, notes = project_from_scene(
+        _scene(SEQUENCE), frame_id="f", theme="highlighter-editorial",
+        canvas={"width": 960, "height": 540, "fps": 24},
+    )
+    if project.style.raw.get("_font_note"):
+        assert any("not installed for Manim" in n for n in notes), (
+            "the substitution was made but never reported to the author"
+        )
+
+
+def test_pango_font_misses_are_read_back_from_the_render_log(tmp_path):
+    """The backstop. Pango reports a miss on stderr and the render still exits 0, so nothing
+    downstream would ever know without reading the log."""
+    from nolan.mathanim.render import font_misses
+
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "beat.stderr.log").write_text(
+        'couldn\'t load font "Libre Franklin Not-Rotated 6.667", falling back to '
+        '"Sans Not-Rotated 6.667", expect ugly output.',
+        encoding="utf-8",
+    )
+    assert font_misses(tmp_path) == ["Libre Franklin"]
+    assert font_misses(tmp_path / "nonexistent") == []
+
+
 def test_type_sizes_scale_with_the_canvas():
     """Manim sizes glyphs against a fixed 8.0-unit frame, so a size that reads at 1080p is
     unreadable in a 540p proxy."""

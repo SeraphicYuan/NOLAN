@@ -554,9 +554,13 @@ def project_from_scene(
     )
 
     # The style payload is resolved BEFORE the visuals are built: `_fit_block` compiles a block once
-    # to measure its real length, and the emitters need the style tokens to do that.
+    # to measure its real length, and the emitters need the style tokens to do that. The font is
+    # resolved against what the RENDER environment's Pango can actually see — Manim cannot use the
+    # essay's webfonts, so an uninstalled theme face becomes generic Sans with mangled kerning.
     height = int(canvas.get("height") or 1080)
-    payload = _style.style_payload(theme, canvas_height=height)
+    payload = _style.style_payload(
+        theme, canvas_height=height, available_fonts=_render_fonts()
+    )
 
     notes: List[str] = []
     blocks, program = [], None
@@ -586,6 +590,8 @@ def project_from_scene(
     )
 
     notes.extend(_style.check_roles(payload, used_roles=_roles_used(params)))
+    if payload.get("_font_note"):
+        notes.append(f"{where}: {payload['_font_note']}")
 
     project = ProjectSpec(
         project_id=beat_id(frame_id, scene_id),
@@ -615,6 +621,22 @@ def project_from_scene(
         ),
     )
     return project, notes
+
+
+def _render_fonts() -> List[str]:
+    """What the render environment's Pango sees, or [] when that cannot be determined.
+
+    Isolated here so building a project never DEPENDS on the render env: with no Manim
+    installed this returns [], `resolve_font` leaves the theme's face as authored, and the
+    project still builds, validates and gates. Only the substitution needs the probe.
+    """
+
+    try:
+        from nolan.mathanim.render import available_fonts
+
+        return list(available_fonts())
+    except Exception:
+        return []
 
 
 def _roles_used(params: Dict[str, Any]) -> List[str]:

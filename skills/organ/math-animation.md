@@ -143,6 +143,16 @@ D:\env\mas\python.exe -m math_animation doctor
 `latex: missing` is the usual first failure — every equation then dies inside a Manim subprocess.
 `NOLAN_MATHANIM_PYTHON` overrides the interpreter.
 
+**Fonts are the other half of "in the essay's theme".** Colours, type sizes and semantic roles
+map cleanly, but Manim asks Pango for SYSTEM fonts and cannot use the webfonts the HTML side
+pulls from Google Fonts. A theme face that is not installed on the render machine falls back to
+generic Sans with mangled kerning, and Pango says so only in a stderr log a successful render
+never surfaces. So `nolan.mathanim.style` resolves the face against what the render env actually
+sees and substitutes by the theme's `typePersonality` (geometric-sans → Century Gothic,
+editorial-serif → Georgia, mono-technical → Consolas …), REPORTING every substitution. To match
+the HTML exactly, install the theme's own face on the render machine — then the resolver uses it
+untouched. Equations are unaffected: they are typeset by LaTeX, not Pango.
+
 ## Working on it
 
 ```bash

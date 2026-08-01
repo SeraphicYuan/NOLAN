@@ -24,7 +24,7 @@ from __future__ import annotations
 import math
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 REPO = Path(__file__).resolve().parents[3]
 THEMES_DIR = REPO / "themes"
@@ -251,22 +251,76 @@ def theme_palette(theme: Optional[str]) -> Dict[str, str]:
     return palette
 
 
-def theme_fonts(theme: Optional[str]) -> Optional[str]:
-    """The theme's display face, as a single family name Manim can ask Pango for."""
+# Where a theme's face is unavailable to Manim, substitute by TYPE PERSONALITY rather than
+# letting Pango choose. The HTML side pulls its faces from Google Fonts at render time; Manim
+# asks Pango, which only sees fonts INSTALLED on the machine — so `font='Libre Franklin'` fell
+# back to generic "Sans" with mangled kerning, and said so only in a stderr log nothing read
+# (the render exits 0). A personality-matched system face keeps a math beat in the same visual
+# register as the essay; the mismatch is REPORTED either way, because a silent substitution is
+# how the two halves drift apart without anyone noticing.
+_PERSONALITY_FALLBACK = {
+    "geometric-sans": ("Century Gothic", "Segoe UI", "Arial"),
+    "editorial-serif": ("Georgia", "Cambria", "Times New Roman"),
+    "mono-technical": ("Consolas", "Courier New"),
+    "brutalist-heavy": ("Franklin Gothic", "Arial", "Segoe UI"),
+    "friendly-rounded": ("Arial Rounded MT", "Segoe UI", "Verdana"),
+    "elegant-italic": ("Constantia", "Georgia", "Cambria"),
+}
+_LAST_RESORT = ("Segoe UI", "Arial", "Verdana")
 
+
+def _theme_meta(theme: Optional[str]) -> Dict:
     if not theme:
-        return None
+        return {}
     meta = THEMES_DIR / str(theme) / "theme.json"
     if not meta.is_file():
-        return None
+        return {}
     import json
 
     try:
-        fonts = (json.loads(meta.read_text(encoding="utf-8")) or {}).get("fonts") or {}
+        return json.loads(meta.read_text(encoding="utf-8")) or {}
     except (json.JSONDecodeError, OSError):
-        return None
+        return {}
+
+
+def theme_fonts(theme: Optional[str]) -> Optional[str]:
+    """The theme's display face, as a single family name Manim can ask Pango for."""
+
+    fonts = _theme_meta(theme).get("fonts") or {}
     family = fonts.get("displayEn") or fonts.get("body")
     return str(family) if family else None
+
+
+def resolve_font(
+    theme: Optional[str], available: Optional[Sequence[str]] = None
+) -> Tuple[Optional[str], Optional[str]]:
+    """(font Manim should use, note if it is not the theme's own face).
+
+    `available` is what the RENDER environment's Pango can see. Pass None (or an empty list)
+    when that cannot be determined and the theme's face is used as authored — an unknown font
+    list is not evidence that a font is missing.
+    """
+
+    wanted = theme_fonts(theme)
+    if not wanted or not available:
+        return wanted, None
+    installed = {str(f).strip().lower(): str(f) for f in available}
+    if wanted.strip().lower() in installed:
+        return wanted, None
+
+    personality = str(_theme_meta(theme).get("typePersonality") or "")
+    for candidate in _PERSONALITY_FALLBACK.get(personality, ()) + _LAST_RESORT:
+        if candidate.strip().lower() in installed:
+            return installed[candidate.strip().lower()], (
+                f"the theme's face {wanted!r} is not installed for Manim, so this clip is set in "
+                f"{candidate!r} (closest {personality or 'available'} match). Install {wanted!r} "
+                f"on the render machine to match the HTML exactly — Manim asks Pango for system "
+                f"fonts, it cannot use the essay's webfonts."
+            )
+    return None, (
+        f"the theme's face {wanted!r} is not installed for Manim and no fallback matched; "
+        f"Pango will choose, and the clip will not match the essay's typography."
+    )
 
 
 # --- the mapping -----------------------------------------------------------------------------
@@ -369,7 +423,12 @@ def check_roles(payload: Dict, used_roles: Optional[List[str]] = None) -> List[s
     return problems
 
 
-def style_payload(theme: Optional[str], *, canvas_height: int = 1080) -> Dict:
+def style_payload(
+    theme: Optional[str],
+    *,
+    canvas_height: int = 1080,
+    available_fonts: Optional[Sequence[str]] = None,
+) -> Dict:
     """The `StyleTemplateRef.raw` payload for a comp's theme.
 
     Type sizes scale with the canvas because Manim sizes glyphs in scene units
@@ -379,6 +438,7 @@ def style_payload(theme: Optional[str], *, canvas_height: int = 1080) -> Dict:
 
     palette = theme_palette(theme)
     background = palette.get("shell", _FALLBACK["shell"])
+    font, font_note = resolve_font(theme, available_fonts)
     scale = max(0.5, min(2.0, canvas_height / 1080.0))
     return {
         "colors": {
@@ -392,7 +452,7 @@ def style_payload(theme: Optional[str], *, canvas_height: int = 1080) -> Dict:
         },
         "semantic_colors": semantic_colors(palette),
         "typography": {
-            "font": theme_fonts(theme),
+            "font": font,
             "title_size": max(16, round(64 * scale)),
             "body_size": max(12, round(30 * scale)),
             "math_size": max(16, round(58 * scale)),
@@ -402,4 +462,7 @@ def style_payload(theme: Optional[str], *, canvas_height: int = 1080) -> Dict:
             "transform_seconds": 1.2,
             "beat_hold_seconds": 0.4,
         },
+        # advisory only; `_font_note` is underscore-prefixed so it never reads as narration and
+        # the engine's StrictModel keeps it in `raw` without interpreting it
+        **({"_font_note": font_note} if font_note else {}),
     }
