@@ -1593,6 +1593,176 @@ def test_a_met_resume_starts_after_the_last_consumed_id(monkeypatch):
         "a resume must not re-fetch what the first pass already consumed"
 
 
+def _write_met_csv(tmp_path, rows):
+    import csv as _csv
+    path = tmp_path / "MetObjects.csv"
+    cols = ["Object Number", "Is Public Domain", "Object ID", "Department", "Title",
+            "Artist Display Name", "Object Date", "Medium", "Classification", "Culture",
+            "Country", "Region", "Object Wikidata URL", "Link Resource"]
+    with open(path, "w", encoding="utf-8-sig", newline="") as f:
+        w = _csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        for r in rows:
+            w.writerow({c: r.get(c, "") for c in cols})
+    return path
+
+
+def test_phase_a_reads_the_met_dump_and_spends_no_requests(tmp_path, monkeypatch):
+    """The dump has 54 columns and EVERY field this adapter indexes; the per-object request buys
+    only the image url, which Phase A never fetches. It was spending 248,472 requests — ~7.6
+    hours — to learn a URL it was going to throw away."""
+    from nolan.imagelib import harvest as H
+
+    monkeypatch.setattr(H, "_met_csv_path", lambda: _write_met_csv(tmp_path, [
+        {"Object ID": "11", "Is Public Domain": "True", "Department": "Greek and Roman Art",
+         "Title": "Terracotta krater", "Artist Display Name": "", "Object Date": "ca. 450 BC",
+         "Medium": "Terracotta", "Classification": "Vases", "Culture": "Greek, Attic",
+         "Country": "", "Region": "Attica",
+         "Object Wikidata URL": "https://www.wikidata.org/wiki/Q123",
+         "Link Resource": "https://www.metmuseum.org/art/collection/search/11"},
+        {"Object ID": "12", "Is Public Domain": "False", "Department": "Photographs",
+         "Title": "Restricted", "Medium": "Albumen"},
+        {"Object ID": "13", "Is Public Domain": "True", "Department": "Egyptian Art",
+         "Title": "Faience hippopotamus", "Object Date": "ca. 1961-1878 BC",
+         "Medium": "Faience", "Classification": "Faience", "Country": "Egypt"},
+    ]))
+
+    def _boom(*a, **kw):
+        raise AssertionError("Phase A must not touch the Met API")
+
+    monkeypatch.setattr(H.httpx if hasattr(H, "httpx") else __import__("httpx"), "Client", _boom)
+
+    report = H.HarvestReport(collection="met-test")
+    got = list(H.met_items(limit=99, report=report, pixels=False))
+    assert [i.source_ref for i in got] == ["met:11", "met:13"], "the restricted row is filtered"
+    krater = got[0]
+    # every indexed field, straight off the CSV
+    assert krater.title == "Terracotta krater"
+    assert krater.date_text == "ca. 450 BC"
+    assert krater.medium == "Terracotta" and krater.classification == "Vases"
+    assert krater.department == "Greek and Roman Art" and krater.culture == "Greek, Attic"
+    assert krater.place == "Attica", "Country is blank, so Region stands in"
+    assert krater.wikidata_qid == "Q123"
+    assert krater.license.startswith("CC0")
+    # ...and the ONE field it cannot have
+    assert krater.thumb_url is None and krater.url is None
+    # The cursor counts PUBLIC-DOMAIN rows, not CSV lines — the restricted row is filtered by
+    # `met_csv_rows` and never enters the sequence. That is what makes this offset the SAME
+    # offset the API walk uses (it indexes `met_public_domain_ids`, the identically-filtered
+    # list), so a crawl can switch between the two paths and still resume correctly.
+    assert report.exhausted and report.cursor == {"offset": 2}
+
+
+def test_a_csv_phase_a_and_an_api_walk_share_one_cursor(tmp_path, monkeypatch):
+    """Two enumeration paths over one source is exactly how a resume quietly loses rows. They
+    must index the same sequence, so a Phase A run can be continued by a pixels run."""
+    from nolan.imagelib import harvest as H
+
+    rows = [{"Object ID": str(i), "Is Public Domain": "True" if i % 2 else "False",
+             "Department": "Egyptian Art", "Title": f"Thing {i}"} for i in range(10, 20)]
+    monkeypatch.setattr(H, "_met_csv_path", lambda: _write_met_csv(tmp_path, rows))
+    pd_ids = H.met_public_domain_ids()
+    assert pd_ids == [11, 13, 15, 17, 19]
+
+    rep = H.HarvestReport(collection="m")
+    first = list(H.met_items(limit=2, report=rep, pixels=False))
+    assert [i.source_ref for i in first] == ["met:11", "met:13"]
+    assert rep.cursor == {"offset": 2}
+
+    # hand that cursor to the API path — it must pick up at 15, not re-walk 11 and 13
+    seen = _fake_met(monkeypatch, pd_ids)
+    rep2 = H.HarvestReport(collection="m")
+    second = list(H.met_items(limit=2, report=rep2, pixels=True, cursor=rep.cursor))
+    assert [i.source_ref for i in second] == ["met:15", "met:17"]
+    assert 11 not in seen and 13 not in seen
+
+
+def test_a_pixels_harvest_still_asks_the_met_api(tmp_path, monkeypatch):
+    """The CSV path is chosen by PHASE, not by convenience: a run that will fetch pixels needs
+    the image url, so it must keep paying the per-object request."""
+    from nolan.imagelib import harvest as H
+
+    monkeypatch.setattr(H, "_met_csv_path", lambda: _write_met_csv(tmp_path, [
+        {"Object ID": "11", "Is Public Domain": "True", "Department": "Egyptian Art",
+         "Title": "A Thing"}]))
+    seen = _fake_met(monkeypatch, [11])
+
+    got = list(H.met_items(limit=99, report=H.HarvestReport(collection="m"), pixels=True))
+    assert seen == [11], "pixels=True must resolve the image url from the API"
+    assert got[0].thumb_url == "https://e/11s.jpg"
+
+
+def test_phase_b_resolves_the_image_url_it_deferred(lib, monkeypatch):
+    """The other half of the trade. A record-only Met row carries no url, so it must not be a
+    dead end — the request moves to the moment something wants its pixels."""
+    from nolan.imagelib import harvest as H
+
+    lib.add_discovery(source_ref="met:11", thumb_url=None, url=None, source="met",
+                      title="Terracotta krater", license="CC0 (The Metropolitan Museum of Art)",
+                      pixels=False)
+    lib.add_discovery(source_ref="met:12", thumb_url=None, url=None, source="met",
+                      title="An object with no picture",
+                      license="CC0 (The Metropolitan Museum of Art)", pixels=False)
+    assert lib.catalog.get_by_ref("met:11").thumb_url is None
+
+    asked = []
+
+    def _resolve(refs, **kw):
+        asked.extend(refs)
+        return {"met:11": {"thumb_url": "https://e/11s.jpg", "url": "https://e/11.jpg"},
+                "met:12": {"thumb_url": None, "url": None}}
+
+    import dataclasses
+    monkeypatch.setitem(H.SOURCES, "met",
+                        dataclasses.replace(H.SOURCES["met"], resolve_image_urls=_resolve))
+    n = lib._resolve_missing_thumb_urls(lib.catalog.list(held=0, limit=99))
+
+    assert n == 1 and sorted(asked) == ["met:11", "met:12"]
+    assert lib.catalog.get_by_ref("met:11").thumb_url == "https://e/11s.jpg"
+    # a row the Met has no image for stays NULL — a real answer, so it is never a pixel
+    # candidate again rather than being re-asked on every backfill run
+    assert lib.catalog.get_by_ref("met:12").thumb_url is None
+
+
+def test_every_adapter_accepts_the_kwargs_harvest_actually_passes(monkeypatch):
+    """`harvest` hands the same kwargs to every adapter, so a signature that does not tolerate
+    them is a TypeError on the next real crawl and NOTHING catches it — the end-to-end harvest
+    tests all need network. Adding `pixels` broke artic exactly this way.
+
+    Checked by CALLING each adapter, not by reading its signature: a `**_ignored` that swallows a
+    kwarg the adapter should have honoured would pass an inspection test and still be wrong.
+    """
+    import inspect
+
+    from nolan.imagelib import harvest as H
+
+    # what `harvest()` puts in items_kwargs, plus the collection-shaping kwargs it forwards
+    passed = {"limit", "report", "cursor", "pixels", "dept", "query"}
+    for name, adapter in sorted(H.SOURCES.items()):
+        sig = inspect.signature(adapter.items)
+        if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+            continue
+        missing = passed - set(sig.parameters)
+        assert not missing, f"{name}.items cannot accept {sorted(missing)} — harvest passes them"
+
+    # and prove it end-to-end: bind the real call harvest makes, with no network
+    for name, adapter in sorted(H.SOURCES.items()):
+        inspect.signature(adapter.items).bind(
+            limit=1, report=None, cursor=None, pixels=False, dept=None, query=None)
+
+
+def test_a_source_that_always_yields_a_url_is_never_asked_to_resolve(lib):
+    """artic and cleveland carry image urls in their listings, so the hook must stay unused —
+    a resolver called for them would be pure invented cost."""
+    from nolan.imagelib import harvest as H
+    assert H.SOURCES["artic"].resolve_image_urls is None
+    assert H.SOURCES["cleveland"].resolve_image_urls is None
+
+    lib.add_discovery(source_ref="artic:1", thumb_url="https://e/1.jpg", source="artic",
+                      title="A Print", license="CC0", pixels=False)
+    assert lib._resolve_missing_thumb_urls(lib.catalog.list(held=0, limit=99)) == 0
+
+
 # --- 13. browsing by artist and by movement ------------------------------------------------
 
 def _seed_artists(lib):

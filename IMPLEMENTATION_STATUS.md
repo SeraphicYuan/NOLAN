@@ -4,6 +4,38 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The Met's Phase A was buying a URL it threw away (2026-07-31)
+
+Asked whether the full 248,472-row Met public-domain set was worth indexing, priced it at 7.6
+hours, and got the right question back: *the CSV already has everything, why is Phase A slow?*
+
+It does. Measured against the dump's 54 columns, per public-domain row:
+
+    title 90.1%   creator 43.1%   date_text 96.2%   medium 99.5%   classification 86.9%
+    department 100%   culture 58.1%   place 18.4%   wikidata_qid 18.7%    <- all in the CSV
+    primaryImage / primaryImageSmall                                      <- only in the API
+
+The Met is a `per-object` source, so the walk rate IS the crawl — and the request was buying
+exactly one field, the image url, which **Phase A by definition never fetches**. The identity
+row it writes is byte-identical either way. `met_csv_items` reads the dump instead:
+
+    serial + 50 ms sleep, as it was          11.4 h
+    8-wide concurrent (earlier today)         7.6 h
+    CSV, zero requests                        2.5 h     <- measured, 2,000 real rows at 27.2 rows/s
+
+The trade is real and is paid where it belongs. Those rows have `thumb_url = NULL`, so the
+per-object request moves to Phase B (`_resolve_missing_thumb_urls` → the adapter's new
+`resolve_image_urls` hook, 8-wide) and is spent on rows something has decided are worth 470 ms
+of pixel work — ~11% on top of Phase B instead of the entire cost of Phase A. A ref the Met has
+no image for stays NULL, a real answer, so it costs one request ever rather than one per run.
+Both enumeration paths index the identically PD-filtered sequence, so one cursor spans them and
+a records crawl can be continued by a pixels crawl.
+
+Passing `pixels` down to the adapters broke `artic_items`, which had no `**_ignored` — a
+TypeError on the next real artic crawl that nothing would have caught, because every end-to-end
+harvest test needs network. Now `test_every_adapter_accepts_the_kwargs_harvest_actually_passes`
+binds the real call against every registered adapter.
+
 ## Browsing by ARTIST, and the tab that was lying about what it held (2026-07-31)
 
 Two questions, one answer: is `creator` worth a filter, and are our "collections" collections?

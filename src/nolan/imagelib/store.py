@@ -762,6 +762,44 @@ class ImageLibrary:
                 return f"content {eff[0]}x{eff[1]} below the {tier} floor"
         return None
 
+    def _resolve_missing_thumb_urls(self, rows) -> int:
+        """Fill in `thumb_url` for record-only rows whose source enumerates records WITHOUT
+        image urls. Returns how many were resolved.
+
+        This is the second half of the Met's CSV-first Phase A. The dump has 54 columns and
+        every field the catalog indexes, but no image column — so Phase A reads 248,472 records
+        for zero requests and the per-object request lands HERE instead, on rows something has
+        decided are worth 470 ms of pixel work. Spending it per row that wants pixels rather
+        than per row that exists is the whole saving: ~11% on top of Phase B, against ~7.6 hours
+        on top of Phase A.
+
+        A row the source has no usable image for keeps `thumb_url = NULL` and is simply never a
+        pixel candidate again — the resolver returns that as a real answer, so it costs one
+        request ever, not one per backfill run.
+        """
+        from nolan.imagelib.harvest import SOURCES
+
+        by_source: Dict[str, list] = {}
+        for a in rows:
+            if a.thumb_url or not a.source_ref:
+                continue
+            adapter = SOURCES.get(a.source or "")
+            if adapter is not None and adapter.resolve_image_urls is not None:
+                by_source.setdefault(a.source, []).append(a)
+
+        n = 0
+        for source, pending in by_source.items():
+            got = SOURCES[source].resolve_image_urls([a.source_ref for a in pending])
+            patches = {}
+            for a in pending:
+                found = got.get(a.source_ref)
+                if not found or not found.get("thumb_url"):
+                    continue
+                a.thumb_url, a.url = found["thumb_url"], found.get("url") or a.url
+                patches[a.id] = {"thumb_url": a.thumb_url, "url": a.url}
+            n += self.catalog.update_many(patches)
+        return n
+
     def backfill_pixels(self, *, limit: int = 200, collection_id: Optional[int] = None,
                         tier: str = "archival", concurrency: int = 8, progress=None) -> dict:
         """PHASE B — fetch thumbnails for record-only rows, so `look` retrieval grows over time.
@@ -779,12 +817,15 @@ class ImageLibrary:
         The fetch runs `concurrency`-wide: it is nearly all network, and a serial batch spends
         its whole wall-clock waiting on museum CDNs.
         """
-        rows = [a for a in self.catalog.list(status="active", held=0,
-                                             collection_id=collection_id,
-                                             limit=max(limit * 4, 200))
-                if not a.thumb_path and a.thumb_url][:limit]
+        pool_rows = [a for a in self.catalog.list(status="active", held=0,
+                                                  collection_id=collection_id,
+                                                  limit=max(limit * 4, 200))
+                     if not a.thumb_path]
+        resolved = self._resolve_missing_thumb_urls(pool_rows[:limit * 2])
+        rows = [a for a in pool_rows if a.thumb_url][:limit]
 
-        out = {"attempted": 0, "fetched": 0, "refused": 0, "errors": 0, "reasons": []}
+        out = {"attempted": 0, "fetched": 0, "refused": 0, "errors": 0,
+               "urls_resolved": resolved, "reasons": []}
         # Chunked so `progress` still ticks during a long run and a crash loses at most a chunk.
         step = max(1, concurrency * 2)
         for i in range(0, len(rows), step):

@@ -195,13 +195,29 @@ Shipped:
 - **`met`** — The Metropolitan Museum of Art. Keyless, `--dept "Photographs"` or an id (see
   `MET_DEPARTMENTS`), resumable by offset. **Enumerates via the bulk CSV** (`nolan images dump
   met` → 318 MB, 54 columns, 484,956 rows, parses in 3.5s). `Is Public Domain` is a column, so
-  the rights filter runs **offline**: 248,472 rows (51.2%) are public domain — a 2.0× request
-  saving, which is modest and honestly stated; the real wins are an exact per-department
-  denominator (European Paintings = 2,327 PD) and a rights-filtered department slice the live
-  listing cannot produce at all. Free identity extras on the PD subset: tags QID 56%, **artist
-  QID 35%**, object QID 19%. Without the dump it falls back to the unfiltered listing. Publishes
-  physical measurements rather than pixel dimensions, so the resolution floor lands at promotion
-  (`check_file` on real bytes) instead of at index time.
+  the rights filter runs **offline**: 248,472 rows (51.2%) are public domain, and the
+  per-department denominator is exact (European Paintings = 2,327 PD) — a rights-filtered
+  department slice the live listing cannot produce at all.
+
+  **PHASE A READS THE CSV AND SPENDS NOTHING** (`met_csv_items`). The dump carries every field
+  the catalog indexes — title 90.1%, creator 43.1%, date 96.2%, medium 99.5%, classification
+  86.9%, department 100%, culture 58.1%, place 18.4%, object QID 18.7% — and the per-object
+  request buys exactly one more: `primaryImage`. Phase A does not fetch pixels, so it was
+  spending 248,472 requests on a url it would discard. Measured end to end: **2.5 h and zero
+  requests**, against 7.6 h 8-wide and 11.4 h serially. The identity row is byte-identical.
+
+  The trade, stated rather than buried: those rows carry `thumb_url = NULL`, so
+  `ImageLibrary._resolve_missing_thumb_urls` pays the per-object request in **Phase B**, 8-wide,
+  via the adapter's `resolve_image_urls` hook — for rows something has decided are worth 470 ms
+  of pixel work, where it is ~11% on top rather than the whole cost. A ref the Met has no image
+  for stays NULL: a real answer, so it costs one request ever, not one per backfill run. Both
+  paths index the identically PD-filtered sequence, so **one cursor works across both** and a
+  Phase A crawl can be continued by a pixels crawl.
+
+  A `--query` still uses the API (the CSV has no relevance ranking). Free identity extras on the
+  PD subset: tags QID 56%, **artist QID 35%**, object QID 19%. Publishes physical measurements
+  rather than pixel dimensions, so the resolution floor lands at promotion (`check_file` on real
+  bytes) instead of at index time.
 
 - **`cleveland`** — Cleveland Museum of Art. Keyless, `skip`/`limit`, resumable, and the
   best-shaped of the three: a **server-side `cc0=1` filter AND full depth** (artic makes you

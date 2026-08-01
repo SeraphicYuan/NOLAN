@@ -169,6 +169,13 @@ class SourceAdapter:
     # Does the catalog publish PIXEL dimensions? Decides whether the gate's resolution floor can
     # run at index time or must wait for promotion. (The Met publishes physical size.)
     publishes_pixel_dims: bool = False
+    # `[source_ref] -> {ref: {"thumb_url", "url"}}`, for sources whose RECORDS can be enumerated
+    # without their IMAGE URLS. Only the Met needs it: its bulk dump carries every indexed field
+    # but no image column, so Phase A reads the CSV for free and Phase B pays the per-object
+    # request here — for the rows something actually wants pixels for, rather than for all
+    # 248,472. A source that always yields a url leaves this None and `backfill_pixels` never
+    # calls it.
+    resolve_image_urls: Optional[Callable[..., Dict[str, Dict[str, Optional[str]]]]] = None
     # 'per-item'      — the record carries its own rights flag (artic, met)
     # 'per-collection'— rights must be asserted for a curated set (LoC)
     rights_model: str = "per-item"
@@ -233,7 +240,7 @@ def artic_upstream_count(dept: Optional[str] = None, query: Optional[str] = None
 
 def artic_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[str] = None,
                 page_size: int = 100, report: Optional[HarvestReport] = None,
-                cursor: Optional[Dict[str, Any]] = None) -> Iterator[HarvestItem]:
+                cursor: Optional[Dict[str, Any]] = None, **_ignored) -> Iterator[HarvestItem]:
     """Walk the Art Institute catalog. Keyless, ~100 records per request, RESUMABLE by page.
 
     TWO ENUMERATIONS, and picking the wrong one costs a ceiling:
@@ -551,8 +558,117 @@ def met_upstream_count(dept: Optional[str] = None, query: Optional[str] = None) 
         return None
 
 
+def _met_row_item(row: Dict[str, str]) -> HarvestItem:
+    """One CSV row as a HarvestItem, with NO image url — see `met_csv_items`."""
+    bits = [row.get("Medium"), row.get("Culture"), row.get("Country"),
+            row.get("Classification"), row.get("Department")]
+    return HarvestItem(
+        source_ref=f"met:{(row.get('Object ID') or '').strip()}",
+        # The one field the dump does not have. Resolved in Phase B by `met_image_urls`, at the
+        # moment something actually wants the pixels.
+        thumb_url=None, url=None,
+        source_url=(row.get("Link Resource") or "").strip() or None,
+        title=(row.get("Title") or "").strip() or None,
+        creator=(row.get("Artist Display Name") or "").strip() or None,
+        date_text=(row.get("Object Date") or "").strip() or None,
+        institution="The Metropolitan Museum of Art",
+        description=", ".join(b.strip() for b in bits if (b or "").strip()),
+        license="CC0 (The Metropolitan Museum of Art)",
+        wikidata_qid=_met_qid(row.get("Object Wikidata URL")),
+        tags=(row.get("Classification") or "").strip() or None,
+        medium=(row.get("Medium") or "").strip() or None,
+        classification=(row.get("Classification") or "").strip() or None,
+        department=(row.get("Department") or "").strip() or None,
+        culture=(row.get("Culture") or "").strip() or None,
+        place=((row.get("Country") or "").strip()
+               or (row.get("Region") or "").strip() or None))
+
+
+def met_csv_items(limit: int = 200, *, dept: Optional[str] = None,
+                  report: Optional[HarvestReport] = None,
+                  cursor: Optional[Dict[str, Any]] = None) -> Iterator[HarvestItem]:
+    """PHASE A FROM THE DUMP ALONE — 248,472 records for ZERO requests.
+
+    The Met is a `per-object` source, so a record costs an HTTP request and the walk rate is the
+    crawl: 8-wide that is ~7.6 hours for the public-domain set. But measured against the dump's
+    54 columns, the request buys exactly ONE field we index:
+
+        title 90.1%   creator 43.1%   date_text 96.2%   medium 99.5%   classification 86.9%
+        department 100%   culture 58.1%   place 18.4%   wikidata_qid 18.7%      <- all in the CSV
+        primaryImage / primaryImageSmall                                        <- only in the API
+
+    And Phase A, by definition, does not fetch pixels. So it was spending 248,472 requests to
+    learn a URL it was never going to use — the identity row it produces is byte-identical
+    either way. Reading the CSV instead makes the record pass network-free and disk-bound.
+
+    The consequence is stated rather than hidden: these rows have `thumb_url = NULL`, so
+    `backfill_pixels` cannot fetch them until `met_image_urls` resolves the url — which it does
+    in Phase B, 8-wide, for the rows that actually want pixels. That moves the per-object request
+    from EVERY row to the ones worth 470 ms of pixel work, where it is ~11% on top rather than
+    the whole cost.
+
+    The cursor is the same offset into the same CSV-ordered sequence the API walk uses, so a
+    crawl may switch between the two paths and resume correctly across the change.
+    """
+    start = int((cursor or {}).get("offset") or 0)
+    yielded = seen = 0
+    for row in met_csv_rows(dept):
+        seen += 1
+        if seen <= start:
+            continue
+        if not (row.get("Object ID") or "").strip():
+            continue
+        yield _met_row_item(row)
+        yielded += 1
+        # After the yield, as everywhere else: the consumer has finished with this row, so it is
+        # safe to move past it. Advancing before would skip a row on a crash mid-index.
+        if report is not None:
+            report.cursor = {"offset": seen}
+        if yielded >= limit:
+            break
+    if report is not None:
+        report.note(f"read {yielded} records from the bulk dump — no requests spent "
+                    f"(image urls resolve in Phase B)")
+        if yielded < limit:
+            report.exhausted = True
+
+
+def met_image_urls(source_refs: "List[str]", *, workers: int = _MET_WORKERS
+                   ) -> Dict[str, Dict[str, Optional[str]]]:
+    """`met:436535` -> `{"thumb_url": ..., "url": ...}` for rows indexed from the dump.
+
+    The other half of the CSV-first Phase A: the dump has no image column, so this is where the
+    per-object request finally gets spent — on rows something has decided are worth pixels,
+    rather than on all 248,472. A ref the Met has no image for maps to `{"thumb_url": None}`,
+    which is a real answer and must not be retried forever.
+    """
+    import httpx
+
+    out: Dict[str, Dict[str, Optional[str]]] = {}
+    if not source_refs:
+        return out
+
+    def _one(ref: str):
+        oid = ref.split(":", 1)[-1]
+        try:
+            with httpx.Client(headers={"User-Agent": _UA}, timeout=45.0) as c:
+                o = c.get(f"{MET_API}/objects/{oid}", timeout=30.0).json()
+        except Exception:
+            return ref, None
+        if not o.get("primaryImage") or not o.get("isPublicDomain"):
+            return ref, {"thumb_url": None, "url": None}
+        return ref, {"thumb_url": o.get("primaryImageSmall") or o.get("primaryImage"),
+                     "url": o.get("primaryImage")}
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        for ref, got in pool.map(_one, source_refs):
+            if got is not None:
+                out[ref] = got
+    return out
+
+
 def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[str] = None,
-              report: Optional[HarvestReport] = None,
+              report: Optional[HarvestReport] = None, pixels: bool = True,
               cursor: Optional[Dict[str, Any]] = None, **_ignored) -> Iterator[HarvestItem]:
     """Walk the Met catalog. Keyless, one request PER OBJECT, RESUMABLE by offset into the id list.
 
@@ -574,6 +690,14 @@ def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[s
     mattered: as "ids fetched", a request for 12 Met rows silently delivered 2.
     """
     import httpx
+
+    # PHASE A NEEDS NO REQUESTS. The dump carries every field this adapter indexes; the only
+    # thing the per-object endpoint adds is the image url, and `pixels=False` is a declaration
+    # that no image will be fetched. A `query` still needs the search endpoint (the CSV has no
+    # relevance ranking), so that path keeps the API walk.
+    if not pixels and not query and _met_csv_path().exists():
+        yield from met_csv_items(limit, dept=dept, report=report, cursor=cursor)
+        return
 
     did = _met_dept_id(dept)
     start = int((cursor or {}).get("offset") or 0)
@@ -876,11 +1000,14 @@ SOURCES: Dict[str, SourceAdapter] = {
         resumable=True,
         publishes_pixel_dims=False,
         rights_model="per-item",
-        notes="Keyless, one request PER OBJECT because the endpoints return ids only. The bulk "
-              "CSV (318 MB, 54 columns, 484,956 rows) carries `Is Public Domain`, so the rights "
-              "filter runs OFFLINE: 248,472 rows are public domain (51.2%), a 2.0x request "
-              "saving — modest, and the real wins are an exact per-department denominator and a "
-              "rights-filtered department slice the live listing cannot produce at all. "
+        resolve_image_urls=met_image_urls,
+        notes="Keyless. The endpoints return ids only, so a record costs a request — but the "
+              "bulk CSV (318 MB, 54 columns, 484,956 rows) carries EVERY field we index, and "
+              "the request buys only the image url. So PHASE A READS THE CSV AND SPENDS "
+              "NOTHING (248,472 public-domain rows, 51.2%, ~15 min instead of ~7.6 h) and the "
+              "per-object request moves to Phase B, where `resolve_image_urls` pays it 8-wide "
+              "for the rows that actually want pixels. `Is Public Domain` is a column, so the "
+              "rights filter runs offline and the per-department denominator is exact. "
               "Publishes physical measurements rather than pixel dimensions, so the resolution "
               "floor lands at promotion instead of at index time. Hands over Wikidata ids free "
               "(tags 56%, artist 35%, object 19% of the public-domain subset).",
@@ -964,6 +1091,11 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
     items_kwargs = dict(source_kwargs)
     if adapter.resumable:
         items_kwargs["cursor"] = start_cursor
+    # The PHASE reaches the adapter, because for some sources it changes how enumeration works
+    # rather than only what happens afterwards. The Met is the case: its bulk dump carries every
+    # indexed field but no image url, so a records-only pass can read the CSV and spend nothing,
+    # while a pixels pass must ask the API per object. Adapters that do not care ignore it.
+    items_kwargs["pixels"] = pixels
 
     for item in adapter.items(limit=limit, report=report, **items_kwargs):
         report.scanned += 1
