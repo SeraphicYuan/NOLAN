@@ -6,9 +6,26 @@ import asyncio
 import hashlib
 import urllib.request
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from .engine import Candidate, Context
+
+_VL_UA = "NOLAN-VisualLib/1.0"
+# THE AGENT-FACING CONTRACT. A need may carry any of these alongside its `query`, and each one
+# narrows the 357,027-row discovery tier BEFORE ranking — a WHERE clause, not a re-scoring. They
+# are exactly `AssetCatalog.FACET_EXACT + FACET_LIKE` plus the year range, so an authored field
+# that is not in this list will RAISE rather than be silently ignored (a dropped filter returns a
+# plausible wrong answer, which is worse than an error).
+#
+#   image_kind  print|drawing|painting|photograph|ceramic|sculpture|textile|coin|… (14, 100% filled)
+#   movement    Ukiyo-e | Impressionism | Baroque …      (asserted per artist)
+#   creator     contains-match on the catalog's spelling
+#   artist_key  exact, folded — what the picker's chips use
+#   culture / place / department / classification / medium / tags / title   contains or exact
+#   year_from / year_to   an OVERLAPPING range, so 1830-1833 answers "1831"
+_VISUALLIB_FACETS = ("image_kind", "movement", "creator", "artist_key", "culture", "place",
+                     "department", "classification", "medium", "tags", "title",
+                     "year_from", "year_to")
 
 
 def _stock_client(cfg):
@@ -124,6 +141,18 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
     if clip_seconds is None:
         clip_seconds = int(getattr(cfg, "clip_seconds", 30) or 30)
 
+    # ONE download hook, DISPATCHED BY SOURCE. `Context.download` is a single callable and the
+    # engine calls it for every candidate whose `path` is None, so a second source that needs
+    # fetching cannot simply overwrite it — the stock downloader reads `meta["_res"]` and returns
+    # False for anything else, which would silently drop every discovery candidate.
+    _downloaders: Dict[str, Any] = {}
+
+    def _dispatch_download(c: Candidate, dest: Path) -> bool:
+        fn = _downloaders.get((c.source or "").split(":", 1)[0])
+        return bool(fn and fn(c, dest))
+
+    ctx.download = _dispatch_download
+
     # --- stock: multi-provider search + gated download -------------------------------------------
     if want_stock:
         try:
@@ -189,9 +218,105 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                 c.path = out
                 return True
 
-            ctx.search_stock, ctx.download = search_stock, download
+            ctx.search_stock = search_stock
+            _downloaders["stock"] = download
         except Exception:
             pass
+
+    # --- visual lib: the NOT-HELD museum tier ----------------------------------------------------
+    #
+    # THE LIBRARY THE PIPELINE COULD NOT SEE. `search_library` below queries held=1 — the pictures
+    # whose bytes are on disk — which is 46 rows. The discovery tier is 357,027: the Met, the Art
+    # Institute, Cleveland and the Public Domain Image Archive, indexed as catalog metadata plus a
+    # thumbnail. Nothing in `acquire/` referenced it, so every one of those rows was invisible to
+    # authoring.
+    #
+    # A discovery row is a POINTER, which is exactly the shape a stock result already has: a `ref`
+    # url, no local path, materialised by `download`. So it needs no new machinery in the engine.
+    #
+    # WHAT MAKES IT WORTH MORE THAN STOCK: the need can NARROW BEFORE RANKING. `image_kind`,
+    # `movement`, `culture`, `place`, `year_from`/`year_to`, `creator` and `tags` are catalog
+    # columns, so "Ukiyo-e prints, 1830-1860" is a WHERE clause that turns 357,027 rows into a few
+    # hundred before a single vector is compared. That is a different operation from ranking, and
+    # it is the one an agent authoring a beat actually wants.
+    if want_library:
+        try:
+            from nolan.imagelib import shared_library
+            _vl = shared_library(scope="global")
+
+            def search_visuallib(need, n):
+                # Facets live in their OWN block, not loose among the need's keys. A need already
+                # carries `query`, `media_type`, `sources`, `category` and whatever else an
+                # author put there, so a loose `movement` could never be told apart from a typo'd
+                # `movemnet` — and a silently-dropped filter returns a plausible WRONG answer,
+                # which is worse than an error. Inside `facets`, every key must be known.
+                raw = need.get("facets") or {}
+                bad = set(raw) - set(_VISUALLIB_FACETS)
+                if bad:
+                    print(f"⚠ [acquire] visual-lib: not filterable {sorted(bad)} "
+                          f"(known: {sorted(_VISUALLIB_FACETS)})", flush=True)
+                    return []
+                facets = {k: v for k, v in raw.items() if v not in (None, "", [])}
+                q = (need.get("query") or "").strip()
+                try:
+                    # use_clip=False: most discovery rows have no pixels, so the look channel
+                    # would rank a handful of warmed rows above better catalog matches. Identity
+                    # + facets is what this tier is good at.
+                    hits = _vl.search_discovery(q, k=n, use_clip=False, **facets) if q else []
+                    if not q and facets:
+                        # a pure FACET need is a legitimate browse: "any Ukiyo-e print, 1830-1860"
+                        hits = [type("H", (), {"asset": a, "score": 0.0})()
+                                for a in _vl.catalog.list(status="active", held=0, limit=n,
+                                                          **facets)]
+                except ValueError as e:
+                    # an unknown facet key is the caller's bug and must not read as "no results"
+                    print(f"⚠ [acquire] visual-lib facets rejected: {e}", flush=True)
+                    return []
+                out = []
+                for h in hits:
+                    a = h.asset
+                    url = a.url or a.thumb_url
+                    if not url:
+                        continue
+                    out.append(Candidate(
+                        ref=str(url), source="visuallib", modality="image",
+                        meta={"license": a.license, "source": a.source,
+                              "source_url": a.source_url, "title": a.title,
+                              "creator": a.creator, "date_text": a.date_text,
+                              "institution": a.institution, "image_kind": a.image_kind,
+                              "movement": a.movement, "asset_id": a.id,
+                              "_url": url, "_source": a.source, "_license": a.license},
+                        relevance=float(getattr(h, "score", 0.0) or 0.0)))
+                return out
+
+            def _download_visuallib(c: Candidate, dest: Path) -> bool:
+                from nolan.asset_gate import check_file
+                from nolan.http_client import download_file_sync
+                from nolan.imagelib.harvest import SOURCES
+
+                out = dest / f"vl_{hashlib.md5(c.ref.encode()).hexdigest()[:12]}.jpg"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    download_file_sync(c.ref, str(out), headers={"User-Agent": _VL_UA})
+                except Exception:
+                    out.unlink(missing_ok=True)
+                    return False
+                # THE FLOOR LANDS HERE, on the real bytes — the thumbnail path deliberately has
+                # none, and this is the moment a picture is actually going into a video.
+                adapter = SOURCES.get(c.meta.get("_source") or "")
+                tier = adapter.gate_tier if adapter else "archival"
+                v = check_file(out, tier=tier)
+                if not v.ok:
+                    out.unlink(missing_ok=True)
+                    return False
+                c.path = out
+                return True
+
+            ctx.search_visuallib = search_visuallib
+            _downloaders["visuallib"] = _download_visuallib
+        except Exception as e:
+            print(f"⚠ [acquire] visual lib unavailable — skipped ({type(e).__name__}: {e})",
+                  flush=True)
 
     # --- library: CLIP search over the saved image store -----------------------------------------
     if want_library:

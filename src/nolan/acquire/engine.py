@@ -34,6 +34,10 @@ class Context:
     """Injectable organs. Any may be None (that source/scorer is skipped)."""
     search_stock: Optional[Callable] = None     # (need, n) -> [Candidate] (refs)
     search_library: Optional[Callable] = None   # (query, n) -> [Candidate] (local)
+    # (need, n) -> [Candidate] over the NOT-HELD museum tier. Takes the whole need rather than a
+    # query string because the need carries the FACETS (era, movement, artist, kind) that narrow
+    # 357,027 rows before anything is ranked — see context._VISUALLIB_FACETS.
+    search_visuallib: Optional[Callable] = None
     search_clips: Optional[Callable] = None     # (need, n) -> [Candidate] (local video, materialised in download)
     download: Optional[Callable] = None          # (Candidate, dest_dir) -> bool  (fills .path)
     relevance: Optional[Callable] = None         # (text, path) -> float in [0,1]
@@ -127,9 +131,13 @@ TIERS = {
     # evocative beat wants and the one CLIP relevance cannot supply. Note it is an AGGREGATOR —
     # its images are re-hosted from the same museums further down this list — so ranking it above
     # them is a statement about curation, not about holdings.
-    "art": ["library", "clips_library", "transcript_lib", "transcript_frames", "artvee", "pdia", "wikimedia", "met", "artic", "rijksmuseum", "harvard",
+    # `visuallib` ranks just under the local library and above every live provider: it is the same
+    # museums as `met`/`artic`/`cleveland` further down this list, but already CRAWLED, gated and
+    # facet-filterable, so it answers without a request and can be narrowed by era or movement
+    # first. The live provider entries stay as the fallback for what the crawl has not reached.
+    "art": ["library", "clips_library", "transcript_lib", "transcript_frames", "visuallib", "artvee", "pdia", "wikimedia", "met", "artic", "rijksmuseum", "harvard",
             "cleveland", "wellcome", "europeana", "dpla", "smithsonian", "loc", "openverse", "ddgs"],
-    "archival": ["library", "clips_library", "transcript_lib", "transcript_frames", "archive", "archive_image", "pdia", "loc", "smithsonian", "europeana",
+    "archival": ["library", "clips_library", "transcript_lib", "transcript_frames", "visuallib", "archive", "archive_image", "pdia", "loc", "smithsonian", "europeana",
                  "dpla", "nasa", "nasa_video", "wikimedia", "flickr", "pexels_video", "pixabay_video", "coverr_video", "ddgs"],
     "general": ["library", "clips_library", "transcript_lib", "transcript_frames", "pexels", "pixabay", "unsplash", "ddgs", "openverse", "pexels_video",
                 "pixabay_video", "coverr_video", "flickr", "wikimedia", "nasa"],
@@ -138,8 +146,8 @@ TIERS = {
 
 # Curated institutional/art providers — exempt from the generic-stock relevance floor, because for
 # evocative beats their VALUE is precisely the non-literal match a low CLIP score would otherwise cull.
-_CURATED = {"artvee", "pdia", "artic", "met", "wellcome", "rijksmuseum", "harvard", "cleveland",
-            "europeana", "dpla", "smithsonian", "loc", "nasa", "wikimedia"}
+_CURATED = {"visuallib", "artvee", "pdia", "artic", "met", "wellcome", "rijksmuseum", "harvard",
+            "cleveland", "europeana", "dpla", "smithsonian", "loc", "nasa", "wikimedia"}
 
 
 def _provider_of(source: str) -> str:
@@ -171,6 +179,12 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
     if "library" in cfg.sources and ctx.search_library:
         for q in _need_queries(need):
             cands += ctx.search_library(q, n_fetch) or []
+    # The NOT-HELD museum tier. Kept separate from "library" (which is what we already hold on
+    # disk) because they answer different questions: `library` is 46 curated local files, this is
+    # 357,027 catalog rows fetched on demand. A need opts in via `sources`, and narrows with the
+    # facets in `context._VISUALLIB_FACETS`.
+    if "visuallib" in cfg.sources and ctx.search_visuallib:
+        cands += ctx.search_visuallib(need, n_fetch) or []
     if (any(s in cfg.sources for s in ("clips_library", "transcript_lib", "transcript_frames"))
             and ctx.search_clips):
         cands += ctx.search_clips(need, n_fetch) or []      # local video + transcript-lib downloadables (chained)

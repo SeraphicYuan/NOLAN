@@ -1800,6 +1800,108 @@ def test_phase_b_resolves_the_image_url_it_deferred(lib, monkeypatch):
     assert lib.catalog.get_by_ref("met:12").thumb_url is None
 
 
+# --- 14a. the authoring pipeline can finally SEE this tier -----------------------------------
+
+def _acquire_ctx(lib, monkeypatch, tmp_path):
+    """A Context wired to `lib`, with the network stubbed."""
+    from nolan.acquire import context as C
+
+    monkeypatch.setattr("nolan.imagelib.shared_library", lambda **kw: lib, raising=False)
+    monkeypatch.setattr(C, "shared_library", lambda **kw: lib, raising=False)
+
+    class _Cfg:
+        clip_seconds = 30
+        sources = ("visuallib",)
+
+    return C.build_context(_Cfg(), want_stock=False, want_clip=False, want_gen=False,
+                           want_clips_library=False, want_transcript_lib=False,
+                           want_transcript_frames=False, project_dir=tmp_path)
+
+
+def test_the_pipeline_could_not_see_357000_rows(lib, monkeypatch, tmp_path):
+    """`search_library` queries held=1 — the pictures whose bytes are on disk, 46 of them — and
+    nothing in acquire/ referenced the discovery tier at all. So the entire museum library was
+    invisible to the thing that makes videos.
+
+    This asserts the tier is reachable AND that a discovery row arrives as a POINTER (no local
+    path yet), which is the same shape a stock result has and is why the engine needed no change.
+    """
+    for i in range(4):
+        lib.add_discovery(source_ref=f"artic:{i}", thumb_url=f"https://e/{i}.jpg",
+                          url=f"https://e/full{i}.jpg", source="artic",
+                          title=f"Woodblock print of a wave {i}", creator="Utagawa Hiroshige",
+                          license="CC0", classification="woodblock print", place="Japan",
+                          date_text="1857", width=2000, height=1500, pixels=False)
+    lib.catalog.add(Asset(content_hash="held1", path="f/held.jpg", title="Already held",
+                          held=1))
+
+    ctx = _acquire_ctx(lib, monkeypatch, tmp_path)
+    assert ctx.search_visuallib is not None, "the discovery tier must be reachable from acquire"
+
+    got = ctx.search_visuallib({"query": "woodblock wave"}, 10)
+    assert got, "the discovery tier returned nothing"
+    assert all(c.source == "visuallib" for c in got)
+    assert all(c.path is None for c in got), "a discovery row is a POINTER until it is fetched"
+    assert all(c.ref.startswith("https://") for c in got)
+    assert {c.meta["creator"] for c in got} == {"Utagawa Hiroshige"}
+
+
+def test_an_agent_can_NARROW_before_ranking(lib, monkeypatch, tmp_path):
+    """The point of wiring this tier is not another search box. `image_kind`, `movement`,
+    `creator`, `place` and the year range are catalog COLUMNS, so a need can turn 357,027 rows
+    into a few hundred with a WHERE clause before a single vector is compared. That is a
+    different operation from ranking and it is the one an authoring agent wants."""
+    lib.add_discovery(source_ref="a:1", thumb_url="https://e/1.jpg", url="https://e/f1.jpg",
+                      source="artic", title="Sudden Shower", creator="Utagawa Hiroshige",
+                      license="CC0", classification="woodblock print", place="Japan",
+                      date_text="1857", width=2000, height=1500, pixels=False)
+    lib.add_discovery(source_ref="a:2", thumb_url="https://e/2.jpg", url="https://e/f2.jpg",
+                      source="artic", title="Sudden Shower over a bridge", creator="Someone Else",
+                      license="CC0", classification="oil on canvas", place="France",
+                      date_text="1920", width=2000, height=1500, pixels=False)
+
+    ctx = _acquire_ctx(lib, monkeypatch, tmp_path)
+
+    wide = ctx.search_visuallib({"query": "sudden shower"}, 10)
+    assert len(wide) == 2
+
+    narrow = ctx.search_visuallib(
+        {"query": "sudden shower", "facets": {"creator": "Hiroshige"}}, 10)
+    assert [c.meta["title"] for c in narrow] == ["Sudden Shower"]
+
+    # a PURE facet need, with no query at all — "any Japanese print from the 1850s"
+    browse = ctx.search_visuallib(
+        {"query": "", "facets": {"place": "Japan", "year_from": 1850, "year_to": 1860}}, 10)
+    assert [c.meta["title"] for c in browse] == ["Sudden Shower"]
+
+    # Facets live in their OWN block. Loose among the need's keys, a typo'd `movemnet` could not
+    # be told apart from ordinary need metadata, so it would be silently dropped and the search
+    # would answer confidently over the wrong denominator.
+    assert ctx.search_visuallib({"query": "x", "facets": {"colour": "blue"}}, 5) == []
+    # ...and a stray top-level key is just need metadata, correctly ignored rather than guessed at
+    assert len(ctx.search_visuallib({"query": "sudden shower", "creator": "Hiroshige"}, 10)) == 2
+
+
+def test_the_download_hook_dispatches_by_source(lib, monkeypatch, tmp_path):
+    """`Context.download` is ONE callable and the engine calls it for every candidate without a
+    path. The stock downloader reads `meta["_res"]` and returns False for anything else, so
+    assigning it directly would have silently dropped every discovery candidate."""
+    lib.add_discovery(source_ref="artic:9", thumb_url="https://e/9.jpg", url="https://e/f9.jpg",
+                      source="artic", title="A Print", license="CC0",
+                      width=2000, height=1500, pixels=False)
+
+    def _dl(url, dest, **kw):
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        _fake_thumb(Path(dest), size=(1400, 1100))
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _dl)
+    ctx = _acquire_ctx(lib, monkeypatch, tmp_path)
+    c = ctx.search_visuallib({"query": "a print"}, 5)[0]
+
+    assert ctx.download(c, tmp_path / "cands") is True
+    assert c.path and c.path.exists(), "the fetched bytes must land on the candidate"
+
+
 # --- 14b. PDIA: the first curated-collection source ------------------------------------------
 
 def _pdia_page(page, total_pages=2, sort=None, images=None):
