@@ -1,0 +1,656 @@
+{
+  "voices": [
+    {
+      "frame": 1,
+      "path": "assets/voice/01.wav",
+      "duration_s": 11.96,
+      "title": "The machine",
+      "text": "Here is a two by two matrix. Four little numbers, and they look harmless. But a matrix is not a table. It is a machine that grabs space and stretches it.",
+      "words": [
+        {
+          "word": "Here",
+          "start": 0.0,
+          "end": 0.22
+        },
+        {
+          "word": "is",
+          "start": 0.22,
+          "end": 0.42
+        },
+        {
+          "word": "a",
+          "start": 0.42,
+          "end": 0.52
+        },
+        {
+          "word": "two",
+          "start": 0.52,
+          "end": 0.727
+        },
+        {
+          "word": "by",
+          "start": 0.727,
+          "end": 0.933
+        },
+        {
+          "word": "two",
+          "start": 0.933,
+          "end": 1.14
+        },
+        {
+          "word": "matrix.",
+          "start": 1.14,
+          "end": 1.54
+        },
+        {
+          "word": "Four",
+          "start": 2.12,
+          "end": 2.8
+        },
+        {
+          "word": "little",
+          "start": 2.8,
+          "end": 3.06
+        },
+        {
+          "word": "numbers,",
+          "start": 3.06,
+          "end": 3.42
+        },
+        {
+          "word": "and",
+          "start": 4.06,
+          "end": 4.42
+        },
+        {
+          "word": "they",
+          "start": 4.42,
+          "end": 4.54
+        },
+        {
+          "word": "look",
+          "start": 4.54,
+          "end": 4.74
+        },
+        {
+          "word": "harmless.",
+          "start": 4.74,
+          "end": 5.18
+        },
+        {
+          "word": "But",
+          "start": 6.08,
+          "end": 6.44
+        },
+        {
+          "word": "a",
+          "start": 6.44,
+          "end": 6.54
+        },
+        {
+          "word": "matrix",
+          "start": 6.54,
+          "end": 6.88
+        },
+        {
+          "word": "is",
+          "start": 6.88,
+          "end": 7.14
+        },
+        {
+          "word": "not",
+          "start": 7.14,
+          "end": 7.3
+        },
+        {
+          "word": "a",
+          "start": 7.3,
+          "end": 7.44
+        },
+        {
+          "word": "table.",
+          "start": 7.44,
+          "end": 7.78
+        },
+        {
+          "word": "It",
+          "start": 8.6,
+          "end": 8.8
+        },
+        {
+          "word": "is",
+          "start": 8.8,
+          "end": 8.92
+        },
+        {
+          "word": "a",
+          "start": 8.92,
+          "end": 9.06
+        },
+        {
+          "word": "machine",
+          "start": 9.06,
+          "end": 9.36
+        },
+        {
+          "word": "that",
+          "start": 9.36,
+          "end": 9.66
+        },
+        {
+          "word": "grabs",
+          "start": 9.66,
+          "end": 9.88
+        },
+        {
+          "word": "space",
+          "start": 9.88,
+          "end": 10.36
+        },
+        {
+          "word": "and",
+          "start": 10.36,
+          "end": 10.96
+        },
+        {
+          "word": "stretches",
+          "start": 10.96,
+          "end": 11.38
+        },
+        {
+          "word": "it.",
+          "start": 11.38,
+          "end": 11.64
+        }
+      ]
+    },
+    {
+      "frame": 2,
+      "path": "assets/voice/02.wav",
+      "duration_s": 12.64,
+      "title": "The square",
+      "text": "Watch. Start with a unit square, area one. Feed it to the machine. The square leans over into a parallelogram, and the new area is three. That three is the determinant.",
+      "words": [
+        {
+          "word": "Watch.",
+          "start": 0.0,
+          "end": 0.46
+        },
+        {
+          "word": "Start",
+          "start": 0.8,
+          "end": 1.06
+        },
+        {
+          "word": "with",
+          "start": 1.06,
+          "end": 1.3
+        },
+        {
+          "word": "a",
+          "start": 1.3,
+          "end": 1.42
+        },
+        {
+          "word": "unit",
+          "start": 1.42,
+          "end": 1.64
+        },
+        {
+          "word": "square,",
+          "start": 1.64,
+          "end": 2.02
+        },
+        {
+          "word": "area",
+          "start": 2.02,
+          "end": 2.46
+        },
+        {
+          "word": "one.",
+          "start": 2.46,
+          "end": 2.9
+        },
+        {
+          "word": "Feed",
+          "start": 3.36,
+          "end": 3.5
+        },
+        {
+          "word": "it",
+          "start": 3.5,
+          "end": 3.62
+        },
+        {
+          "word": "to",
+          "start": 3.62,
+          "end": 3.76
+        },
+        {
+          "word": "the",
+          "start": 3.76,
+          "end": 3.86
+        },
+        {
+          "word": "machine.",
+          "start": 3.86,
+          "end": 4.3
+        },
+        {
+          "word": "The",
+          "start": 5.34,
+          "end": 5.66
+        },
+        {
+          "word": "square",
+          "start": 5.66,
+          "end": 5.96
+        },
+        {
+          "word": "leans",
+          "start": 5.96,
+          "end": 6.34
+        },
+        {
+          "word": "over",
+          "start": 6.34,
+          "end": 6.6
+        },
+        {
+          "word": "into",
+          "start": 6.6,
+          "end": 6.92
+        },
+        {
+          "word": "a",
+          "start": 6.92,
+          "end": 7.06
+        },
+        {
+          "word": "parallelogram,",
+          "start": 7.06,
+          "end": 7.9
+        },
+        {
+          "word": "and",
+          "start": 8.32,
+          "end": 8.52
+        },
+        {
+          "word": "the",
+          "start": 8.52,
+          "end": 8.64
+        },
+        {
+          "word": "new",
+          "start": 8.64,
+          "end": 8.78
+        },
+        {
+          "word": "area",
+          "start": 8.78,
+          "end": 9.14
+        },
+        {
+          "word": "is",
+          "start": 9.14,
+          "end": 9.4
+        },
+        {
+          "word": "three.",
+          "start": 9.4,
+          "end": 9.7
+        },
+        {
+          "word": "That",
+          "start": 10.66,
+          "end": 10.88
+        },
+        {
+          "word": "three",
+          "start": 10.88,
+          "end": 11.28
+        },
+        {
+          "word": "is",
+          "start": 11.28,
+          "end": 11.62
+        },
+        {
+          "word": "the",
+          "start": 11.62,
+          "end": 11.78
+        },
+        {
+          "word": "determinant.",
+          "start": 11.78,
+          "end": 12.26
+        }
+      ]
+    },
+    {
+      "frame": 3,
+      "path": "assets/voice/03.wav",
+      "duration_s": 13.32,
+      "title": "The formula",
+      "text": "So when your textbook says a d minus b c, it is not being cryptic. Two times two, minus one times one, leaves three. The same three. It is just the stretch factor.",
+      "words": [
+        {
+          "word": "So",
+          "start": 0.0,
+          "end": 0.18
+        },
+        {
+          "word": "when",
+          "start": 0.18,
+          "end": 0.38
+        },
+        {
+          "word": "your",
+          "start": 0.38,
+          "end": 0.52
+        },
+        {
+          "word": "textbook",
+          "start": 0.52,
+          "end": 0.88
+        },
+        {
+          "word": "says",
+          "start": 0.88,
+          "end": 1.22
+        },
+        {
+          "word": "a",
+          "start": 1.22,
+          "end": 1.42
+        },
+        {
+          "word": "d",
+          "start": 1.42,
+          "end": 1.62
+        },
+        {
+          "word": "minus",
+          "start": 1.62,
+          "end": 1.92
+        },
+        {
+          "word": "b",
+          "start": 1.92,
+          "end": 2.22
+        },
+        {
+          "word": "c,",
+          "start": 2.22,
+          "end": 2.52
+        },
+        {
+          "word": "it",
+          "start": 2.86,
+          "end": 3.44
+        },
+        {
+          "word": "is",
+          "start": 3.44,
+          "end": 3.58
+        },
+        {
+          "word": "not",
+          "start": 3.58,
+          "end": 3.8
+        },
+        {
+          "word": "being",
+          "start": 3.8,
+          "end": 4.08
+        },
+        {
+          "word": "cryptic.",
+          "start": 4.08,
+          "end": 4.74
+        },
+        {
+          "word": "Two",
+          "start": 5.32,
+          "end": 5.54
+        },
+        {
+          "word": "times",
+          "start": 5.54,
+          "end": 5.76
+        },
+        {
+          "word": "two,",
+          "start": 5.76,
+          "end": 6.24
+        },
+        {
+          "word": "minus",
+          "start": 6.24,
+          "end": 6.86
+        },
+        {
+          "word": "one",
+          "start": 6.86,
+          "end": 7.18
+        },
+        {
+          "word": "times",
+          "start": 7.18,
+          "end": 7.48
+        },
+        {
+          "word": "one,",
+          "start": 7.48,
+          "end": 7.84
+        },
+        {
+          "word": "leaves",
+          "start": 7.84,
+          "end": 8.52
+        },
+        {
+          "word": "three.",
+          "start": 8.52,
+          "end": 9.02
+        },
+        {
+          "word": "The",
+          "start": 9.54,
+          "end": 9.64
+        },
+        {
+          "word": "same",
+          "start": 9.64,
+          "end": 9.96
+        },
+        {
+          "word": "three.",
+          "start": 9.96,
+          "end": 10.4
+        },
+        {
+          "word": "It",
+          "start": 10.86,
+          "end": 11.68
+        },
+        {
+          "word": "is",
+          "start": 11.68,
+          "end": 11.86
+        },
+        {
+          "word": "just",
+          "start": 11.86,
+          "end": 12.06
+        },
+        {
+          "word": "the",
+          "start": 12.06,
+          "end": 12.32
+        },
+        {
+          "word": "stretch",
+          "start": 12.32,
+          "end": 12.66
+        },
+        {
+          "word": "factor.",
+          "start": 12.66,
+          "end": 13.02
+        }
+      ]
+    },
+    {
+      "frame": 4,
+      "path": "assets/voice/04.wav",
+      "duration_s": 10.24,
+      "title": "The collapse",
+      "text": "But when the determinant hits zero, space does not stretch. It flattens. The square is crushed onto a line, and nothing you do will ever get it back.",
+      "words": [
+        {
+          "word": "But",
+          "start": 0.0,
+          "end": 0.12
+        },
+        {
+          "word": "when",
+          "start": 0.12,
+          "end": 0.32
+        },
+        {
+          "word": "the",
+          "start": 0.32,
+          "end": 0.48
+        },
+        {
+          "word": "determinant",
+          "start": 0.48,
+          "end": 0.96
+        },
+        {
+          "word": "hits",
+          "start": 0.96,
+          "end": 1.3
+        },
+        {
+          "word": "zero,",
+          "start": 1.3,
+          "end": 1.72
+        },
+        {
+          "word": "space",
+          "start": 2.28,
+          "end": 2.46
+        },
+        {
+          "word": "does",
+          "start": 2.46,
+          "end": 2.7
+        },
+        {
+          "word": "not",
+          "start": 2.7,
+          "end": 2.94
+        },
+        {
+          "word": "stretch.",
+          "start": 2.94,
+          "end": 3.42
+        },
+        {
+          "word": "It",
+          "start": 4.18,
+          "end": 4.38
+        },
+        {
+          "word": "flattens.",
+          "start": 4.38,
+          "end": 4.92
+        },
+        {
+          "word": "The",
+          "start": 5.86,
+          "end": 6.04
+        },
+        {
+          "word": "square",
+          "start": 6.04,
+          "end": 6.36
+        },
+        {
+          "word": "is",
+          "start": 6.36,
+          "end": 6.58
+        },
+        {
+          "word": "crushed",
+          "start": 6.58,
+          "end": 6.96
+        },
+        {
+          "word": "onto",
+          "start": 6.96,
+          "end": 7.22
+        },
+        {
+          "word": "a",
+          "start": 7.22,
+          "end": 7.36
+        },
+        {
+          "word": "line,",
+          "start": 7.36,
+          "end": 7.68
+        },
+        {
+          "word": "and",
+          "start": 8.11,
+          "end": 8.36
+        },
+        {
+          "word": "nothing",
+          "start": 8.36,
+          "end": 8.64
+        },
+        {
+          "word": "you",
+          "start": 8.64,
+          "end": 8.82
+        },
+        {
+          "word": "do",
+          "start": 8.82,
+          "end": 9.0
+        },
+        {
+          "word": "will",
+          "start": 9.0,
+          "end": 9.2
+        },
+        {
+          "word": "ever",
+          "start": 9.2,
+          "end": 9.38
+        },
+        {
+          "word": "get",
+          "start": 9.38,
+          "end": 9.56
+        },
+        {
+          "word": "it",
+          "start": 9.56,
+          "end": 9.68
+        },
+        {
+          "word": "back.",
+          "start": 9.68,
+          "end": 9.94
+        }
+      ]
+    }
+  ],
+  "total_s": 48.16
+}

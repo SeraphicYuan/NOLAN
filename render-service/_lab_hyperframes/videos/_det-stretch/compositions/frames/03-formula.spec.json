@@ -1,0 +1,84 @@
+{
+  "format": "1920x1080",
+  "frames": [
+    {
+      "id": "03-formula",
+      "dur": 13.32,
+      "theme": "highlighter-editorial",
+      "scenes": [
+        {
+          "id": "s1",
+          "type": "math",
+          "anchor": "a d minus b c",
+          "data": {
+            "template": "equation_sequence",
+            "objective": "Connect the memorised formula to the measured stretch",
+            "kicker": "THE FORMULA, DEMYSTIFIED",
+            "formulas": [
+              {
+                "latex": "\\det A = ad - bc",
+                "says": "a d minus b c"
+              },
+              {
+                "latex": "\\det A = (2)(2) - (1)(1)",
+                "says": "two times two minus one times one"
+              },
+              {
+                "latex": "\\det A = 3",
+                "says": "leaves three"
+              }
+            ],
+            "params": {
+              "steps": [
+                0,
+                1,
+                2
+              ],
+              "at": [
+                "two times two",
+                "leaves three"
+              ]
+            },
+            "ground": {
+              "kind": "video",
+              "src": "assets/math/03-formula.s1.68932e6fa677.mp4"
+            },
+            "_math": {
+              "engine": "math-animation",
+              "template": "equation_sequence",
+              "project_sha256": "68932e6fa677",
+              "beat_id": "03-formula.s1",
+              "formulas": [
+                "\\det A = ad - bc",
+                "\\det A = (2)(2) - (1)(1)",
+                "\\det A = 3"
+              ],
+              "claims": {
+                "c00": "assumed",
+                "c01": "assumed",
+                "c02": "assumed"
+              },
+              "cached": true
+            }
+          },
+          "start": 0.0,
+          "dur": 9.82
+        },
+        {
+          "id": "s2",
+          "type": "pull_quote",
+          "anchor": "it is just",
+          "data": {
+            "quote": "It is just the stretch factor.",
+            "cite": "the whole idea",
+            "_field_cues": {
+              "quote": 10.86
+            }
+          },
+          "start": 9.82,
+          "dur": 3.5
+        }
+      ]
+    }
+  ]
+}

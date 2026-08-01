@@ -118,6 +118,28 @@ Semantic colour roles for `part_roles` / `role`: `primary`, `secondary`, `changi
 `nolan.mathanim.style` derives them from the theme and refuses a palette where a viewer could not
 tell which term moved.
 
+## Composing HTML over the clip
+
+The clip is root-mounted BELOW the frame track, so everything the composer paints lands on top of
+live animation. Three surfaces, in the theme's own type:
+
+- `kicker` — a design label (never narration-anchored, by the same rule every block follows)
+- `caption` — the block's anchorable prose; the aligner pins it to the words that say it
+- `annotations` — `[{text, at?, x?, y?, tone?}]`, callouts pinned over the running animation at
+  frame fractions, each scheduled through the SAME shared reveal scheduler every data block uses,
+  so a callout lands on the word it labels and can never be front-loaded
+
+Two things the pipeline cannot check for you, both learned from a real render:
+
+- **Keep-out is your job INSIDE the clip.** `layout_lint` reads the composed frame's HTML geometry
+  and a video is opaque to it. The composition grid's caption band starts at 83% of frame height —
+  y = -2.64 in Manim's 8.0-unit frame — and a label parked below that collides with the caption
+  pill while every gate stays silent.
+- **A multi-step math scene reads as a LEAD to the timing gate.** `_content_time` assumes a scene
+  has one content moment; an `equation_sequence` unfolds across its whole window, so its last step
+  looks like content arriving late. Advisory only — check `params.at` resolved (the resolver prints
+  each unmatched phrase) rather than re-anchoring the scene.
+
 ## What owns what
 
 Narration owns duration, exactly as everywhere else in NOLAN:

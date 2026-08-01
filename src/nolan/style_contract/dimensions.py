@@ -80,7 +80,14 @@ DIAL_ALIASES = {"asset_density": "coverage", "evidence_coverage": "coverage",
 LEVELS: Dict[str, Dict[str, Tuple[float, float]]] = {
     "coverage": {"sparse": (0.2, 0.55), "balanced": (0.45, 0.8), "dense": (0.6, 0.95)},
     "video_share": {"none": (0.0, 1.0), "light": (0.05, 0.35), "heavy": (0.3, 0.85)},
-    "distinct_blocks": {"narrow": (6, None), "balanced": (10, None), "rich": (14, None)},
+    # `minimal` is the SHORT-FORM level. The other three are calibrated for a 5-20 minute essay:
+    # every shipped comp is >=141s and >=18 scenes, and over that length asking for 6+ block types
+    # is asking for range. Over EIGHT scenes it asks for near-total variety, which reads as
+    # incoherence, not craft — a 48s single-argument explainer coheres around few devices on
+    # purpose. Below 3 is genuinely monotonous at any length, so that is where the floor sits.
+    # Purely additive: no shipped comp selects a level, so none of their verdicts move.
+    "distinct_blocks": {"minimal": (3, None), "narrow": (6, None),
+                        "balanced": (10, None), "rich": (14, None)},
 }
 
 # presets = named target-override maps over the gate defaults. One for now; add when earned.

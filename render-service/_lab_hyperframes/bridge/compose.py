@@ -38,6 +38,14 @@ CSS = """
 .mathsrc{position:absolute;left:calc(5.5cqw*var(--density,1));right:calc(5.5cqw*var(--density,1));
   bottom:17cqh;font-family:var(--font-body);font-size:calc(0.95cqw*var(--type-scale,1));
   color:var(--text-mute,var(--text));letter-spacing:0.04em;opacity:0;}
+/* a callout pinned over the Manim clip — small, high-contrast, centred on its own point so an
+   author positions by WHAT it labels, not by where its corner lands. */
+.mathnote{position:absolute;transform:translate(-50%,-50%);padding:0.5cqh 1.1cqw;border-radius:0.5cqw;
+  font-family:var(--font-body);font-weight:600;font-size:calc(1.05cqw*var(--type-scale,1));
+  line-height:1.15;white-space:nowrap;opacity:0;
+  box-shadow:0 0.35cqh 1.2cqw rgba(0,0,0,0.18);}
+.mathnote.ink{background:var(--surface);color:var(--text);border:0.1cqw solid var(--rule,transparent);}
+.mathnote.accent{background:var(--accent);color:var(--accent-ink,#14140f);}
 .stmt{position:absolute;left:calc(5.5cqw*var(--density,1));bottom:16cqh;max-width:80cqw;font-weight:var(--display-weight,800);font-style:var(--display-style,normal);font-size:calc(4.6cqw*var(--type-scale,1));line-height:1.08;
   letter-spacing:-0.012em;}
 .stmt .ln{display:block;opacity:0;}
@@ -6172,6 +6180,24 @@ def math_scene(sid, sc):
         st = _prose_cue(d, "source", start, dur, lead=0.9)
         frag.append(f'<div id="{sid}-src" class="mathsrc">{esc(d["source"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-src",{{opacity:0}},{{opacity:1,duration:0.6}},{st:.2f});')
+    # ANNOTATIONS — themed HTML callouts pinned over the running Manim clip. This is the proof that
+    # the two halves composite rather than merely alternate: the clip is root-mounted BELOW the frame
+    # track, so anything here paints on top of live animation, in the essay's own type, scheduled by
+    # the SAME shared reveal scheduler every data block uses (`at` -> `_cue` -> `_reveal_times`), so a
+    # callout lands on the word that describes it and can never be front-loaded.
+    anns = [a for a in (d.get("annotations") or []) if isinstance(a, dict) and a.get("text")]
+    if anns:
+        times = _reveal_times(len(anns), start, dur, cues=_reveal_cues(anns, start))
+        for i, a in enumerate(anns):
+            x, y = float(a.get("x", 0.5)), float(a.get("y", 0.5))
+            tone = "accent" if a.get("tone") == "accent" else "ink"
+            aid = f"{sid}-an{i}"
+            frag.append(
+                f'<div id="{aid}" class="mathnote {tone}" style="left:{x * 100:.2f}%;'
+                f'top:{y * 100:.2f}%;">{esc(a["text"])}</div>'
+            )
+            tl.append(f'tl.fromTo("#{aid}",{{opacity:0,scale:0.86}},{{opacity:1,scale:1,'
+                      f'duration:0.42,ease:"back.out(2)"}},{times[i]:.2f});')
     if not frag:
         # A math scene with no chrome still needs ONE mounted clip element, or the frame
         # sub-comp has nothing on this scene's window and the assembler has no anchor for it.

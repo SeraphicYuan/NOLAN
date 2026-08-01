@@ -1,0 +1,988 @@
+{
+  "total_duration_s": 48.16,
+  "width": 1920,
+  "height": 1080,
+  "groups": [
+    {
+      "id": "caption-group-0",
+      "frame": 1,
+      "start": 0,
+      "end": 1.66,
+      "text": "Here is a two by two matrix.",
+      "words": [
+        {
+          "id": "caption-word-0-0",
+          "text": "Here",
+          "start": 0,
+          "end": 0.22
+        },
+        {
+          "id": "caption-word-0-1",
+          "text": "is",
+          "start": 0.22,
+          "end": 0.42
+        },
+        {
+          "id": "caption-word-0-2",
+          "text": "a",
+          "start": 0.42,
+          "end": 0.52
+        },
+        {
+          "id": "caption-word-0-3",
+          "text": "two",
+          "start": 0.52,
+          "end": 0.727
+        },
+        {
+          "id": "caption-word-0-4",
+          "text": "by",
+          "start": 0.727,
+          "end": 0.933
+        },
+        {
+          "id": "caption-word-0-5",
+          "text": "two",
+          "start": 0.933,
+          "end": 1.14
+        },
+        {
+          "id": "caption-word-0-6",
+          "text": "matrix.",
+          "start": 1.14,
+          "end": 1.54
+        }
+      ]
+    },
+    {
+      "id": "caption-group-1",
+      "frame": 1,
+      "start": 2.12,
+      "end": 3.54,
+      "text": "Four little numbers,",
+      "words": [
+        {
+          "id": "caption-word-1-0",
+          "text": "Four",
+          "start": 2.12,
+          "end": 2.8
+        },
+        {
+          "id": "caption-word-1-1",
+          "text": "little",
+          "start": 2.8,
+          "end": 3.06
+        },
+        {
+          "id": "caption-word-1-2",
+          "text": "numbers,",
+          "start": 3.06,
+          "end": 3.42
+        }
+      ]
+    },
+    {
+      "id": "caption-group-2",
+      "frame": 1,
+      "start": 4.06,
+      "end": 5.3,
+      "text": "and they look harmless.",
+      "words": [
+        {
+          "id": "caption-word-2-0",
+          "text": "and",
+          "start": 4.06,
+          "end": 4.42
+        },
+        {
+          "id": "caption-word-2-1",
+          "text": "they",
+          "start": 4.42,
+          "end": 4.54
+        },
+        {
+          "id": "caption-word-2-2",
+          "text": "look",
+          "start": 4.54,
+          "end": 4.74
+        },
+        {
+          "id": "caption-word-2-3",
+          "text": "harmless.",
+          "start": 4.74,
+          "end": 5.18
+        }
+      ]
+    },
+    {
+      "id": "caption-group-3",
+      "frame": 1,
+      "start": 6.08,
+      "end": 7.9,
+      "text": "But a matrix is not a table.",
+      "words": [
+        {
+          "id": "caption-word-3-0",
+          "text": "But",
+          "start": 6.08,
+          "end": 6.44
+        },
+        {
+          "id": "caption-word-3-1",
+          "text": "a",
+          "start": 6.44,
+          "end": 6.54
+        },
+        {
+          "id": "caption-word-3-2",
+          "text": "matrix",
+          "start": 6.54,
+          "end": 6.88
+        },
+        {
+          "id": "caption-word-3-3",
+          "text": "is",
+          "start": 6.88,
+          "end": 7.14
+        },
+        {
+          "id": "caption-word-3-4",
+          "text": "not",
+          "start": 7.14,
+          "end": 7.3
+        },
+        {
+          "id": "caption-word-3-5",
+          "text": "a",
+          "start": 7.3,
+          "end": 7.44
+        },
+        {
+          "id": "caption-word-3-6",
+          "text": "table.",
+          "start": 7.44,
+          "end": 7.78
+        }
+      ]
+    },
+    {
+      "id": "caption-group-4",
+      "frame": 1,
+      "start": 8.6,
+      "end": 10.96,
+      "text": "It is a machine that grabs space and",
+      "words": [
+        {
+          "id": "caption-word-4-0",
+          "text": "It",
+          "start": 8.6,
+          "end": 8.8
+        },
+        {
+          "id": "caption-word-4-1",
+          "text": "is",
+          "start": 8.8,
+          "end": 8.92
+        },
+        {
+          "id": "caption-word-4-2",
+          "text": "a",
+          "start": 8.92,
+          "end": 9.06
+        },
+        {
+          "id": "caption-word-4-3",
+          "text": "machine",
+          "start": 9.06,
+          "end": 9.36
+        },
+        {
+          "id": "caption-word-4-4",
+          "text": "that",
+          "start": 9.36,
+          "end": 9.66
+        },
+        {
+          "id": "caption-word-4-5",
+          "text": "grabs",
+          "start": 9.66,
+          "end": 9.88
+        },
+        {
+          "id": "caption-word-4-6",
+          "text": "space",
+          "start": 9.88,
+          "end": 10.36
+        },
+        {
+          "id": "caption-word-4-7",
+          "text": "and",
+          "start": 10.36,
+          "end": 10.96
+        }
+      ]
+    },
+    {
+      "id": "caption-group-5",
+      "frame": 1,
+      "start": 10.96,
+      "end": 11.76,
+      "text": "stretches it.",
+      "words": [
+        {
+          "id": "caption-word-5-0",
+          "text": "stretches",
+          "start": 10.96,
+          "end": 11.38
+        },
+        {
+          "id": "caption-word-5-1",
+          "text": "it.",
+          "start": 11.38,
+          "end": 11.64
+        }
+      ]
+    },
+    {
+      "id": "caption-group-6",
+      "frame": 2,
+      "start": 11.96,
+      "end": 12.54,
+      "text": "Watch.",
+      "words": [
+        {
+          "id": "caption-word-6-0",
+          "text": "Watch.",
+          "start": 11.96,
+          "end": 12.42
+        }
+      ]
+    },
+    {
+      "id": "caption-group-7",
+      "frame": 2,
+      "start": 12.76,
+      "end": 13.98,
+      "text": "Start with a unit square,",
+      "words": [
+        {
+          "id": "caption-word-7-0",
+          "text": "Start",
+          "start": 12.76,
+          "end": 13.02
+        },
+        {
+          "id": "caption-word-7-1",
+          "text": "with",
+          "start": 13.02,
+          "end": 13.26
+        },
+        {
+          "id": "caption-word-7-2",
+          "text": "a",
+          "start": 13.26,
+          "end": 13.38
+        },
+        {
+          "id": "caption-word-7-3",
+          "text": "unit",
+          "start": 13.38,
+          "end": 13.6
+        },
+        {
+          "id": "caption-word-7-4",
+          "text": "square,",
+          "start": 13.6,
+          "end": 13.98
+        }
+      ]
+    },
+    {
+      "id": "caption-group-8",
+      "frame": 2,
+      "start": 13.98,
+      "end": 14.98,
+      "text": "area one.",
+      "words": [
+        {
+          "id": "caption-word-8-0",
+          "text": "area",
+          "start": 13.98,
+          "end": 14.42
+        },
+        {
+          "id": "caption-word-8-1",
+          "text": "one.",
+          "start": 14.42,
+          "end": 14.86
+        }
+      ]
+    },
+    {
+      "id": "caption-group-9",
+      "frame": 2,
+      "start": 15.32,
+      "end": 16.38,
+      "text": "Feed it to the machine.",
+      "words": [
+        {
+          "id": "caption-word-9-0",
+          "text": "Feed",
+          "start": 15.32,
+          "end": 15.46
+        },
+        {
+          "id": "caption-word-9-1",
+          "text": "it",
+          "start": 15.46,
+          "end": 15.58
+        },
+        {
+          "id": "caption-word-9-2",
+          "text": "to",
+          "start": 15.58,
+          "end": 15.72
+        },
+        {
+          "id": "caption-word-9-3",
+          "text": "the",
+          "start": 15.72,
+          "end": 15.82
+        },
+        {
+          "id": "caption-word-9-4",
+          "text": "machine.",
+          "start": 15.82,
+          "end": 16.26
+        }
+      ]
+    },
+    {
+      "id": "caption-group-10",
+      "frame": 2,
+      "start": 17.3,
+      "end": 19.02,
+      "text": "The square leans over into a",
+      "words": [
+        {
+          "id": "caption-word-10-0",
+          "text": "The",
+          "start": 17.3,
+          "end": 17.62
+        },
+        {
+          "id": "caption-word-10-1",
+          "text": "square",
+          "start": 17.62,
+          "end": 17.92
+        },
+        {
+          "id": "caption-word-10-2",
+          "text": "leans",
+          "start": 17.92,
+          "end": 18.3
+        },
+        {
+          "id": "caption-word-10-3",
+          "text": "over",
+          "start": 18.3,
+          "end": 18.56
+        },
+        {
+          "id": "caption-word-10-4",
+          "text": "into",
+          "start": 18.56,
+          "end": 18.88
+        },
+        {
+          "id": "caption-word-10-5",
+          "text": "a",
+          "start": 18.88,
+          "end": 19.02
+        }
+      ]
+    },
+    {
+      "id": "caption-group-11",
+      "frame": 2,
+      "start": 19.02,
+      "end": 19.98,
+      "text": "parallelogram,",
+      "words": [
+        {
+          "id": "caption-word-11-0",
+          "text": "parallelogram,",
+          "start": 19.02,
+          "end": 19.86
+        }
+      ]
+    },
+    {
+      "id": "caption-group-12",
+      "frame": 2,
+      "start": 20.28,
+      "end": 21.78,
+      "text": "and the new area is three.",
+      "words": [
+        {
+          "id": "caption-word-12-0",
+          "text": "and",
+          "start": 20.28,
+          "end": 20.48
+        },
+        {
+          "id": "caption-word-12-1",
+          "text": "the",
+          "start": 20.48,
+          "end": 20.6
+        },
+        {
+          "id": "caption-word-12-2",
+          "text": "new",
+          "start": 20.6,
+          "end": 20.74
+        },
+        {
+          "id": "caption-word-12-3",
+          "text": "area",
+          "start": 20.74,
+          "end": 21.1
+        },
+        {
+          "id": "caption-word-12-4",
+          "text": "is",
+          "start": 21.1,
+          "end": 21.36
+        },
+        {
+          "id": "caption-word-12-5",
+          "text": "three.",
+          "start": 21.36,
+          "end": 21.66
+        }
+      ]
+    },
+    {
+      "id": "caption-group-13",
+      "frame": 2,
+      "start": 22.62,
+      "end": 24.34,
+      "text": "That three is the determinant.",
+      "words": [
+        {
+          "id": "caption-word-13-0",
+          "text": "That",
+          "start": 22.62,
+          "end": 22.84
+        },
+        {
+          "id": "caption-word-13-1",
+          "text": "three",
+          "start": 22.84,
+          "end": 23.24
+        },
+        {
+          "id": "caption-word-13-2",
+          "text": "is",
+          "start": 23.24,
+          "end": 23.58
+        },
+        {
+          "id": "caption-word-13-3",
+          "text": "the",
+          "start": 23.58,
+          "end": 23.74
+        },
+        {
+          "id": "caption-word-13-4",
+          "text": "determinant.",
+          "start": 23.74,
+          "end": 24.22
+        }
+      ]
+    },
+    {
+      "id": "caption-group-14",
+      "frame": 3,
+      "start": 24.6,
+      "end": 26.52,
+      "text": "So when your textbook says a d minus",
+      "words": [
+        {
+          "id": "caption-word-14-0",
+          "text": "So",
+          "start": 24.6,
+          "end": 24.78
+        },
+        {
+          "id": "caption-word-14-1",
+          "text": "when",
+          "start": 24.78,
+          "end": 24.98
+        },
+        {
+          "id": "caption-word-14-2",
+          "text": "your",
+          "start": 24.98,
+          "end": 25.12
+        },
+        {
+          "id": "caption-word-14-3",
+          "text": "textbook",
+          "start": 25.12,
+          "end": 25.48
+        },
+        {
+          "id": "caption-word-14-4",
+          "text": "says",
+          "start": 25.48,
+          "end": 25.82
+        },
+        {
+          "id": "caption-word-14-5",
+          "text": "a",
+          "start": 25.82,
+          "end": 26.02
+        },
+        {
+          "id": "caption-word-14-6",
+          "text": "d",
+          "start": 26.02,
+          "end": 26.22
+        },
+        {
+          "id": "caption-word-14-7",
+          "text": "minus",
+          "start": 26.22,
+          "end": 26.52
+        }
+      ]
+    },
+    {
+      "id": "caption-group-15",
+      "frame": 3,
+      "start": 26.52,
+      "end": 27.24,
+      "text": "b c,",
+      "words": [
+        {
+          "id": "caption-word-15-0",
+          "text": "b",
+          "start": 26.52,
+          "end": 26.82
+        },
+        {
+          "id": "caption-word-15-1",
+          "text": "c,",
+          "start": 26.82,
+          "end": 27.12
+        }
+      ]
+    },
+    {
+      "id": "caption-group-16",
+      "frame": 3,
+      "start": 27.46,
+      "end": 29.46,
+      "text": "it is not being cryptic.",
+      "words": [
+        {
+          "id": "caption-word-16-0",
+          "text": "it",
+          "start": 27.46,
+          "end": 28.04
+        },
+        {
+          "id": "caption-word-16-1",
+          "text": "is",
+          "start": 28.04,
+          "end": 28.18
+        },
+        {
+          "id": "caption-word-16-2",
+          "text": "not",
+          "start": 28.18,
+          "end": 28.4
+        },
+        {
+          "id": "caption-word-16-3",
+          "text": "being",
+          "start": 28.4,
+          "end": 28.68
+        },
+        {
+          "id": "caption-word-16-4",
+          "text": "cryptic.",
+          "start": 28.68,
+          "end": 29.34
+        }
+      ]
+    },
+    {
+      "id": "caption-group-17",
+      "frame": 3,
+      "start": 29.92,
+      "end": 32.08,
+      "text": "Two times two, minus one times",
+      "words": [
+        {
+          "id": "caption-word-17-0",
+          "text": "Two",
+          "start": 29.92,
+          "end": 30.14
+        },
+        {
+          "id": "caption-word-17-1",
+          "text": "times",
+          "start": 30.14,
+          "end": 30.36
+        },
+        {
+          "id": "caption-word-17-2",
+          "text": "two,",
+          "start": 30.36,
+          "end": 30.84
+        },
+        {
+          "id": "caption-word-17-3",
+          "text": "minus",
+          "start": 30.84,
+          "end": 31.46
+        },
+        {
+          "id": "caption-word-17-4",
+          "text": "one",
+          "start": 31.46,
+          "end": 31.78
+        },
+        {
+          "id": "caption-word-17-5",
+          "text": "times",
+          "start": 31.78,
+          "end": 32.08
+        }
+      ]
+    },
+    {
+      "id": "caption-group-18",
+      "frame": 3,
+      "start": 32.08,
+      "end": 33.74,
+      "text": "one, leaves three.",
+      "words": [
+        {
+          "id": "caption-word-18-0",
+          "text": "one,",
+          "start": 32.08,
+          "end": 32.44
+        },
+        {
+          "id": "caption-word-18-1",
+          "text": "leaves",
+          "start": 32.44,
+          "end": 33.12
+        },
+        {
+          "id": "caption-word-18-2",
+          "text": "three.",
+          "start": 33.12,
+          "end": 33.62
+        }
+      ]
+    },
+    {
+      "id": "caption-group-19",
+      "frame": 3,
+      "start": 34.14,
+      "end": 35.12,
+      "text": "The same three.",
+      "words": [
+        {
+          "id": "caption-word-19-0",
+          "text": "The",
+          "start": 34.14,
+          "end": 34.24
+        },
+        {
+          "id": "caption-word-19-1",
+          "text": "same",
+          "start": 34.24,
+          "end": 34.56
+        },
+        {
+          "id": "caption-word-19-2",
+          "text": "three.",
+          "start": 34.56,
+          "end": 35
+        }
+      ]
+    },
+    {
+      "id": "caption-group-20",
+      "frame": 3,
+      "start": 35.46,
+      "end": 37.74,
+      "text": "It is just the stretch factor.",
+      "words": [
+        {
+          "id": "caption-word-20-0",
+          "text": "It",
+          "start": 35.46,
+          "end": 36.28
+        },
+        {
+          "id": "caption-word-20-1",
+          "text": "is",
+          "start": 36.28,
+          "end": 36.46
+        },
+        {
+          "id": "caption-word-20-2",
+          "text": "just",
+          "start": 36.46,
+          "end": 36.66
+        },
+        {
+          "id": "caption-word-20-3",
+          "text": "the",
+          "start": 36.66,
+          "end": 36.92
+        },
+        {
+          "id": "caption-word-20-4",
+          "text": "stretch",
+          "start": 36.92,
+          "end": 37.26
+        },
+        {
+          "id": "caption-word-20-5",
+          "text": "factor.",
+          "start": 37.26,
+          "end": 37.62
+        }
+      ]
+    },
+    {
+      "id": "caption-group-21",
+      "frame": 4,
+      "start": 37.92,
+      "end": 39.76,
+      "text": "But when the determinant hits zero,",
+      "words": [
+        {
+          "id": "caption-word-21-0",
+          "text": "But",
+          "start": 37.92,
+          "end": 38.04
+        },
+        {
+          "id": "caption-word-21-1",
+          "text": "when",
+          "start": 38.04,
+          "end": 38.24
+        },
+        {
+          "id": "caption-word-21-2",
+          "text": "the",
+          "start": 38.24,
+          "end": 38.4
+        },
+        {
+          "id": "caption-word-21-3",
+          "text": "determinant",
+          "start": 38.4,
+          "end": 38.88
+        },
+        {
+          "id": "caption-word-21-4",
+          "text": "hits",
+          "start": 38.88,
+          "end": 39.22
+        },
+        {
+          "id": "caption-word-21-5",
+          "text": "zero,",
+          "start": 39.22,
+          "end": 39.64
+        }
+      ]
+    },
+    {
+      "id": "caption-group-22",
+      "frame": 4,
+      "start": 40.2,
+      "end": 41.46,
+      "text": "space does not stretch.",
+      "words": [
+        {
+          "id": "caption-word-22-0",
+          "text": "space",
+          "start": 40.2,
+          "end": 40.38
+        },
+        {
+          "id": "caption-word-22-1",
+          "text": "does",
+          "start": 40.38,
+          "end": 40.62
+        },
+        {
+          "id": "caption-word-22-2",
+          "text": "not",
+          "start": 40.62,
+          "end": 40.86
+        },
+        {
+          "id": "caption-word-22-3",
+          "text": "stretch.",
+          "start": 40.86,
+          "end": 41.34
+        }
+      ]
+    },
+    {
+      "id": "caption-group-23",
+      "frame": 4,
+      "start": 42.1,
+      "end": 42.96,
+      "text": "It flattens.",
+      "words": [
+        {
+          "id": "caption-word-23-0",
+          "text": "It",
+          "start": 42.1,
+          "end": 42.3
+        },
+        {
+          "id": "caption-word-23-1",
+          "text": "flattens.",
+          "start": 42.3,
+          "end": 42.84
+        }
+      ]
+    },
+    {
+      "id": "caption-group-24",
+      "frame": 4,
+      "start": 43.78,
+      "end": 45.72,
+      "text": "The square is crushed onto a line,",
+      "words": [
+        {
+          "id": "caption-word-24-0",
+          "text": "The",
+          "start": 43.78,
+          "end": 43.96
+        },
+        {
+          "id": "caption-word-24-1",
+          "text": "square",
+          "start": 43.96,
+          "end": 44.28
+        },
+        {
+          "id": "caption-word-24-2",
+          "text": "is",
+          "start": 44.28,
+          "end": 44.5
+        },
+        {
+          "id": "caption-word-24-3",
+          "text": "crushed",
+          "start": 44.5,
+          "end": 44.88
+        },
+        {
+          "id": "caption-word-24-4",
+          "text": "onto",
+          "start": 44.88,
+          "end": 45.14
+        },
+        {
+          "id": "caption-word-24-5",
+          "text": "a",
+          "start": 45.14,
+          "end": 45.28
+        },
+        {
+          "id": "caption-word-24-6",
+          "text": "line,",
+          "start": 45.28,
+          "end": 45.6
+        }
+      ]
+    },
+    {
+      "id": "caption-group-25",
+      "frame": 4,
+      "start": 46.03,
+      "end": 47.6,
+      "text": "and nothing you do will ever get it",
+      "words": [
+        {
+          "id": "caption-word-25-0",
+          "text": "and",
+          "start": 46.03,
+          "end": 46.28
+        },
+        {
+          "id": "caption-word-25-1",
+          "text": "nothing",
+          "start": 46.28,
+          "end": 46.56
+        },
+        {
+          "id": "caption-word-25-2",
+          "text": "you",
+          "start": 46.56,
+          "end": 46.74
+        },
+        {
+          "id": "caption-word-25-3",
+          "text": "do",
+          "start": 46.74,
+          "end": 46.92
+        },
+        {
+          "id": "caption-word-25-4",
+          "text": "will",
+          "start": 46.92,
+          "end": 47.12
+        },
+        {
+          "id": "caption-word-25-5",
+          "text": "ever",
+          "start": 47.12,
+          "end": 47.3
+        },
+        {
+          "id": "caption-word-25-6",
+          "text": "get",
+          "start": 47.3,
+          "end": 47.48
+        },
+        {
+          "id": "caption-word-25-7",
+          "text": "it",
+          "start": 47.48,
+          "end": 47.6
+        }
+      ]
+    },
+    {
+      "id": "caption-group-26",
+      "frame": 4,
+      "start": 47.6,
+      "end": 47.98,
+      "text": "back.",
+      "words": [
+        {
+          "id": "caption-word-26-0",
+          "text": "back.",
+          "start": 47.6,
+          "end": 47.86
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "titles": [
+    "The machine",
+    "The square",
+    "The formula",
+    "The collapse"
+  ],
+  "bodies": [
+    "Here is a two by two matrix. Four little numbers, and they look harmless. But a matrix is not a table. It is a machine that grabs space and stretches it.",
+    "Watch. Start with a unit square, area one. Feed it to the machine. The square leans over into a parallelogram, and the new area is three. That three is the determinant.",
+    "So when your textbook says a d minus b c, it is not being cryptic. Two times two, minus one times one, leaves three. The same three. It is just the stretch factor.",
+    "But when the determinant hits zero, space does not stretch. It flattens. The square is crushed onto a line, and nothing you do will ever get it back."
+  ]
+}

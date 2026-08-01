@@ -1,0 +1,174 @@
+{
+  "format": "1920x1080",
+  "frames": [
+    {
+      "id": "02-square",
+      "dur": 12.64,
+      "theme": "highlighter-editorial",
+      "scenes": [
+        {
+          "id": "s1",
+          "type": "math",
+          "anchor": "unit square",
+          "data": {
+            "template": "scene_program",
+            "objective": "Show the determinant as the factor the area is multiplied by",
+            "kicker": "WATCH THE AREA",
+            "caption": "the new area is three",
+            "annotations": [
+              {
+                "text": "area 1",
+                "at": "area one",
+                "x": 0.4,
+                "y": 0.3,
+                "tone": "ink",
+                "_cue": 2.02
+              },
+              {
+                "text": "now 3x bigger",
+                "at": "area is three",
+                "x": 0.66,
+                "y": 0.22,
+                "tone": "accent",
+                "_cue": 8.78
+              }
+            ],
+            "formulas": [],
+            "params": {
+              "program": {
+                "scene_kind": "2d",
+                "objects": [
+                  {
+                    "id": "sq",
+                    "type": "polygon",
+                    "vertices": [
+                      [
+                        -1.0,
+                        -1.0,
+                        0.0
+                      ],
+                      [
+                        1.0,
+                        -1.0,
+                        0.0
+                      ],
+                      [
+                        1.0,
+                        1.0,
+                        0.0
+                      ],
+                      [
+                        -1.0,
+                        1.0,
+                        0.0
+                      ]
+                    ],
+                    "role": "primary",
+                    "fill_role": "primary",
+                    "fill_opacity": 0.16,
+                    "stroke_width": 5.0
+                  },
+                  {
+                    "id": "cap",
+                    "type": "text",
+                    "text": "det = 3",
+                    "position": [
+                      0.0,
+                      -2.2,
+                      0.0
+                    ],
+                    "font_size": 34,
+                    "role": "muted"
+                  }
+                ],
+                "cues": [
+                  {
+                    "id": "draw",
+                    "mode": "parallel",
+                    "actions": [
+                      {
+                        "type": "create",
+                        "target": "sq",
+                        "run_time": 0.9
+                      },
+                      {
+                        "type": "create",
+                        "target": "cap",
+                        "run_time": 0.9
+                      }
+                    ]
+                  },
+                  {
+                    "id": "deform",
+                    "actions": [
+                      {
+                        "type": "apply_matrix",
+                        "target": "sq",
+                        "matrix": [
+                          [
+                            2.0,
+                            1.0
+                          ],
+                          [
+                            1.0,
+                            2.0
+                          ]
+                        ],
+                        "expected_determinant": 3.0,
+                        "run_time": 1.6
+                      }
+                    ]
+                  },
+                  {
+                    "id": "settle",
+                    "actions": [
+                      {
+                        "type": "set_style",
+                        "target": "sq",
+                        "role": "changing",
+                        "run_time": 0.8
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "ground": {
+              "kind": "video",
+              "src": "assets/math/02-square.s1.6c4a74e3b881.mp4"
+            },
+            "_math": {
+              "engine": "math-animation",
+              "template": "scene_program",
+              "project_sha256": "6c4a74e3b881",
+              "beat_id": "02-square.s1",
+              "formulas": [],
+              "claims": {},
+              "cached": false
+            }
+          },
+          "start": 0.0,
+          "dur": 10.14
+        },
+        {
+          "id": "s2",
+          "type": "stat",
+          "anchor": "that three is",
+          "data": {
+            "kicker": "THE DETERMINANT",
+            "items": [
+              {
+                "value": 3,
+                "label": "times bigger",
+                "at": "that three is",
+                "_cue": 10.66
+              }
+            ]
+          },
+          "start": 10.14,
+          "dur": 2.5
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "format": "1920x1080",
+  "frames": [
+    {
+      "id": "01-machine",
+      "dur": 11.96,
+      "theme": "highlighter-editorial",
+      "scenes": [
+        {
+          "id": "s1",
+          "type": "math",
+          "anchor": "two by two matrix",
+          "data": {
+            "template": "equation_reveal",
+            "objective": "Introduce the matrix as an object, before any interpretation",
+            "kicker": "FOUR LITTLE NUMBERS",
+            "formulas": [
+              {
+                "latex": "A=\\begin{bmatrix} 2 & 1 \\\\ 1 & 2 \\end{bmatrix}",
+                "says": "a two by two matrix"
+              }
+            ],
+            "params": {
+              "formula": 0,
+              "part_roles": [
+                "primary"
+              ]
+            },
+            "ground": {
+              "kind": "video",
+              "src": "assets/math/01-machine.s1.d14f2f556770.mp4"
+            },
+            "_math": {
+              "engine": "math-animation",
+              "template": "equation_reveal",
+              "project_sha256": "d14f2f556770",
+              "beat_id": "01-machine.s1",
+              "formulas": [
+                "A=\\begin{bmatrix} 2 & 1 \\\\ 1 & 2 \\end{bmatrix}"
+              ],
+              "claims": {
+                "c00": "assumed"
+              },
+              "cached": true
+            }
+          },
+          "start": 0.0,
+          "dur": 6.54
+        },
+        {
+          "id": "s2",
+          "type": "statement",
+          "anchor": "not a table",
+          "data": {
+            "register": "paper",
+            "kicker": "THE REFRAME",
+            "lines": [
+              "A matrix is not a table.",
+              "It is a machine that grabs space",
+              "and stretches it."
+            ],
+            "operative": "stretches it",
+            "cue": 4.42,
+            "_line_cues": [
+              null,
+              8.6,
+              10.36
+            ]
+          },
+          "start": 6.54,
+          "dur": 5.42
+        }
+      ]
+    }
+  ]
+}

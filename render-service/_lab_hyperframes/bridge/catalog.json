@@ -1168,6 +1168,7 @@
         "title": "string — names the beat in the run bundle; NOT painted (Manim owns the frame)",
         "kicker": "string — a small eyebrow label painted in HTML over the clip",
         "caption": "string — a plain-language restatement of what the scene shows, painted in HTML under the clip. This is the block's narration-anchorable prose: the aligner pins it to the words that say it. Distinct from `params.caption`, which some templates typeset INSIDE the Manim clip.",
+        "annotations": "array of {text, at?, x?, y?, tone?} — themed HTML callouts pinned OVER the running Manim clip (x/y are fractions of the frame, default centre; tone ink|accent). This is how an HTML block and the animation composite: the clip is root-mounted below the frame, so these paint on top of live motion. Give each one an `at` phrase and the aligner lands it on the word that describes it, through the same shared reveal scheduler every data block uses.",
         "source": "string — a provenance credit painted under the clip ('Euler, 1748')"
       },
       "templates": {

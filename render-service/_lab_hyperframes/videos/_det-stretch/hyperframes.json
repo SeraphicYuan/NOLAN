@@ -1,0 +1,12 @@
+{
+  "theme": "highlighter-editorial",
+  "paths": {
+    "blocks": "compositions"
+  },
+  "style_dials": {
+    "asset_density": "balanced",
+    "video_share": "heavy",
+    "block_variety": "minimal"
+  },
+  "authoringSkill": "hf-author"
+}

@@ -271,8 +271,38 @@ def catalog_entry() -> Dict[str, Any]:
 _RESERVED_DATA_KEYS = {
     # chrome + plumbing the composer paints or the resolver stamps; not template params
     "template", "params", "formulas", "objective", "kicker", "title", "caption",
-    "source", "ground", "_math", "at", "cue", "_field_cues",
+    "source", "annotations", "ground", "_math", "at", "cue", "_field_cues",
 }
+
+# `annotations` is HTML painted OVER the Manim clip, so it is validated here (the authoring gate)
+# even though nothing in it reaches the engine. x/y are fractions of the frame because the clip is
+# full-bleed: a pixel offset would mean something different at every canvas size.
+_ANNOTATION_KEYS = {"text", "at", "cue", "x", "y", "tone", "_cue"}
+_ANNOTATION_TONES = {"ink", "accent"}
+
+
+def _validate_annotations(data: Any, where: str) -> List[str]:
+    anns = data.get("annotations")
+    if anns is None:
+        return []
+    if not isinstance(anns, list):
+        return [f"{where}.annotations: must be a list of {{text, at?, x?, y?, tone?}}"]
+    errs: List[str] = []
+    for i, a in enumerate(anns):
+        at = f"{where}.annotations[{i}]"
+        if not isinstance(a, dict):
+            errs.append(f"{at}: must be an object")
+            continue
+        if not isinstance(a.get("text"), str) or not a["text"].strip():
+            errs.append(f"{at}.text: required, a short label to pin over the clip")
+        for extra in sorted(set(a) - _ANNOTATION_KEYS):
+            errs.append(f"{at}.{extra}: not an annotation field {sorted(_ANNOTATION_KEYS)}")
+        for axis in ("x", "y"):
+            if axis in a and not (_is_number(a[axis]) and 0.0 <= float(a[axis]) <= 1.0):
+                errs.append(f"{at}.{axis}: a fraction of the frame, 0..1 (got {a.get(axis)!r})")
+        if "tone" in a and a["tone"] not in _ANNOTATION_TONES:
+            errs.append(f"{at}.tone: one of {sorted(_ANNOTATION_TONES)}")
+    return errs
 
 
 def _is_number(value: Any) -> bool:
@@ -399,6 +429,7 @@ def validate_scene_data(data: Any, where: str = "math") -> List[str]:
             continue
         errs.extend(_validate_param(p, params[p.name], len(formulas), where))
 
+    errs.extend(_validate_annotations(data, where))
     errs.extend(_validate_roles(tpl, params, formulas, where))
     if tpl.id == "scene_program":
         errs.extend(_validate_scene_program(params.get("program"), where))

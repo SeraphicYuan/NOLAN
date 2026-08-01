@@ -155,6 +155,11 @@ CUE_BLOCKS: FrozenSet[str] = frozenset({
     # matrix at start+0.4 and hold, so a 5-row table was fully readable before the VO had made its
     # second point — a comparison is argued row by row.
     "comparison_table",
+    # math joined when it grew `data.annotations` — HTML callouts pinned over the running Manim clip,
+    # each carrying its own `at` so the aligner lands it on the word it labels. Note this is the
+    # HTML layer's cue surface; the reveals INSIDE the clip are scheduled separately, by
+    # `nolan.mathanim.adapter._cue_times` from `params.at`, because Manim renders ahead of time.
+    "math",
 })
 
 CUE_KEY = "at"
