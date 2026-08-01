@@ -141,6 +141,11 @@ _ASSET_MIGRATIONS = {
     "department": "TEXT",
     "culture": "TEXT",
     "place": "TEXT",
+    # `date_text` parsed into a filterable range (nolan.imagelib.dates). It is 99% populated and
+    # 100% unfilterable as prose — 14,069 distinct strings. NULL where the museum says "n.d.",
+    # which is a real answer and must not become a range.
+    "year_from": "INTEGER",
+    "year_to": "INTEGER",
     # Coarse subject bucket DERIVED from the above (nolan.imagelib.taxonomy). Stored so it can be
     # filtered in SQL; derived by a pure function so the vocabulary can change without a
     # re-crawl — `nolan images rederive` recomputes it from columns already on disk.
@@ -223,6 +228,8 @@ class Asset:
     culture: Optional[str] = None
     place: Optional[str] = None
     image_kind: Optional[str] = None
+    year_from: Optional[int] = None
+    year_to: Optional[int] = None
     caption_json: Optional[str] = None
     caption_schema: Optional[int] = None
 
@@ -420,9 +427,9 @@ class AssetCatalog:
                     identity_source, description_source, thumb_path, thumb_url,
                     collection_id, regions,
                     medium, classification, department, culture, place, image_kind,
-                    caption_json, caption_schema)
+                    year_from, year_to, caption_json, caption_schema)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-                           ?,?,?,?,?,?,?,?)""",
+                           ?,?,?,?,?,?,?,?,?,?)""",
                 (asset.content_hash, asset.path, asset.url, asset.source,
                  asset.source_url, asset.license, asset.title, asset.description,
                  asset.width, asset.height, asset.bytes, asset.tags, asset.query,
@@ -432,7 +439,8 @@ class AssetCatalog:
                  asset.description_source, asset.thumb_path, asset.thumb_url,
                  asset.collection_id, asset.regions,
                  asset.medium, asset.classification, asset.department, asset.culture,
-                 asset.place, asset.image_kind, asset.caption_json, asset.caption_schema),
+                 asset.place, asset.image_kind, asset.year_from, asset.year_to,
+                 asset.caption_json, asset.caption_schema),
             )
             self._conn.commit()
         asset.id = cur.lastrowid
@@ -446,7 +454,7 @@ class AssetCatalog:
         "creator", "date_text", "institution", "identity_source", "description_source",
         "thumb_path", "thumb_url", "collection_id", "regions",
         "medium", "classification", "department", "culture", "place", "image_kind",
-        "caption_json", "caption_schema"})
+        "year_from", "year_to", "caption_json", "caption_schema"})
 
     def update(self, asset_id: int, **fields) -> None:
         """Patch named columns on one row. Unknown column names raise (a typo'd field that
@@ -461,6 +469,33 @@ class AssetCatalog:
             self._conn.execute(f"UPDATE assets SET {sets} WHERE id=?",
                                [*fields.values(), asset_id])
             self._conn.commit()
+
+    def update_many(self, patches: "Dict[int, dict]") -> int:
+        """Patch many rows in ONE transaction. Returns rows written.
+
+        `update()` commits per call, which is right for a single edit and catastrophic for a
+        catalog-wide pass: re-deriving `image_kind` and the parsed year range across 97,625 rows
+        meant 97,625 separate fsyncs, and the pass ran for tens of minutes doing almost no work.
+        Same SQL, one commit.
+        """
+        if not patches:
+            return 0
+        bad = set()
+        for f in patches.values():
+            bad |= set(f) - self._UPDATABLE
+        if bad:
+            raise ValueError(f"not updatable columns: {sorted(bad)}")
+        n = 0
+        with self._lock:
+            for asset_id, fields in patches.items():
+                if not fields:
+                    continue
+                sets = ", ".join(f"{k}=?" for k in fields)
+                self._conn.execute(f"UPDATE assets SET {sets} WHERE id=?",
+                                   [*fields.values(), asset_id])
+                n += 1
+            self._conn.commit()
+        return n
 
     def set_status(self, asset_id: int, status: str) -> None:
         with self._lock:
@@ -515,9 +550,16 @@ class AssetCatalog:
 
     def list(self, *, status: Optional[str] = "active", source: Optional[str] = None,
              license_contains: Optional[str] = None, limit: Optional[int] = None,
-             held: Optional[int] = 1, collection_id: Optional[int] = None
-             ) -> List[Asset]:
+             held: Optional[int] = 1, collection_id: Optional[int] = None,
+             **facets) -> List[Asset]:
         """List assets. ``held`` defaults to 1 — the DISCOVERY TIER IS OPT-IN.
+
+        `**facets` narrows on the catalog's own vocabularies — `image_kind`, `classification`,
+        `department`, `culture` (exact), `creator`, `place`, `medium`, `title` (contains), plus
+        `year_from`/`year_to`. Those columns were populated across 97k rows and, until this
+        existed, **nothing could filter on any of them** — an authored field with no consumer,
+        which is the first pitfall in the wiring checklist. An unknown key raises rather than
+        being ignored, because a silently-dropped filter returns a plausible wrong answer.
 
         Every caller of this method (search_by_title, backfill_descriptions, the /images UI, the
         acquisition engine's library source) assumes `abs_path(asset)` resolves to a real file.
@@ -525,8 +567,31 @@ class AssetCatalog:
         render time in exchange for a search hit that was never usable. Pass held=0 for the
         discovery tier explicitly, or held=None for both.
         """
-        sql = "SELECT * FROM assets WHERE 1=1"
-        params: list = []
+        where, params = self._filter_sql(
+            status=status, held=held, source=source, collection_id=collection_id,
+            license_contains=license_contains, **facets)
+        sql = f"SELECT * FROM assets WHERE {where} ORDER BY id DESC"
+        if limit:
+            sql += " LIMIT ?"; params.append(limit)
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [self._row(r) for r in rows]
+
+    # Fields a caller may narrow on. EXACT match, because these are catalog vocabularies rather
+    # than free text — `image_kind` has 14 values, `department` 30. `creator`/`place`/`medium`
+    # are matched as a CONTAINS, because they are long-tailed and nobody types them exactly.
+    FACET_EXACT = ("image_kind", "classification", "department", "culture")
+    FACET_LIKE = ("creator", "place", "medium", "title")
+
+    def _filter_sql(self, *, status=None, held=1, source=None, collection_id=None,
+                    license_contains=None, year_from=None, year_to=None, **facets):
+        """Build the shared WHERE clause. ONE implementation for list(), count() and facets(),
+        so a facet count can never disagree with the result set it is supposed to describe."""
+        bad = set(facets) - set(self.FACET_EXACT) - set(self.FACET_LIKE)
+        if bad:
+            raise ValueError(f"not filterable: {sorted(bad)} "
+                             f"(known: {sorted(set(self.FACET_EXACT) | set(self.FACET_LIKE))})")
+        sql, params = "1=1", []
         if status:
             sql += " AND status=?"; params.append(status)
         if held is not None:
@@ -537,22 +602,48 @@ class AssetCatalog:
             sql += " AND collection_id=?"; params.append(int(collection_id))
         if license_contains:
             sql += " AND license LIKE ?"; params.append(f"%{license_contains}%")
-        sql += " ORDER BY id DESC"
-        if limit:
-            sql += " LIMIT ?"; params.append(limit)
+        for k in self.FACET_EXACT:
+            v = facets.get(k)
+            if v:
+                sql += f" AND {k}=?"; params.append(v)
+        for k in self.FACET_LIKE:
+            v = facets.get(k)
+            if v:
+                sql += f" AND {k} LIKE ?"; params.append(f"%{v}%")
+        # A date filter OVERLAPS the row's range rather than containing it: an object dated
+        # 1830-1833 belongs in a search for 1831, and requiring containment would drop every
+        # imprecisely-dated row — which in a museum corpus is most of them. Rows with NO parsed
+        # date are excluded, because "we don't know when" cannot honestly answer "before 1850".
+        if year_from is not None:
+            sql += " AND year_to IS NOT NULL AND year_to >= ?"; params.append(int(year_from))
+        if year_to is not None:
+            sql += " AND year_from IS NOT NULL AND year_from <= ?"; params.append(int(year_to))
+        return sql, params
+
+    def facets(self, field: str, *, status: Optional[str] = "active", held: Optional[int] = 0,
+               limit: int = 40, **filters) -> List[Tuple[str, int]]:
+        """Value → count for one field, UNDER the currently active filters.
+
+        The counts are what make a filter usable instead of guesswork: "print (35,777)" tells you
+        what narrowing will cost before you click it. They run through `_filter_sql`, so a facet
+        can never promise rows the result set will not deliver.
+        """
+        if field not in self.FACET_EXACT and field not in self.FACET_LIKE:
+            raise ValueError(f"not a facet field: {field!r}")
+        filters.pop(field, None)            # a facet never narrows by itself
+        where, params = self._filter_sql(status=status, held=held, **filters)
+        sql = (f"SELECT {field} v, COUNT(*) c FROM assets WHERE {where} "
+               f"AND {field} IS NOT NULL AND TRIM({field})<>'' "
+               f"GROUP BY {field} ORDER BY c DESC LIMIT ?")
         with self._lock:
-            rows = self._conn.execute(sql, params).fetchall()
-        return [self._row(r) for r in rows]
+            rows = self._conn.execute(sql, [*params, int(limit)]).fetchall()
+        return [(r["v"], int(r["c"])) for r in rows]
 
     def count(self, status: Optional[str] = None, *, held: Optional[int] = None,
-              collection_id: Optional[int] = None) -> int:
-        sql, params = "SELECT COUNT(*) c FROM assets WHERE 1=1", []
-        if status:
-            sql += " AND status=?"; params.append(status)
-        if held is not None:
-            sql += " AND held=?"; params.append(int(held))
-        if collection_id is not None:
-            sql += " AND collection_id=?"; params.append(int(collection_id))
+              collection_id: Optional[int] = None, **facets) -> int:
+        where, params = self._filter_sql(status=status, held=held,
+                                         collection_id=collection_id, **facets)
+        sql = f"SELECT COUNT(*) c FROM assets WHERE {where}"
         with self._lock:
             return self._conn.execute(sql, params).fetchone()["c"]
 

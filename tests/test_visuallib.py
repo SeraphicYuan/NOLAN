@@ -829,6 +829,152 @@ def test_dialect_terms_drop_the_conjunction():
     assert "and " not in dialect_text(d).replace("; ", "|")[:0] + ""
 
 
+# --- facets: the missing consumer for the catalog columns -------------------------------------
+
+def _seed_facets(lib):
+    rows = [
+        ("a:1", "Under the Wave", "Katsushika Hokusai", "woodblock print", "Arts of Asia",
+         "Japan", "1830/33"),
+        ("a:2", "Sudden Shower", "Utagawa Hiroshige", "woodblock print", "Arts of Asia",
+         "Japan", "1857"),
+        ("a:3", "The Bedroom", "Vincent van Gogh", "oil on canvas", "Painting and Sculpture",
+         "France", "1889"),
+        ("a:4", "Melencolia I", "Albrecht Durer", "engraving", "Prints and Drawings",
+         "Germany", "1514"),
+        ("a:5", "A Coverlet", None, "textile", "Textiles", "America", "1800s"),
+    ]
+    for ref, title, creator, cls, dept, place, date in rows:
+        lib.add_discovery(source_ref=ref, thumb_url=f"https://e/{ref}.jpg", source="artic",
+                          title=title, creator=creator, classification=cls, department=dept,
+                          place=place, date_text=date, license="CC0", pixels=False)
+
+
+def test_catalog_columns_are_finally_filterable(lib):
+    """Those columns were populated across 97k rows and NOTHING could filter on any of them —
+    an authored field with no consumer, the first pitfall in the wiring checklist."""
+    _seed_facets(lib)
+    assert len(lib.catalog.list(held=0, limit=99)) == 5
+    assert len(lib.catalog.list(held=0, limit=99, image_kind="print")) == 3
+    assert len(lib.catalog.list(held=0, limit=99, department="Arts of Asia")) == 2
+    assert len(lib.catalog.list(held=0, limit=99, creator="Hokusai")) == 1
+    assert len(lib.catalog.list(held=0, limit=99, place="Japan")) == 2
+    # filters COMBINE
+    assert len(lib.catalog.list(held=0, limit=99,
+                                image_kind="print", place="Japan")) == 2
+
+
+def test_every_asset_field_survives_a_round_trip(tmp_path):
+    """REGRESSION, and a guard for a whole bug CLASS. `year_from`/`year_to` were added to the
+    migrations, the dataclass and the updatable set — but not to the INSERT column list, so the
+    parser ran, the Asset carried the value, and the database silently stored NULL. Nothing
+    errored; the filter just returned nothing.
+
+    Rather than pin one column, set every field to a distinct value and read it back.
+    """
+    import dataclasses
+    from nolan.imagelib.catalog import Asset, AssetCatalog
+
+    cat = AssetCatalog(tmp_path / "c.db")
+    values, skip = {}, {"id", "added_at", "held", "status", "bytes", "width", "height",
+                        "collection_id", "caption_schema", "year_from", "year_to"}
+    for f in dataclasses.fields(Asset):
+        if f.name in skip:
+            continue
+        values[f.name] = f"v-{f.name}"
+    a = cat.add(Asset(**{**values, "held": 0, "status": "active", "width": 11, "height": 22,
+                         "bytes": 33, "collection_id": 44, "caption_schema": 1,
+                         "year_from": -55, "year_to": 66}))
+    back = cat.get(a.id)
+    for name, want in values.items():
+        assert getattr(back, name) == want, f"{name} did not survive the INSERT"
+    for name, want in (("width", 11), ("height", 22), ("bytes", 33), ("collection_id", 44),
+                       ("caption_schema", 1), ("year_from", -55), ("year_to", 66)):
+        assert getattr(back, name) == want, f"{name} did not survive the INSERT"
+
+
+def test_an_unknown_filter_raises_rather_than_being_ignored(lib):
+    """A silently-dropped filter returns a plausible WRONG answer, which is worse than an error."""
+    with pytest.raises(ValueError, match="not filterable"):
+        lib.catalog.list(held=0, colour="blue")
+    with pytest.raises(ValueError, match="not a facet field"):
+        lib.catalog.facets("colour")
+
+
+def test_facet_counts_describe_the_set_they_narrow(lib):
+    """A count that disagreed with the result set would be worse than no count — it promises
+    rows the click will not deliver. Both go through one `_filter_sql`."""
+    _seed_facets(lib)
+    for value, count in lib.catalog.facets("image_kind", held=0):
+        assert len(lib.catalog.list(held=0, limit=99, image_kind=value)) == count
+
+    # a facet never narrows by ITSELF — otherwise every count would be its own total
+    counts = dict(lib.catalog.facets("image_kind", held=0, image_kind="print"))
+    assert counts.get("painting") == 1, "asking for image_kind facets must not pre-filter by it"
+
+    # ...but it DOES respect the other active filters
+    asia = dict(lib.catalog.facets("image_kind", held=0, department="Arts of Asia"))
+    assert asia == {"print": 2}
+
+
+def test_year_filters_overlap_rather_than_contain(lib):
+    """An object dated 1830-1833 belongs in a search for 1831. Requiring containment would drop
+    every imprecisely-dated row, which in a museum corpus is most of them."""
+    _seed_facets(lib)
+    got = {a.source_ref for a in lib.catalog.list(held=0, limit=99,
+                                                  year_from=1831, year_to=1831)}
+    # a:1 is dated "1830/33" -> (1830,1833) and a:5 is "1800s" -> (1800,1899). BOTH overlap the
+    # single year 1831, and both are correct answers — an imprecisely dated row is still a
+    # candidate. Containment would have returned neither.
+    assert got == {"a:1", "a:5"}, got
+
+    century = {a.source_ref for a in lib.catalog.list(held=0, limit=99,
+                                                      year_from=1800, year_to=1899)}
+    assert century == {"a:1", "a:2", "a:3", "a:5"}
+    assert {a.source_ref for a in lib.catalog.list(held=0, limit=99, year_to=1600)} == {"a:4"}
+
+
+def test_an_undated_row_is_excluded_from_a_date_filter(lib):
+    """"We don't know when" cannot honestly answer "before 1850"."""
+    lib.add_discovery(source_ref="a:9", thumb_url="https://e/9.jpg", source="artic",
+                      title="Undated Thing", date_text="n.d.", license="CC0", pixels=False)
+    a = lib.catalog.get_by_ref("a:9")
+    assert a.year_from is None and a.year_to is None
+    assert lib.catalog.list(held=0, limit=99, year_from=1000, year_to=3000) == []
+
+
+def test_years_are_parsed_at_write_time(lib):
+    _seed_facets(lib)
+    assert (lib.catalog.get_by_ref("a:1").year_from,
+            lib.catalog.get_by_ref("a:1").year_to) == (1830, 1833)
+    assert (lib.catalog.get_by_ref("a:5").year_from,
+            lib.catalog.get_by_ref("a:5").year_to) == (1800, 1899)
+
+
+def test_filters_narrow_the_search_not_just_the_listing(lib):
+    """Filters change the DENOMINATOR — that is the whole point. A title search over Hokusai's
+    481 rows is a different task from the same search over 97,625."""
+    _seed_facets(lib)
+    unfiltered = lib.search_discovery("print", k=10)
+    assert len(unfiltered) >= 3
+
+    hits = lib.search_discovery("print", k=10, department="Arts of Asia")
+    assert hits, "a filtered search must still return its matches"
+    assert all(h.asset.department == "Arts of Asia" for h in hits)
+    assert {h.asset.source_ref for h in hits} <= {"a:1", "a:2"}
+
+
+def test_a_filter_that_matches_nothing_returns_nothing(lib):
+    _seed_facets(lib)
+    assert lib.search_discovery("wave", k=10, department="Nonexistent Wing") == []
+
+
+def test_the_discovery_tier_stays_opt_in_through_filters(lib, tmp_path):
+    """Invariant 1 must survive the new surface: `held` still defaults to the HELD tier."""
+    _seed_facets(lib)
+    assert lib.catalog.list(limit=99, image_kind="print") == [], "held=1 is still the default"
+    assert len(lib.catalog.list(limit=99, held=0, image_kind="print")) == 3
+
+
 # --- batched identity indexing ---------------------------------------------------------------
 
 def test_batching_is_invisible_to_a_reader(lib):

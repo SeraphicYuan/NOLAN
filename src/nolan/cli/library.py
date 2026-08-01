@@ -241,18 +241,65 @@ def images_dump(source, force):
     click.echo(f"dump ready: {path} ({path.stat().st_size / 1e6:.0f} MB)")
 
 
+@images.command('facets')
+@click.option('--field', '-f', default=None,
+              help='One field to break down. Omit for a summary of all of them.')
+@click.option('--kind', default=None, help='Narrow: image_kind (print, painting, coin, …)')
+@click.option('--department', default=None)
+@click.option('--creator', default=None, help='Narrow: creator contains …')
+@click.option('--place', default=None)
+@click.option('--year-from', type=int, default=None)
+@click.option('--year-to', type=int, default=None)
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_facets(field, kind, department, creator, place, year_from, year_to, scope, project):
+    """What can I narrow by, and what will it cost me?
+
+    Counts are what turn a filter into a decision instead of a guess: "print (35,777)" tells you
+    the size of the set before you commit to it. They respect whatever narrowing is already
+    applied, so combinations are legible too.
+    """
+    lib = _open_library(scope, project)
+    f = {k: v for k, v in (("image_kind", kind), ("department", department),
+                           ("creator", creator), ("place", place),
+                           ("year_from", year_from), ("year_to", year_to)) if v is not None}
+    total = lib.catalog.count("active", held=0, **f)
+    click.echo(f"{total:,} rows match" + (f" {f}" if f else " (no filter)"))
+    for name in ([field] if field else ["image_kind", "department", "classification", "place"]):
+        rows = lib.catalog.facets(name, held=0, limit=12, **f)
+        if not rows:
+            continue
+        click.echo(f"\n  {name}:")
+        for v, c in rows:
+            click.echo(f"    {c:>7,}  {str(v)[:56]}")
+
+
 @images.command('discover')
 @click.argument('query')
 @click.option('--top', '-k', type=int, default=12)
 @click.option('--warm', is_flag=True,
               help='Fetch pixels for THIS page of results (concurrent). Record-only rows rank '
                    'on identity alone until their thumbnail lands.')
+@click.option('--kind', default=None, help='Narrow to an image_kind (print, painting, coin, …).')
+@click.option('--department', default=None, help='Narrow to a department.')
+@click.option('--creator', default=None, help='Narrow to a creator (contains).')
+@click.option('--place', default=None, help='Narrow to a place (contains).')
+@click.option('--year-from', type=int, default=None, help='Earliest year (ranges OVERLAP).')
+@click.option('--year-to', type=int, default=None, help='Latest year.')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
 @click.option('--project', '-p', default=None)
-def images_discover(query, top, warm, scope, project):
-    """Search the NOT-HELD tier — 'this image exists, here, under these terms'."""
+def images_discover(query, top, warm, kind, department, creator, place,
+                    year_from, year_to, scope, project):
+    """Search the NOT-HELD tier — 'this image exists, here, under these terms'.
+
+    Filters change the DENOMINATOR, not just the ranking: a title search over Hokusai's 481
+    prints is a different task from the same search over 97,625 rows.
+    """
     lib = _open_library(scope, project)
-    hits = lib.search_discovery(query, k=top, warm=warm)
+    f = {k: v for k, v in (("image_kind", kind), ("department", department),
+                           ("creator", creator), ("place", place),
+                           ("year_from", year_from), ("year_to", year_to)) if v is not None}
+    hits = lib.search_discovery(query, k=top, warm=warm, **f)
     click.echo(f"{len(hits)} discovery result(s) for '{query}':")
     for h in hits:
         a = h.asset

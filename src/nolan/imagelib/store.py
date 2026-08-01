@@ -444,6 +444,12 @@ class ImageLibrary:
         # puts "painting" and "oil on canvas" in the SAME column, so one field is not enough).
         fields["image_kind"] = _kind(fields.get("classification"), fields.get("tags"),
                                      fields.get("medium"), fields.get("description"))
+        # The museum's date STRING, parsed into something a filter can compare. Derived, so it is
+        # re-derivable — `rederive_kinds` recomputes both without a network call.
+        from nolan.imagelib.dates import parse_years
+        yrs = parse_years(fields.get("date_text"))
+        if yrs:
+            fields["year_from"], fields["year_to"] = yrs
         if fields.get("description"):
             fields["description_source"] = description_source
         if existing is not None:
@@ -517,20 +523,39 @@ class ImageLibrary:
         Returns the kind histogram INCLUDING `unknown`, because a derivation whose fallthrough
         rate nobody looks at is a silent cap.
         """
+        from nolan.imagelib.dates import parse_years
         from nolan.imagelib.taxonomy import IMAGE_KINDS, image_kind as _kind
 
         counts = {k: 0 for k in IMAGE_KINDS}
-        changed = 0
+        changed = dated = undated = 0
+        patches: dict = {}
         for a in self.catalog.list(status="active", held=None,
                                    collection_id=collection_id, limit=1_000_000):
+            patch = {}
             k = _kind(a.classification, a.tags, a.medium, a.description)
             counts[k] += 1
             if k != (a.image_kind or None):
-                self.catalog.update(a.id, image_kind=k)
-                changed += 1
+                patch["image_kind"] = k
+            yrs = parse_years(a.date_text)
+            if yrs:
+                dated += 1
+                if (a.year_from, a.year_to) != yrs:
+                    patch["year_from"], patch["year_to"] = yrs
+            else:
+                undated += 1
+            if patch:
+                patches[a.id] = patch
+                # ONE transaction per chunk, not per row — see `update_many`. Chunked rather than
+                # held to the end so a long pass makes durable progress and can be interrupted.
+                if len(patches) >= 2000:
+                    changed += self.catalog.update_many(patches)
+                    patches = {}
+        changed += self.catalog.update_many(patches)
         total = sum(counts.values()) or 1
         return {"counts": counts, "changed": changed, "total": total,
-                "unknown_pct": round(100.0 * counts["unknown"] / total, 1)}
+                "unknown_pct": round(100.0 * counts["unknown"] / total, 1),
+                "dated": dated, "undated": undated,
+                "dated_pct": round(100.0 * dated / total, 1)}
 
     def _fetch_thumb(self, source_ref: str, thumb_url: str) -> Path:
         """Download + shrink one thumbnail. Pure I/O, safe to run on a worker thread."""
@@ -830,9 +855,14 @@ class ImageLibrary:
             self._index_description(asset.id, asset.description, asset.source)
         return asset, True
 
+    def facets(self, field: str, **filters) -> List[tuple]:
+        """Value → count for one facet, under the active filters. See `AssetCatalog.facets`."""
+        return self.catalog.facets(field, **filters)
+
     def search_discovery(self, query: str, *, k: int = 12,
                          collection_id: Optional[int] = None,
-                         warm: bool = False, warm_concurrency: int = 8) -> List[LibraryHit]:
+                         warm: bool = False, warm_concurrency: int = 8,
+                         **facets) -> List[LibraryHit]:
         """Search the NOT-HELD tier. Three channels, ROUTED by what the query is asking for.
 
         A query that NAMES something ("Seurat, La Grande Jatte") is an identity question, answered
@@ -866,13 +896,35 @@ class ImageLibrary:
         # ONE lexical pass, used for both jobs: deciding whether the query names something, and
         # supplying the title-cover bonus. (It is a full scan over the not-held rows — fine at
         # 10^3-10^4, and the place to add an FTS5 index beyond that.)
-        cover_hits = self.search_by_title(query, k=k * 2, held=0, collection_id=collection_id)
+        # FILTERS FIRST, and applied to the RESULT rather than to each channel. The two vector
+        # channels live in chroma and cannot join against SQLite columns, so narrowing is done by
+        # resolving the allowed id set once and intersecting. That keeps one definition of "which
+        # rows are eligible" — the same `_filter_sql` that `facets()` counts — instead of a
+        # filter per channel that could drift apart.
+        allowed = None
+        if facets:
+            allowed = {a.id for a in self.catalog.list(
+                status="active", held=0, collection_id=collection_id,
+                limit=1_000_000, **facets)}
+            if not allowed:
+                return []
+            # A narrowed corpus needs a wider net from each channel, or the filter throws away
+            # everything the channels returned and the page comes back empty.
+            k_ch = max(k * 3, min(300, len(allowed)))
+        else:
+            k_ch = k * 3
+
+        cover_hits = [h for h in self.search_by_title(
+            query, k=k * 2, held=0, collection_id=collection_id)
+            if allowed is None or h.asset.id in allowed]
         cover = {h.asset.id: h.score for h in cover_hits}
         named = any(s >= _NAMED_MIN_COVER for s in cover.values())
         ident = {h.asset.id: h for h in self._search_discovery_identity(
-            query, k=k * 3, collection_id=collection_id)}
+            query, k=k_ch, collection_id=collection_id)
+            if allowed is None or h.asset.id in allowed}
         clip = {h.asset.id: h for h in self._search_discovery_clip(
-            query, k=k * 3, collection_id=collection_id)}
+            query, k=k_ch, collection_id=collection_id)
+            if allowed is None or h.asset.id in allowed}
         wi, wc, wcov = (0.7, 0.1, 0.4) if named else (0.1, 0.9, 0.0)
         assets = {h.asset.id: h.asset
                   for h in [*cover_hits, *ident.values(), *clip.values()]}

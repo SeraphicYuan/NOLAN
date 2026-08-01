@@ -269,6 +269,40 @@ MEASURED, not assumed: **0.4% unknown** on artic's 119-value vocabulary and **2.
 961-value one (248,472 rows). `nolan images rederive` recomputes it from columns already on disk —
 one SQL pass, no network, no model — which is what makes the vocabulary safe to correct.
 
+## Facets — filters change the DENOMINATOR
+
+`catalog.list(**facets)`, `catalog.facets(field, **filters)`, `search_discovery(**facets)`,
+`nolan images facets`, `/api/visuallib/facets`.
+
+The catalog columns (`medium`, `classification`, `department`, `culture`, `place`, `image_kind`)
+were populated across 97k rows and **nothing could filter on any of them** — an authored field
+with no consumer, WIRING_CHECKLIST pitfall #1, in the tier's own store. This is the missing half.
+
+Why it matters more than convenience: every other retrieval improvement is a **ranking** play —
+97,625 rows, make the right one first. A filter changes the **denominator**. `creator=Hokusai AND
+image_kind=print` is 481 rows, and a title search over 481 is not the same task as over 97,625.
+It is also how professional image libraries actually work (facets + keyword, not embeddings),
+because users usually know roughly what they want.
+
+Measured coverage, which decides what is a usable facet: **`image_kind` 100% / 14 values** and
+**`department` 100% / 30** are dropdowns; `classification` (100%, 555) and `place` (58%, 886) are
+type-ahead; `creator` (70%, 9,710) is search-then-filter; `culture` (42%) and `movement` (26%,
+via the artists join) are optional narrowing, never primary navigation.
+
+- **Exact** match on catalog vocabularies (`image_kind`, `classification`, `department`,
+  `culture`); **contains** on long-tailed text (`creator`, `place`, `medium`, `title`).
+- **An unknown filter key RAISES.** A silently-dropped filter returns a plausible wrong answer.
+- **Counts come from the same `_filter_sql` as the results**, so a facet can never promise rows
+  the search will not deliver. A facet never narrows by itself, or every count would be its total.
+- **`year_from`/`year_to`** are parsed from `date_text` by `imagelib/dates.py` — 99% populated,
+  0% filterable as prose (14,069 distinct strings). Parser characterised over every real string:
+  **94.8% parsed, 4.8% correctly None** ("n.d." is a real answer), ~0.15% refused. Date filters
+  **OVERLAP** rather than contain — an object dated 1830-1833 belongs in a search for 1831, and
+  containment would drop every imprecisely-dated row, which is most of a museum corpus. Undated
+  rows are excluded: "we don't know when" cannot answer "before 1850".
+- Filters are resolved to an **id set once** and intersected with all three channels — the vector
+  stores cannot join against SQLite, and a per-channel filter would drift.
+
 ## Retrieval is ROUTED, not blended
 
 A query that NAMES something is an identity question, answered from the catalog's own words

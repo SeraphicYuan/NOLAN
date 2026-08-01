@@ -4,6 +4,57 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## Facets — the filter changes the DENOMINATOR, and that is the whole trick (2026-07-31)
+
+Every retrieval improvement so far was a RANKING play: 97,610 rows, make the right one first.
+A filter changes the denominator instead, and the demonstration is unambiguous:
+
+    "a great wave", unfiltered      -> 1  The Wave (Limbach, 1927 lithograph)
+                                       2  The Great Wave, Sète (Le Gray, 1857 photograph)
+                                       3  Hokusai
+    same query, image_kind=print
+    + place=Japan  (6,228 rows)     -> 1,2,3  Hokusai's Great Wave
+
+The ranking did not change. Two other artworks are legitimately called *The Wave*, and against
+97,610 rows they win. Against 6,228 they are not there.
+
+**This closes WIRING_CHECKLIST pitfall #1 in the tier's own store.** `medium`, `classification`,
+`department`, `culture`, `place` and `image_kind` were populated across 97k rows and **nothing
+could filter on any of them** — `catalog.list` accepted status/source/license/held/collection_id
+and nothing else. Authored fields with no consumer, in the module whose docstrings cite that
+pitfall.
+
+Measured coverage decides what is a usable facet: **`image_kind` 100% / 14 values** and
+**`department` 100% / 30** are dropdowns; `classification` (100%, 555) and `place` (58%, 886) are
+type-ahead; `creator` (70%, 9,710) is search-then-filter. Exact match on catalog vocabularies,
+contains on long-tailed text. **An unknown filter key RAISES** — a silently-dropped filter returns
+a plausible wrong answer. Facet counts run through the same `_filter_sql` as the results, so a
+count can never promise rows the search will not deliver.
+
+**Dates became filterable.** `date_text` is 99% populated and was 0% filterable as prose — 14,069
+distinct strings for 96,752 rows. `imagelib/dates.py` parses it, designed against the real shapes
+rather than imagined ones and characterised over every string: **94.8% parsed, 4.8% correctly
+None** ("n.d." is a real answer that must not become a range), ~0.15% refused. Date filters
+**OVERLAP** rather than contain — an object dated 1830-1833 belongs in a search for 1831, and
+containment would drop every imprecisely dated row, which in a museum corpus is most of them.
+
+Three defects the characterisation caught, all now regressions: BCE ranges collapsed to a single
+year (`330-320 BCE` → `(-330,-330)`) because the truncated-range expander assumed ascending;
+`100 BCE-500 CE` came back as `(-500,-100)`, right magnitudes and both on the wrong side of zero;
+and `5th-6th century` lost a hundred years because the pattern saw only the second ordinal.
+
+Two more found while building, worth recording because both were silent:
+
+- **`year_from`/`year_to` never reached the database.** They were added to the migrations, the
+  dataclass and the updatable set — but not to the INSERT column list, so the parser ran, the
+  Asset carried the value, and SQLite stored NULL. Nothing errored; the filter just returned
+  nothing. There is now a round-trip test that sets EVERY Asset field and reads it back, because
+  the bug is a class, not a case.
+- **`rederive` committed once per row** — 97,625 fsyncs for one pass, 14 minutes of almost no
+  work. `update_many` does it in one transaction per 2,000-row chunk.
+
+Full suite: 2,342 passed, 5 skipped, 0 failed.
+
 ## 97,625 rows, and the look column is measuring COVERAGE, not the router (2026-07-31)
 
 **Cleveland harvested to completion** — `exhausted: true`, cursor 41,477 = upstream_count exactly,

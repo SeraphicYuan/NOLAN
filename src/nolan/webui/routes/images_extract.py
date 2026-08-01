@@ -112,7 +112,11 @@ def register(app, ctx):
     @app.get("/api/images/discover")
     async def api_images_discover(q: str = "", scope: str = "global", project: str = None,
                                   k: int = 24, collection_id: int = None,
-                                  warm: bool = True):
+                                  warm: bool = True,
+                                  image_kind: str = None, department: str = None,
+                                  creator: str = None, place: str = None,
+                                  classification: str = None,
+                                  year_from: int = None, year_to: int = None):
         """Search the NOT-HELD tier (Visual Lib). A hit is a POINTER, not a file — its `raw`
         serves the 512px thumbnail we do hold, and `fetch` is what pulls the real image.
 
@@ -123,21 +127,33 @@ def register(app, ctx):
         """
         import asyncio as _asyncio
 
+        facets = {kk: vv for kk, vv in (
+            ("image_kind", image_kind), ("department", department), ("creator", creator),
+            ("place", place), ("classification", classification),
+            ("year_from", year_from), ("year_to", year_to)) if vv not in (None, "")}
+
         def _do():
             lib = _open_imagelib(scope, project)
             if q.strip():
                 rows = [(h.asset, h.score) for h in
                         lib.search_discovery(q, k=k, collection_id=collection_id,
-                                             warm=warm)]
+                                             warm=warm, **facets)]
             else:
+                # An EMPTY query with filters is a legitimate browse — "show me Japanese prints"
+                # needs no search terms at all, and is exactly what facets are for.
                 rows = [(a, None) for a in lib.catalog.list(status="active", held=0, limit=k,
-                                                            collection_id=collection_id)]
+                                                            collection_id=collection_id,
+                                                            **facets)]
             out = []
             for a, score in rows:
                 d = _img_dict(a, score, scope, project)
                 d.update({"held": 0, "source_ref": a.source_ref, "creator": a.creator,
                           "date_text": a.date_text, "institution": a.institution,
                           "wikidata_qid": a.wikidata_qid,
+                          "image_kind": a.image_kind, "department": a.department,
+                          "classification": a.classification, "place": a.place,
+                          "year_from": a.year_from, "year_to": a.year_to,
+                          "has_pixels": bool(a.thumb_path),
                           "captioned": bool(a.description_source
                                             and a.description_source != "catalog")})
                 out.append(d)

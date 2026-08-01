@@ -72,6 +72,33 @@ def register(app, ctx):
                         "departments": (sorted(MET_DEPARTMENTS.values()) if name == "met" else [])})
         return {"sources": out}
 
+    @app.get("/api/visuallib/facets")
+    async def visuallib_facets(scope: str = "global", project: str = None,
+                               image_kind: str = None, department: str = None,
+                               creator: str = None, place: str = None,
+                               classification: str = None,
+                               year_from: int = None, year_to: int = None):
+        """What can this search be narrowed by, and what does each choice cost?
+
+        The counts are the point. Filters change the DENOMINATOR — narrowing to one department
+        turns a 97,625-row ranking problem into a few-thousand-row one — and a count is what lets
+        someone see that before clicking. They run through the same WHERE clause as the results,
+        so a facet can never promise rows the search will not return.
+        """
+        lib = _open(scope, project)
+        f = {k: v for k, v in (("image_kind", image_kind), ("department", department),
+                               ("creator", creator), ("place", place),
+                               ("classification", classification),
+                               ("year_from", year_from), ("year_to", year_to))
+             if v not in (None, "")}
+        try:
+            out = {name: [{"value": v, "count": c}
+                          for v, c in lib.catalog.facets(name, held=0, limit=30, **f)]
+                   for name in ("image_kind", "department", "classification", "place")}
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"total": lib.catalog.count("active", held=0, **f), "applied": f, "facets": out}
+
     @app.get("/api/visuallib/collections")
     async def visuallib_collections(scope: str = "global", project: str = None):
         """Every harvested collection with its OWN coverage — the T0 tier, browsable before any
