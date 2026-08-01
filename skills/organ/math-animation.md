@@ -129,7 +129,18 @@ live animation. Three surfaces, in the theme's own type:
   frame fractions, each scheduled through the SAME shared reveal scheduler every data block uses,
   so a callout lands on the word it labels and can never be front-loaded
 
-Two things the pipeline cannot check for you, both learned from a real render:
+Three things the pipeline cannot check for you, all learned from a real render:
+
+- **Every legacy block template CLEARS ITSELF, so the cut can go blank.** `equation_reveal`,
+  `function_plot`, `number_line`, `secant_to_tangent` and `equation_transform` all end with
+  `self.play(FadeOut(...), run_time=0.35)` — correct for a standalone Manim video, wrong inside an
+  essay where the NEXT SCENE is the transition. Measured on the acceptance render: ink above the
+  caption band fell to 0.08% for ~1.2s at one cut and to exactly 0.000% for ~0.9s at another,
+  because the clip faded out while the following HTML scene was still waiting for its first
+  word-anchored reveal. Nothing flags it — `hf-qa`'s freeze guard looks for a STUCK frame, not an
+  empty one, and the temporal gate passed. Until the templates learn to hold, either end a math
+  beat on a `scene_program` (which holds its final state) or overlap the next scene's opening
+  anchor so its first line lands before the fade completes.
 
 - **Keep-out is your job INSIDE the clip.** `layout_lint` reads the composed frame's HTML geometry
   and a video is opaque to it. The composition grid's caption band starts at 83% of frame height —
