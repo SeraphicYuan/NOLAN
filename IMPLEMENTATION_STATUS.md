@@ -4,6 +4,37 @@
 **Status:** Complete
 **Last Updated:** 2026-08-01
 
+## The survey's four quiet shortfalls (2026-08-01)
+
+Answering "is the survey a cache, or do I refetch?" (it is a cache — `surveys.json`, reused until
+`refresh`, and every clustering path runs off it without ingesting anything) turned up four places
+where the number on screen was smaller than the number that exists. All four are now closed.
+
+**Prelinger was short 376 items.** advancedsearch has a ~10k deep-paging window and the collection
+holds 10,376, so the survey stopped at 10,000 and reported the gap. The scrape API pages past 10k
+in one query, and the code's comment claimed it drops the rich fields — verified true: 0 of 100
+rows carry `runtime` or `licenseurl`, so it can feed neither the length filter nor the copyright
+gate. Instead `survey_collection` now BISECTS on publicdate until every slice fits the window,
+newest slice first (the order `_distinct_candidates`' newest-cap depends on), deduping identifiers
+across boundaries. Prelinger: 10,376 of 10,376, zero shortfall, 11s. Any leaf that still overflows
+is returned anyway and the caller's `total - len(rows)` still reports it, so the honesty holds.
+
+**The 2,500-title clustering cap had no escape hatch.** `_distinct_candidates` keeps the newest
+`MAX_CANDIDATES` before clustering, which on Prelinger meant 2,500 of 9,361 candidates — reported
+in three places, but nothing could raise it. `cap` is now a parameter on `topic_view` /
+`diverse_sample` / `coverage_map` and their routes, surfaced as a `cluster all N` button that
+appears only when the cap actually bites. Prelinger with it: 5,853 distinct instead of 1,511.
+
+**~50k duplicate survey rows.** Two pre-namespacing keys (`bloomberg`, `@americanexperiencepbs`)
+survived the `kind:`-prefix migration, duplicating 49,790 titles — most of surveys.json's 28 MB.
+Dead weight, never read (`_survey_key` only builds namespaced keys) and never double-counted
+(`coverage_map` and the vector index both dedupe on channel / video_id, which is why `status`
+reported 61,433 not 111,223). Pruned: 19.4 MB.
+
+**988 titles were missing from the topic search.** A `@freedocumentary` survey taken that morning
+had never been embedded, so tier 2 could not see it. Rebuilt incrementally — 61,809 surveyed,
+61,809 indexed, 0 pending.
+
 ## Sources are what you added; a channel belongs to the videos (2026-08-01)
 
 "Other than the ones I manually added, I don't think any of the others should show up under Sources

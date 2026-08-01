@@ -37,6 +37,7 @@ _FL = ["identifier", "title", "year", "runtime", "subject", "description", "lice
        "collection"]
 _PAGE_ROWS = 1000
 _ADV_CAP = 10000
+_MAX_SPLIT_DEPTH = 12                                         # 4096 date slices — a backstop, never a limit hit
 
 # Collections whose contents are public domain by their NATURE (US federal works, the Prelinger ephemeral-film
 # archive, CC-licensed series) — the same curator assertion the transcript library already makes when a source
@@ -134,37 +135,85 @@ def survey_collection(ref: str, limit: Optional[int] = None, timeout: float = 45
     Paged NEWEST-FIRST (``publicdate desc``, ``identifier asc`` as the stable tiebreak for deep paging).
     That ordering matters: every consumer that bounds the survey (``_distinct_candidates``' newest-`cap`,
     the topic search) assumed newest-first while this actually sorted by identifier — so on a collection
-    bigger than the window you kept the alphabetically-first items, not the recent frontier. Bounded by
-    advancedsearch's ~10k deep-paging window — when ``total`` exceeds what we fetched the caller reports the
-    truncation (no silent cap)."""
+    bigger than the window you kept the alphabetically-first items, not the recent frontier.
+
+    A collection larger than advancedsearch's ~10k deep-paging window is SPLIT BY PUBLICDATE until every
+    slice fits, so the whole thing is enumerated (Prelinger used to stop at 10,000 of 10,376). The scrape
+    API would page past 10k in one query but silently drops ``runtime`` and ``licenseurl`` — verified: 0 of
+    100 rows carry either — so it can't feed the length filter or the copyright gate. Whatever still can't
+    be reached is reported: the caller compares ``total`` against the rows returned (no silent cap)."""
     coll = collection_ref(ref)
     out: List[Dict[str, Any]] = []
-    total = 0
+    seen: set = set()
     with httpx.Client(headers=_UA, timeout=timeout) as c:
-        page = 1
-        while len(out) < _ADV_CAP:
-            params: List[Tuple[str, Any]] = [
-                ("q", f"collection:{coll}"), ("rows", _PAGE_ROWS), ("page", page),
-                ("output", "json"), ("sort[]", "publicdate desc"), ("sort[]", "identifier asc")]
-            params += [("fl[]", f) for f in _FL]
-            r = c.get(ADVSEARCH, params=params)
-            r.raise_for_status()
-            resp = r.json().get("response", {}) or {}
-            total = int(resp.get("numFound", 0) or 0)
-            docs = resp.get("docs", []) or []
-            if not docs:
-                break
-            for it in docs:
-                row = _row(it, collection_free)
-                if not row:
-                    continue
-                out.append(row)
-                if limit and len(out) >= limit:
-                    return out, total
-            if len(out) >= total:
-                break
-            page += 1
+        total = _adv_count(c, f"collection:{coll}")
+        if limit or total <= _ADV_CAP:                            # fits the window (or the caller wants a peek)
+            _adv_window(c, f"collection:{coll}", limit, collection_free, out, seen)
+        else:
+            # Bigger than the deep-paging window: split by publicdate until every slice fits, so the whole
+            # collection is enumerated instead of stopping at its newest 10k. Newest slice first, because
+            # every consumer that bounds the survey (_distinct_candidates' newest-cap) assumes newest-first.
+            for q in _date_partitions(c, f"collection:{coll}"):
+                _adv_window(c, q, None, collection_free, out, seen)
     return out, total
+
+
+def _adv_count(c, q: str) -> int:
+    """``numFound`` for a query without fetching any rows — the cost of deciding whether to split."""
+    r = c.get(ADVSEARCH, params=[("q", q), ("rows", 0), ("output", "json")])
+    r.raise_for_status()
+    return int((r.json().get("response") or {}).get("numFound", 0) or 0)
+
+
+def _adv_window(c, q: str, limit: Optional[int], collection_free: bool,
+                out: List[Dict[str, Any]], seen: set) -> None:
+    """Page ONE advancedsearch query (bounded by its ~10k deep-paging window) into ``out``, newest first.
+    Dedupes on identifier so an overlapping date boundary can't double-count."""
+    page = 1
+    while page * _PAGE_ROWS <= _ADV_CAP + _PAGE_ROWS:
+        params: List[Tuple[str, Any]] = [
+            ("q", q), ("rows", _PAGE_ROWS), ("page", page),
+            ("output", "json"), ("sort[]", "publicdate desc"), ("sort[]", "identifier asc")]
+        params += [("fl[]", f) for f in _FL]
+        r = c.get(ADVSEARCH, params=params)
+        r.raise_for_status()
+        resp = r.json().get("response", {}) or {}
+        docs = resp.get("docs", []) or []
+        if not docs:
+            return
+        for it in docs:
+            row = _row(it, collection_free)
+            if not row or row["video_id"] in seen:
+                continue
+            seen.add(row["video_id"])
+            out.append(row)
+            if limit and len(out) >= limit:
+                return
+        if page * _PAGE_ROWS >= int(resp.get("numFound", 0) or 0):
+            return
+        page += 1
+
+
+def _date_partitions(c, base_q: str, depth: int = 0,
+                     lo: Optional[Any] = None, hi: Optional[Any] = None) -> List[str]:
+    """Split ``base_q`` into publicdate ranges each under the deep-paging window, NEWEST RANGE FIRST.
+
+    Recursive bisect on the date; one cheap count call per node. A leaf that still exceeds the window at
+    max depth is returned anyway — it yields its newest 10k, and the caller's `total - len(rows)` still
+    reports the shortfall, so an unsplittable pile-up is visible rather than silent."""
+    import datetime
+    if lo is None:
+        lo, hi = datetime.date(1996, 1, 1), datetime.date.today() + datetime.timedelta(days=1)
+    q = f"{base_q} AND publicdate:[{lo.isoformat()} TO {hi.isoformat()}]"
+    n = _adv_count(c, q)
+    if n == 0:
+        return []
+    if n <= _ADV_CAP or depth >= _MAX_SPLIT_DEPTH or lo >= hi:
+        return [q]
+    mid = datetime.date.fromordinal((lo.toordinal() + hi.toordinal()) // 2)
+    newer = _date_partitions(c, base_q, depth + 1, mid + datetime.timedelta(days=1), hi)
+    older = _date_partitions(c, base_q, depth + 1, lo, mid)
+    return newer + older
 
 
 def search_items(query: str, rows: int = 40, timeout: float = 45.0,

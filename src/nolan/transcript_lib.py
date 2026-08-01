@@ -1566,12 +1566,13 @@ def _distinct_candidates(channel: str, catalog_dir: Optional[Path] = None, limit
 
 def topic_view(channel: str, k: int = 0, catalog_dir: Optional[Path] = None,
                refresh: bool = False, min_sec: int = 0, max_sec: int = 0, kind: str = "youtube",
-               copyright_free_only: bool = False, collection_free: bool = False) -> Dict[str, Any]:
+               copyright_free_only: bool = False, collection_free: bool = False,
+               cap: int = MAX_CANDIDATES) -> Dict[str, Any]:
     """Browse a source BY TOPIC: distinct candidates grouped into ~k topic clusters (auto ≈ n/8 when
     k=0), each labelled by its distinctive keywords, medoid pre-flagged. For hand-selection. No LLM."""
     distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec,
                                               max_sec=max_sec, kind=kind, copyright_free_only=copyright_free_only,
-                                              collection_free=collection_free)
+                                              collection_free=collection_free, cap=cap)
     if not distinct:
         return {"groups": [], "k": 0, **stats}
     if not k:
@@ -1582,12 +1583,13 @@ def topic_view(channel: str, k: int = 0, catalog_dir: Optional[Path] = None,
 
 def diverse_sample(channel: str, n: int = 20, catalog_dir: Optional[Path] = None,
                    refresh: bool = False, min_sec: int = 0, max_sec: int = 0, kind: str = "youtube",
-                   copyright_free_only: bool = False, collection_free: bool = False) -> Dict[str, Any]:
+                   copyright_free_only: bool = False, collection_free: bool = False,
+                   cap: int = MAX_CANDIDATES) -> Dict[str, Any]:
     """NO-LLM recommender: cluster the distinct candidates into exactly `n` topics and return the medoid
     of each — n picks spread maximally across the source's subject space, for zero API cost."""
     distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec,
                                               max_sec=max_sec, kind=kind, copyright_free_only=copyright_free_only,
-                                              collection_free=collection_free)
+                                              collection_free=collection_free, cap=cap)
     if not distinct:
         return {"picks": [], "groups": 0, **stats}
     n = max(1, min(int(n), len(distinct)))
@@ -1601,7 +1603,8 @@ def diverse_sample(channel: str, n: int = 20, catalog_dir: Optional[Path] = None
 
 def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: Optional[Path] = None,
                  refresh: bool = False, per_channel_limit: int = 0, min_sec: int = 0, max_sec: int = 0,
-                 kind: str = "youtube", copyright_free_only: bool = False) -> Dict[str, Any]:
+                 kind: str = "youtube", copyright_free_only: bool = False,
+                 cap: int = MAX_CANDIDATES) -> Dict[str, Any]:
     """COVERAGE map for ONE source kind (youtube channels OR archive collections — kept SEPARATE because their
     metadata differs). Clusters the UNION of (library titles + every source's available-but-not-yet-ingested
     titles) into topics, reporting per topic how much the LIBRARY covers vs what's still AVAILABLE and from
@@ -1632,7 +1635,7 @@ def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: 
         cfree = bool(src.get("copyright_free")) if kind == "archive" else False
         distinct, st, _ = _distinct_candidates(ch, catalog_dir, refresh=refresh, min_sec=min_sec, max_sec=max_sec,
                                                kind=kind, copyright_free_only=copyright_free_only,
-                                               collection_free=cfree)
+                                               collection_free=cfree, cap=cap)
         label = (src or {}).get("label") or ch
         per_channel.append({"channel": ch, "label": label, "available": len(distinct),
                             "total": st.get("total", 0), "cached": st.get("cached", ""),

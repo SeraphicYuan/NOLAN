@@ -1,6 +1,7 @@
 """Transcript library management — sources sidecar, per-video delete/detail, frame listing + delete.
 (The crawl-level dedup is `if index.get_video_id('yt:<id>')` — implicitly covered: an ingested video's id
 resolves, so the worker's skip fires; see the assert in test_delete_and_detail_on_real_index.)"""
+import re
 import sqlite3
 from pathlib import Path
 
@@ -822,3 +823,84 @@ def test_frames_for_video_and_delete(tmp_path):
     assert tf.delete_frames_for_video("vidAAA", base_dir=store) == 1          # deletes only vidAAA
     assert tf.frames_for_video("vidAAA", base_dir=store) == []
     assert len(tf.frames_for_video("vidBBB", base_dir=store)) == 1            # other video untouched
+
+
+def test_big_collection_is_date_split_not_truncated(monkeypatch):
+    """A collection past advancedsearch's ~10k deep-paging window is enumerated COMPLETELY by splitting on
+    publicdate. The scrape API would page past 10k in one query but drops runtime/licenseurl, so it can't
+    feed the length filter or the copyright gate — hence the split.
+
+    The fake models a real corpus: TOTAL items with publicdates spread over the search range, filtered by
+    whatever range the query asks for. So it exercises the actual recursion, and completeness is a real
+    assertion rather than an artefact of the stub."""
+    import datetime
+    from nolan import archive_source as ar
+    TOTAL = 25000
+    LO, HI = datetime.date(1996, 1, 1), datetime.date.today() + datetime.timedelta(days=1)
+    SPAN = HI.toordinal() - LO.toordinal()
+    CORPUS = [(i, LO.toordinal() + (i * SPAN) // TOTAL) for i in range(TOTAL)]   # (id, publicdate ordinal)
+
+    def matching(q):
+        m = re.search(r"publicdate:\[(\S+) TO (\S+)\]", q)
+        if not m:
+            return CORPUS
+        a = datetime.date.fromisoformat(m.group(1)).toordinal()
+        b = datetime.date.fromisoformat(m.group(2)).toordinal()
+        return [c for c in CORPUS if a <= c[1] <= b]
+
+    class FakeResp:
+        def __init__(self, docs, num): self._d, self._n = docs, num
+        def raise_for_status(self): pass
+        def json(self): return {"response": {"numFound": self._n, "docs": self._d}}
+
+    class FakeClient:
+        def __init__(self): self.count_queries = []
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, url, params=None):
+            p = dict((k, v) for k, v in params)
+            q, rows, page = p["q"], int(p["rows"]), int(p.get("page", 1))
+            hits = matching(q)
+            if rows == 0:
+                self.count_queries.append(q)
+                return FakeResp([], len(hits))
+            hits = sorted(hits, key=lambda c: -c[1])              # publicdate desc, as the real sort does
+            page_docs = hits[(page - 1) * rows: page * rows]
+            return FakeResp([{"identifier": f"item{i}", "title": f"t{i}", "mediatype": "movies"}
+                             for i, _ in page_docs], len(hits))
+
+    fake = FakeClient()
+    monkeypatch.setattr(ar.httpx, "Client", lambda **kw: fake)
+    rows, total = ar.survey_collection("giant")
+    assert total == TOTAL                                    # the true size is reported, not the window
+    assert len({r["video_id"] for r in rows}) == len(rows)    # overlapping boundaries can't double-count
+    assert len(rows) == TOTAL                                # EVERY item reached, not the newest 10k
+    assert any("publicdate" in q for q in fake.count_queries)   # it split rather than truncating
+
+
+def test_small_collection_is_not_split(monkeypatch):
+    """The split is only paid for when it is needed — a collection inside the window uses one plain query."""
+    from nolan import archive_source as ar
+
+    class FakeResp:
+        def __init__(self, docs, num): self._d, self._n = docs, num
+        def raise_for_status(self): pass
+        def json(self): return {"response": {"numFound": self._n, "docs": self._d}}
+
+    seen = []
+
+    class FakeClient:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, url, params=None):
+            p = dict((k, v) for k, v in params)
+            seen.append(p["q"])
+            if int(p["rows"]) == 0:
+                return FakeResp([], 300)
+            return FakeResp([{"identifier": f"i{i}", "title": f"t{i}", "mediatype": "movies"}
+                             for i in range(300)], 300)
+
+    monkeypatch.setattr(ar.httpx, "Client", lambda **kw: FakeClient())
+    rows, total = ar.survey_collection("small")
+    assert (len(rows), total) == (300, 300)
+    assert not any("publicdate:" in q for q in seen)

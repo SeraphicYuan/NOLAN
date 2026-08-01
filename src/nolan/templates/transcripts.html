@@ -528,12 +528,15 @@
       const k = apply ? (parseInt($("#cu-k").value,10)||0) : 0;
       $("#cu-body").innerHTML='<div class="dim">Clustering titles into topics (BGE, no LLM)…</div>';
       try{
-        const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}&kind=${CU.kind}${k?`&k=${k}`:''}${refresh?'&refresh=true':''}${cuLenParam()}${cuCfParam()}`);
+        const cap = CU_CAP ? `&cap=${CU_CAP}` : "";
+        const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}&kind=${CU.kind}${k?`&k=${k}`:''}${refresh?'&refresh=true':''}${cuLenParam()}${cuCfParam()}${cap}`);
         CU.groups=d.groups; if(!apply && !$("#cu-k").value) $("#cu-k").placeholder=`auto (${d.k})`;
-        $("#cu-cov").innerHTML=`<b>${d.k} topics</b> · ${d.distinct} distinct of ${d.candidates} new <span class="dim">(${d.dropped_redundant} already covered · ${d.total-d.candidates} in library)</span>`+(d.dropped_length?` <span class="dim">· ${d.dropped_length} off-length</span>`:"")+(d.capped?` <span class="warn">· newest ${d.candidates} of ${d.candidates+d.capped} clustered (giant channel)</span>`:"");
+        $("#cu-cov").innerHTML=`<b>${d.k} topics</b> · ${d.distinct} distinct of ${d.candidates} new <span class="dim">(${d.dropped_redundant} already covered · ${d.total-d.candidates} in library)</span>`+(d.dropped_length?` <span class="dim">· ${d.dropped_length} off-length</span>`:"")+(d.capped?` <span class="warn">· newest ${d.candidates} of ${d.candidates+d.capped} clustered</span> <button class="btn ghost mini" onclick="cuClusterAll(${d.candidates+d.capped})" title="Cluster every candidate instead of the newest ${d.candidates} — embeds all ${d.candidates+d.capped} titles, so it takes longer">cluster all ${d.candidates+d.capped}</button>`:"");
         cuRenderTopics();
       }catch(e){ $("#cu-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
+    let CU_CAP = 0;                     // 0 = the 2500 default; set by "cluster all" for this source
+    function cuClusterAll(n){ CU_CAP = n; cuTopics(false, true); }
     function cuGrpRow(v, medoid){
       const chk=`<input type="checkbox" class="cusel" ${CU_SEL.has(v.video_id)?'checked':''} onchange="cuToggle('${esc(v.video_id)}',this.checked)">`;
       const m = medoid===v.video_id?'<span class="chip">rep</span>':'';
@@ -627,15 +630,19 @@
       $("#cv-stat").textContent = refresh ? "re-crawling every source + clustering…" : "clustering library + available titles…";
       $("#cv-body").innerHTML='<div class="dim">Building coverage map…</div>';
       try{
-        const d=await jget(`/api/transcripts/coverage?k=${k}&kind=${CV_KIND}${refresh?'&refresh=true':''}${lp}${cf}`);
+        const d=await jget(`/api/transcripts/coverage?k=${k}&kind=${CV_KIND}${refresh?'&refresh=true':''}${lp}${cf}${CV_CAP?`&cap=${CV_CAP}`:""}`);
         CV.topics=d.topics||[]; CV.byId={}; CV.built=true;
         CV.topics.forEach(t=>(t.samples||[]).forEach(s=>{ if(s.video_id) CV.byId[s.video_id]=s; }));
         if(!$("#cv-k").value) $("#cv-k").placeholder=`auto (${d.k})`;
         const chans=(d.channels||[]).map(c=>`${esc(c.label)} <span class="dim">(${c.available}/${c.total}${c.capped?`, newest ${c.available} clustered`:""})</span>`).join(" · ");
-        $("#cv-stat").innerHTML=`<b>${d.k} topics</b> · library ${d.lib_total} · ${d.available_total} available · <b style="color:var(--accent,#4f7cff)">${d.gaps} gap topics</b><div class="dim" style="margin-top:3px">channels: ${chans||"— add channels in Sources"}</div>`;
+        const capped=(d.channels||[]).reduce((m,c)=>Math.max(m,(c.capped||0)+(c.available||0)),0);
+        const capBtn=(d.channels||[]).some(c=>c.capped) ? ` <button class="btn ghost mini" onclick="cvClusterAll(${capped})" title="Cluster every candidate per source instead of the newest 2500 — slower">cluster all</button>` : "";
+        $("#cv-stat").innerHTML=`<b>${d.k} topics</b> · library ${d.lib_total} · ${d.available_total} available · <b style="color:var(--accent,#4f7cff)">${d.gaps} gap topics</b><div class="dim" style="margin-top:3px">channels: ${chans||"— add channels in Sources"}${capBtn}</div>`;
         cvRender();
       }catch(e){ $("#cv-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; $("#cv-stat").textContent=""; }
     }
+    let CV_CAP = 0;
+    function cvClusterAll(n){ CV_CAP = n; CV.built=false; loadCoverage(false); }
     function cvBar(t){
       const tot=(t.lib_count+t.available)||1, pct=Math.round(100*t.lib_count/tot);
       return `<div title="${t.lib_count} of ${tot} in library" style="height:6px;border-radius:3px;background:var(--border);overflow:hidden;width:110px"><div style="height:100%;width:${pct}%;background:#34c759"></div></div>`;

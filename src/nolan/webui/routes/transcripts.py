@@ -160,8 +160,11 @@ def register(app, ctx):
                                  refresh: bool = Query(default=False),
                                  min_sec: int = Query(default=0), max_sec: int = Query(default=0),
                                  kind: str = Query(default="youtube"),
-                                 copyright_free: bool = Query(default=False)):
-        """Topic-model a source's DISTINCT titles into ~k clusters (no LLM) for browse-by-topic + hand-pick."""
+                                 copyright_free: bool = Query(default=False),
+                                 cap: int = Query(default=0)):
+        """Topic-model a source's DISTINCT titles into ~k clusters (no LLM) for browse-by-topic + hand-pick.
+        `cap` bounds how many of the newest candidates are clustered (0 = the 2500 default); raise it to
+        cluster a giant source in full, at the cost of embedding every title."""
         import asyncio
         from nolan import transcript_lib as tl
         channel = channel.strip()
@@ -169,7 +172,7 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail="channel required")
         return await asyncio.to_thread(tl.topic_view, channel, int(k or 0), None, bool(refresh),
                                        int(min_sec or 0), int(max_sec or 0), kind, bool(copyright_free),
-                                       _collection_free(channel, kind))
+                                       _collection_free(channel, kind), int(cap or tl.MAX_CANDIDATES))
 
     @app.post("/api/transcripts/diverse-sample")
     async def transcripts_diverse_sample(body: dict = Body(...)):
@@ -184,18 +187,22 @@ def register(app, ctx):
                                        None, bool(body.get("refresh", False)),
                                        int(body.get("min_sec", 0) or 0), int(body.get("max_sec", 0) or 0),
                                        kind, bool(body.get("copyright_free", False)),
-                                       _collection_free(channel, kind))
+                                       _collection_free(channel, kind),
+                                       int(body.get("cap", 0) or tl.MAX_CANDIDATES))
 
     @app.get("/api/transcripts/coverage")
     async def transcripts_coverage(k: int = Query(default=0), refresh: bool = Query(default=False),
                                    min_sec: int = Query(default=0), max_sec: int = Query(default=0),
                                    kind: str = Query(default="youtube"),
-                                   copyright_free: bool = Query(default=False)):
-        """COVERAGE map for ONE source kind (youtube channels or archive collections — kept separate)."""
+                                   copyright_free: bool = Query(default=False),
+                                   cap: int = Query(default=0)):
+        """COVERAGE map for ONE source kind (youtube channels or archive collections — kept separate).
+        `cap` bounds the newest candidates clustered PER SOURCE (0 = the 2500 default)."""
         import asyncio
         from nolan import transcript_lib as tl
         return await asyncio.to_thread(tl.coverage_map, None, int(k or 0), None, bool(refresh), 0,
-                                       int(min_sec or 0), int(max_sec or 0), kind, bool(copyright_free))
+                                       int(min_sec or 0), int(max_sec or 0), kind, bool(copyright_free),
+                                       int(cap or tl.MAX_CANDIDATES))
 
     @app.post("/api/transcripts/add-collection")
     async def transcripts_add_collection(body: dict = Body(...)):
