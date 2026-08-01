@@ -646,9 +646,28 @@ class ImageLibrary:
         if not rows:
             return out
 
+        # CHUNKED, so the pass makes DURABLE PROGRESS. A first version fetched all 11,197 pages
+        # and then wrote once: nothing landed for the best part of an hour, a kill lost the whole
+        # run, and a progress monitor watching the database saw a flat line and could not tell a
+        # working pass from a dead one. Same checkpoint rule as the crawl cursor — write as you
+        # go, at a boundary you can resume from.
+        for i in range(0, len(rows), self._PDIA_DETAIL_CHUNK):
+            self._enrich_pdia_chunk(rows[i:i + self._PDIA_DETAIL_CHUNK], out,
+                                    workers=workers, progress=progress)
+        return out
+
+    # ~60s of fetching per chunk at 4 workers — often enough that a kill costs a minute, rare
+    # enough that the write and re-embed overhead stays noise.
+    _PDIA_DETAIL_CHUNK = 200
+
+    def _enrich_pdia_chunk(self, rows, out: dict, *, workers: int, progress=None) -> None:
+        """One chunk: fetch, patch, re-embed, commit. See `enrich_pdia_details`."""
+        from nolan.imagelib.harvest import (pdia_details, pdia_is_free_worldwide,
+                                            pdia_license)
+
         by_uuid = {(a.source_ref or "").split(":", 1)[-1]: a for a in rows}
-        got = pdia_details(list(by_uuid), workers=workers, progress=progress)
-        out["unparsed"] = len(by_uuid) - len(got)
+        got = pdia_details(list(by_uuid), workers=workers)
+        out["unparsed"] += len(by_uuid) - len(got)
 
         patches: Dict[int, dict] = {}
         for uuid, d in got.items():
@@ -691,7 +710,7 @@ class ImageLibrary:
                     out["not_free_worldwide"] += 1
             if patch:
                 patches[a.id] = patch
-        out["enriched"] = self.catalog.update_many(patches)
+        out["enriched"] += self.catalog.update_many(patches)
         # RE-EMBED, don't "reindex". The identity text changed for every enriched row, and
         # `reindex_identity` only fills rows MISSING from the vector store â€” it would examine
         # these, find them present, and do nothing, leaving the themes filterable but not
@@ -699,8 +718,9 @@ class ImageLibrary:
         if patches:
             for a in self.catalog.get_many(list(patches)).values():
                 self._buffer_identity(a)
-            out["reembedded"] = self.flush_index()
-        return out
+            out["reembedded"] = out.get("reembedded", 0) + self.flush_index()
+        if progress:
+            progress(out)
 
     def backfill_movements(self, *, collection_id: Optional[int] = None) -> dict:
         """Copy `artists.movement` down onto every row that artist made.
