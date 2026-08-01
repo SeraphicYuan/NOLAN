@@ -28,12 +28,12 @@
             },
             "ground": {
               "kind": "video",
-              "src": "assets/math/01-machine.s1.d14f2f556770.mp4"
+              "src": "assets/math/01-machine.s1.d386107f18ee.mp4"
             },
             "_math": {
               "engine": "math-animation",
               "template": "equation_reveal",
-              "project_sha256": "d14f2f556770",
+              "project_sha256": "d386107f18ee",
               "beat_id": "01-machine.s1",
               "formulas": [
                 "A=\\begin{bmatrix} 2 & 1 \\\\ 1 & 2 \\end{bmatrix}"
@@ -45,12 +45,12 @@
             }
           },
           "start": 0.0,
-          "dur": 6.54
+          "dur": 6.44
         },
         {
           "id": "s2",
           "type": "statement",
-          "anchor": "not a table",
+          "anchor": "A matrix is not",
           "data": {
             "register": "paper",
             "kicker": "THE REFRAME",
@@ -60,15 +60,15 @@
               "and stretches it."
             ],
             "operative": "stretches it",
-            "cue": 4.42,
+            "cue": 4.52,
             "_line_cues": [
-              null,
+              6.44,
               8.6,
               10.36
             ]
           },
-          "start": 6.54,
-          "dur": 5.42
+          "start": 6.44,
+          "dur": 5.52
         }
       ]
     }

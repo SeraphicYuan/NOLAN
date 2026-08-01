@@ -733,16 +733,17 @@
 .soc-splay{margin-left:1cqw;color:#1db954;font-size:2.2cqw;line-height:1;flex:0 0 auto;}
 </style>
   <div id="root" data-composition-id="03-formula" data-width="1920" data-height="1080">
-        <section class="clip" data-start="0.0" data-duration="9.82" data-archetype="full-bleed-overlay" data-track-index="2" style="position:absolute;inset:0;pointer-events:none;">
+        <section class="clip" data-start="0.0" data-duration="10.82" data-archetype="full-bleed-overlay" data-track-index="2" style="position:absolute;inset:0;pointer-events:none;">
     <div id="s1-k" class="kick">THE FORMULA, DEMYSTIFIED</div>
     </section>
-    <div class="clip paper-gnd" data-start="9.82" data-duration="3.5" data-track-index="1" style="background:var(--shell);"></div>
-    <section class="scene clip paper blk-pull_quote sv-centered" data-start="9.82" data-duration="3.5" data-archetype="editorial-column" data-track-index="2">
-    <div class="pq-wrap">
-    <div id="s2-qm" class="pq-mark">“</div>
-    <div id="s2-q" class="pq-body">It is just the stretch factor.</div>
-    <div id="s2-c" class="pq-cite">the whole idea</div>
-    </div></section>
+    <div class="clip paper-gnd" data-start="10.82" data-duration="2.5" data-track-index="1" style="background:var(--shell);"></div>
+    <section class="scene clip paper blk-statement sv-editorial-left" data-start="10.82" data-duration="2.5" data-archetype="editorial-column" data-track-index="2">
+    <div id="s2-k" class="kick"></div>
+    <div class="stmt paper-t" data-fit data-fit-w="80cqw" data-fit-origin="left bottom">
+    <span class="ln" id="s2-ln0">It is just</span>
+    <span class="ln" id="s2-ln1">the <span class="hlwrap"><span id="s2-op1">stretch factor</span><span class="hlblock" id="s2-hl1"></span></span>.</span>
+    </div>
+    </section>
     
   </div>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
@@ -751,9 +752,11 @@
     window.__timelines = window.__timelines || {};
     var tl = gsap.timeline({ paused: true });
         tl.fromTo("#s1-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5,ease:"power2.out"},0.35);
-    tl.fromTo("#s2-qm",{opacity:0,scale:0.72,y:8},{opacity:1,scale:1,y:0,duration:0.6,ease:"power3.out"},10.66);
-    tl.fromTo("#s2-q",{opacity:0,y:16},{opacity:1,y:0,duration:0.7,ease:"power3.out"},10.86);
-    tl.fromTo("#s2-c",{opacity:0,y:8},{opacity:1,y:0,duration:0.5},11.26);
+    tl.fromTo("#s2-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},11.02);
+    tl.fromTo("#s2-ln0",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"back.out(1.2)"},10.94);
+    tl.fromTo("#s2-hl1",{scaleX:0},{scaleX:1,duration:0.4,ease:"power2.out"},12.32);
+    tl.set("#s2-op1",{color:"var(--accent-ink)"},12.370000000000001);
+    tl.fromTo("#s2-ln1",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"back.out(1.2)"},12.06);
     tl.to({}, { duration: 13.32 }, 0);
     window.__timelines["03-formula"] = tl;
   </script>

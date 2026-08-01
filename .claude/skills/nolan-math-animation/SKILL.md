@@ -142,6 +142,14 @@ Three things the pipeline cannot check for you, all learned from a real render:
   beat on a `scene_program` (which holds its final state) or overlap the next scene's opening
   anchor so its first line lands before the fade completes.
 
+- **A tail beat's block must fit the narration it has.** Every block declares a readable minimum
+  (`style_contract.metrics.MIN_READABLE`), and `sync._relieve_short_windows` enforces it by
+  borrowing time from the neighbour — correctly, since an unreadable flash is worse. But the
+  borrowed head is BLANK, because the incoming scene's own words are not spoken until later. A
+  payoff line after a math beat is exactly where this bites: `pull_quote` needs 3.5s, and a 2.46s
+  closing line produced the largest hole in the acceptance render (0.75s). `statement` needs 2.5s
+  and opened on its own first line. Check the window against the minimum before choosing the block;
+  below ~2.5s, make the line an `annotation` on the running shot instead of its own cut.
 - **Keep-out is your job INSIDE the clip.** `layout_lint` reads the composed frame's HTML geometry
   and a video is opaque to it. The composition grid's caption band starts at 83% of frame height —
   y = -2.64 in Manim's 8.0-unit frame — and a label parked below that collides with the caption

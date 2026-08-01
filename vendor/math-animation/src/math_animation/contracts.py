@@ -1099,6 +1099,17 @@ class BlockBase(StrictModel):
     start_at: TimelineAnchor | None = None
     run_time: float = Field(default=1.0, gt=0)
     hold_seconds: float = Field(default=0.0, ge=0)
+    clear_at_end: bool = True
+    """Fade the block's objects out when it finishes.
+
+    True is right for a STANDALONE video, where consecutive beats share one canvas and a beat that
+    did not clean up would bleed into the next. It is wrong wherever the CUT is the transition: the
+    clip ends on an empty frame, and if the following scene waits on a word-anchored reveal the
+    viewer sees a hole. Measured in a NOLAN essay: ink fell to 0.000% for ~0.9s at one cut, and no
+    gate noticed — a freeze guard looks for a STUCK frame, not an empty one.
+
+    Set False to hold the final state through the block's last frame instead.
+    """
 
     _block_id = field_validator("id")(_validate_id)
 

@@ -295,6 +295,55 @@ def test_the_compiler_pads_the_scene_to_its_exact_window():
 # --- classification: a math clip counts as media, and is never healed -------------------------
 
 
+def test_a_math_block_holds_its_last_frame_instead_of_clearing():
+    """The engine's blocks fade themselves out when they end — right for a standalone video where
+    beats share a canvas, wrong here, where the CUT is the transition. A self-clearing clip ends on
+    an empty frame, and a following scene waiting on a word-anchored reveal leaves a visible hole:
+    measured at 0.000% ink for ~0.9s in a real render, past every gate (a freeze guard looks for a
+    STUCK frame, not an empty one)."""
+    from math_animation.compiler import ManimCompiler
+    from math_animation.style import normalize_style
+    from nolan.mathanim.adapter import project_from_scene
+
+    data = {"template": "equation_reveal", "objective": "hold",
+            "formulas": [{"latex": "E=mc^2"}], "params": {"formula": 0}}
+    project, _ = project_from_scene(
+        _scene(data, dur=6.0), frame_id="f", theme=None,
+        canvas={"width": 960, "height": 540, "fps": 24},
+    )
+    assert project.beats[0].blocks[0].clear_at_end is False
+    import tempfile
+
+    result = ManimCompiler().compile(
+        project, normalize_style(project.style), Path(tempfile.mkdtemp())
+    )
+    source = Path(result.source_files[0]).read_text(encoding="utf-8")
+    assert "FadeOut" not in source, "the clip clears itself — the cut will go blank"
+    assert source.rstrip().endswith(")"), "the beat should end on a wait, holding the final state"
+
+
+def test_clear_at_end_defaults_to_the_standalone_behaviour():
+    """The other direction: a project authored before the field existed must be unchanged. The
+    frozen-schema gate is what forced this to be checked rather than assumed."""
+    from math_animation.blocks import compile_block
+    from math_animation.contracts import EquationRevealBlock, StyleTemplateRef
+    from math_animation.style import normalize_style
+
+    tokens = normalize_style(StyleTemplateRef())
+    default = EquationRevealBlock(id="b", latex_parts=["x=1"])
+    assert default.clear_at_end is True
+    lines = compile_block(default, tokens).lines
+    assert any("FadeOut" in ln for ln in lines), "standalone behaviour must be untouched"
+
+    held = EquationRevealBlock(id="b", latex_parts=["x=1"], clear_at_end=False)
+    compiled = compile_block(held, tokens)
+    assert not any("FadeOut" in ln for ln in compiled.lines)
+    # and the DURATION must follow the emitted lines, or every later beat silently shifts
+    assert compiled.duration_seconds == pytest.approx(
+        compile_block(default, tokens).duration_seconds - 0.35
+    )
+
+
 def test_a_grounded_math_scene_counts_as_video():
     """Scoring a full-frame animation `none` is exactly the contradiction `block_registry` exists
     to end — the metric would demand grounding for a scene that is already all media."""

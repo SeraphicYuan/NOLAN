@@ -4,6 +4,7 @@ Scene windows are placeholders — `hf-finish`'s sync-durations + word-sync over
 start/dur from the real VO. What matters here is the ORDER and the `anchor` phrases.
 """
 import json
+import re
 from pathlib import Path
 
 COMP = Path(r"D:/ClaudeProjects/NOLAN/render-service/_lab_hyperframes/videos/_det-stretch")
@@ -21,11 +22,20 @@ def square_program(matrix, det, *, collapse=False):
     `apply_matrix` carries `expected_determinant`, so the engine REFUSES to compile if the
     matrix it is told to draw does not have the determinant the script claims. The narration
     and the animation cannot drift apart silently.
+
+    The AXES are the fix for a before/after that reads badly on its own: this matrix has
+    eigenvalue 3, so the shape grows 3x along one diagonal and the source square looks lost by
+    comparison (measured 15.5% of frame width against the result's 41.6%). A fixed grid gives the
+    small state something to be small AGAINST — and the stretch becomes visible as the square
+    crossing gridlines, which is the actual idea. Scaled so 1 data unit = 2 scene units: the
+    square really is a unit square on this grid, and the transformed shape still lands inside it.
     """
     label = "det = 0" if collapse else "det = 3"
     return {
         "scene_kind": "2d",
         "objects": [
+            {"id": "grid", "type": "axes", "x_range": [-1.75, 1.75, 1.0],
+             "y_range": [-1.75, 1.75, 1.0], "x_length": 7.0, "y_length": 7.0, "role": "muted"},
             {"id": "sq", "type": "polygon", "vertices": SQUARE, "role": "primary",
              "fill_role": "primary", "fill_opacity": 0.16, "stroke_width": 5.0},
             # y=-2.2, not -3.1. The composition grid's caption keep-out starts at 83% of frame
@@ -37,14 +47,18 @@ def square_program(matrix, det, *, collapse=False):
         ],
         "cues": [
             {"id": "draw", "mode": "parallel", "actions": [
-                {"type": "create", "target": "sq", "run_time": 0.9},
-                {"type": "create", "target": "cap", "run_time": 0.9},
+                {"type": "create", "target": "grid", "run_time": 0.7},
+                {"type": "create", "target": "sq", "run_time": 0.7},
             ]},
             {"id": "deform", "actions": [
                 {"type": "apply_matrix", "target": "sq", "matrix": matrix,
                  "expected_determinant": det, "run_time": 1.6},
             ]},
-            {"id": "settle", "actions": [
+            # the label answers the deform — it used to be drawn with the square, announcing
+            # "det = 3" while the shape was still the unmoved unit square, which both gives away
+            # the reveal and labels a state the number does not describe yet
+            {"id": "settle", "mode": "parallel", "actions": [
+                {"type": "create", "target": "cap", "run_time": 0.8},
                 {"type": "set_style", "target": "sq",
                  "role": "negative" if collapse else "changing", "run_time": 0.8},
             ]},
@@ -87,7 +101,12 @@ frames = [
         }},
         {"id": "s2", "type": "stat", "anchor": "that three is", "data": {
             "kicker": "THE DETERMINANT",
-            "items": [{"value": 3, "label": "times bigger", "at": "that three is"}],
+            # `from`/`to` is a COUNT-UP — the block's own idiom, and the honest one here: the
+            # area travelled from 1 to 3, which is the whole beat. A bare `value: 3` states the
+            # destination and animates nothing, which is why it read as a small numeral adrift in
+            # a 1920x1080 frame.
+            "items": [{"from": 1, "to": 3, "suffix": "x", "label": "the area",
+                       "at": "that three is", "underline": True}],
         }},
     ]),
     # ── 03 · the formula ───────────────────────────────────────────────────────────────────
@@ -104,9 +123,17 @@ frames = [
             "params": {"steps": [0, 1, 2],
                        "at": ["two times two", "leaves three"]},
         }},
-        {"id": "s2", "type": "pull_quote", "anchor": "it is just", "data": {
-            "quote": "It is just the stretch factor.",
-            "cite": "the whole idea",
+        # `statement`, not `pull_quote`, and the reason is measurable rather than aesthetic: this
+        # beat has 2.46s of narration and `MIN_READABLE['pull_quote']` is 3.5, so `sync
+        # ._relieve_short_windows` correctly borrows 1.04s from the scene before it — and the
+        # borrowed head is BLANK, because the quote's own words are not spoken until later. It was
+        # the largest hole in the piece (0.75s). `statement`'s minimum is 2.5, which the beat
+        # clears, so it opens on its own first line. Pick a tail block whose readable minimum fits
+        # the narration you actually have.
+        {"id": "s2", "type": "statement", "anchor": "it is just", "data": {
+            "register": "paper",
+            "lines": ["It is just", "the stretch factor."],
+            "operative": "stretch factor",
         }},
     ]),
     # ── 04 · the collapse (BESPOKE, singular) ──────────────────────────────────────────────
@@ -147,12 +174,41 @@ def spoken_at(words, phrase):
     return _phrase_time(phrase, stream)
 
 
+def own_text_anchor(words, scene, span=4):
+    """Anchor a text scene to where ITS OWN DISPLAYED TEXT is spoken.
+
+    This has to set the ANCHOR STRING, not a computed start: `place_scenes` re-derives every
+    window from `scene.anchor` at finish time, so a start computed here is simply overwritten —
+    authoring a value a later stage recomputes is the phantom-field trap in reverse.
+
+    Anchoring to a phrase buried elsewhere in the sentence opens the scene before it can show
+    anything. Both remaining holes in this piece were that: `_retime_prose`/`_retime_lines` reveal
+    a field when the narration REACHES it, so a scene that opens 1-2s before its own words are
+    spoken displays nothing for those seconds. Opening the scene ON its first displayed line makes
+    the cut and the reveal the same moment, which is also just how a cut should feel.
+
+    Falls back to the authored anchor when the text is not spoken verbatim.
+    """
+    data = scene.get("data") or {}
+    first = None
+    if isinstance(data.get("lines"), list) and data["lines"]:
+        first = data["lines"][0]
+    elif isinstance(data.get("quote"), str):
+        first = data["quote"]
+    if not first:
+        return scene["anchor"]
+    tokens = [w for w in re.findall(r"[A-Za-z0-9']+", first)][:span]
+    candidate = " ".join(tokens)
+    return candidate if spoken_at(words, candidate) is not None else scene["anchor"]
+
+
 for index, (fid, scenes) in enumerate(frames, start=1):
     voice = by_frame[index]
     frame_dur = float(voice["duration_s"])
     words = voice["words"]
     starts = [0.0]
     for sc in scenes[1:]:
+        sc["anchor"] = own_text_anchor(words, sc)              # the lever placement actually reads
         at = spoken_at(words, sc["anchor"])
         if at is None:
             raise SystemExit(f"{fid}/{sc['id']}: anchor {sc['anchor']!r} is never spoken in this frame")

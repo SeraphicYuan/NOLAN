@@ -264,7 +264,12 @@ def _blocks_for(
     at, notes_at = _cue_times([str(params.get("at") or "")], 1, duration, words, start, where)
     notes.extend(notes_at)
     lead = at[0]
-    common = {"run_time": run_time, "hold_seconds": 0.0}
+    # HOLD the final state. The engine's default is to fade a block's objects out when it ends,
+    # which is right for a standalone video where consecutive beats share one canvas. In an essay
+    # the CUT is the transition, so a self-clearing clip ends on an empty frame — and if the next
+    # scene is waiting on a word-anchored reveal, that hole is visible. Measured before this
+    # changed: ink fell to 0.000% for ~0.9s at one cut, past every gate.
+    common = {"run_time": run_time, "hold_seconds": 0.0, "clear_at_end": False}
     if lead > 0.01:
         from math_animation.contracts import SecondsAnchor
 

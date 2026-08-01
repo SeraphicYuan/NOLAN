@@ -39,6 +39,23 @@
                 "scene_kind": "2d",
                 "objects": [
                   {
+                    "id": "grid",
+                    "type": "axes",
+                    "x_range": [
+                      -1.75,
+                      1.75,
+                      1.0
+                    ],
+                    "y_range": [
+                      -1.75,
+                      1.75,
+                      1.0
+                    ],
+                    "x_length": 7.0,
+                    "y_length": 7.0,
+                    "role": "muted"
+                  },
+                  {
                     "id": "sq",
                     "type": "polygon",
                     "vertices": [
@@ -88,13 +105,13 @@
                     "actions": [
                       {
                         "type": "create",
-                        "target": "sq",
-                        "run_time": 0.9
+                        "target": "grid",
+                        "run_time": 0.7
                       },
                       {
                         "type": "create",
-                        "target": "cap",
-                        "run_time": 0.9
+                        "target": "sq",
+                        "run_time": 0.7
                       }
                     ]
                   },
@@ -121,7 +138,13 @@
                   },
                   {
                     "id": "settle",
+                    "mode": "parallel",
                     "actions": [
+                      {
+                        "type": "create",
+                        "target": "cap",
+                        "run_time": 0.8
+                      },
                       {
                         "type": "set_style",
                         "target": "sq",
@@ -135,16 +158,16 @@
             },
             "ground": {
               "kind": "video",
-              "src": "assets/math/02-square.s1.6c4a74e3b881.mp4"
+              "src": "assets/math/02-square.s1.6a0416410286.mp4"
             },
             "_math": {
               "engine": "math-animation",
               "template": "scene_program",
-              "project_sha256": "6c4a74e3b881",
+              "project_sha256": "6a0416410286",
               "beat_id": "02-square.s1",
               "formulas": [],
               "claims": {},
-              "cached": false
+              "cached": true
             }
           },
           "start": 0.0,
@@ -158,9 +181,12 @@
             "kicker": "THE DETERMINANT",
             "items": [
               {
-                "value": 3,
-                "label": "times bigger",
+                "from": 1,
+                "to": 3,
+                "suffix": "x",
+                "label": "the area",
                 "at": "that three is",
+                "underline": true,
                 "_cue": 10.66
               }
             ]

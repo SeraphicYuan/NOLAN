@@ -70,6 +70,22 @@ def _fit_to_safe_width(name: str, *, margin: float = 0.8) -> list[str]:
     ]
 
 
+# The trailing fade is OPTIONAL — see `BlockBase.clear_at_end`. Both the emitted lines and the
+# duration accounting go through here, so a block can never report a length that does not match
+# what it actually plays (that mismatch would silently shift every later beat).
+CLEAR_SECONDS = 0.35
+
+
+def _clear_seconds(block: VisualBlock) -> float:
+    return CLEAR_SECONDS if getattr(block, "clear_at_end", True) else 0.0
+
+
+def _clear(block: VisualBlock, names: list[str]) -> list[str]:
+    if not getattr(block, "clear_at_end", True):
+        return []
+    return [f"self.play(FadeOut(VGroup({', '.join(names)})), run_time={CLEAR_SECONDS})"]
+
+
 @register("title_card")
 def _title_card(block: VisualBlock, style: StyleTokens) -> CompiledBlock:
     assert isinstance(block, TitleCardBlock)
@@ -95,8 +111,8 @@ def _title_card(block: VisualBlock, style: StyleTokens) -> CompiledBlock:
     lines.append(f"self.play({animations}, run_time={block.run_time!r})")
     if block.hold_seconds:
         lines.append(f"self.wait({block.hold_seconds!r})")
-    lines.append(f"self.play(FadeOut(VGroup({', '.join(names)})), run_time=0.35)")
-    return CompiledBlock(lines, block.run_time + block.hold_seconds + 0.35)
+    lines.extend(_clear(block, names))
+    return CompiledBlock(lines, block.run_time + block.hold_seconds + _clear_seconds(block))
 
 
 @register("equation_reveal")
@@ -131,8 +147,8 @@ def _equation_reveal(block: VisualBlock, style: StyleTokens) -> CompiledBlock:
     )
     if block.hold_seconds:
         lines.append(f"self.wait({block.hold_seconds!r})")
-    lines.append(f"self.play(FadeOut(VGroup({', '.join(names)})), run_time=0.35)")
-    return CompiledBlock(lines, block.run_time + block.hold_seconds + 0.35)
+    lines.extend(_clear(block, names))
+    return CompiledBlock(lines, block.run_time + block.hold_seconds + _clear_seconds(block))
 
 
 @register("equation_transform")
@@ -168,10 +184,10 @@ def _equation_transform(block: VisualBlock, style: StyleTokens) -> CompiledBlock
         names.append(f"{stem}_caption")
     if block.hold_seconds:
         lines.append(f"self.wait({block.hold_seconds!r})")
-    lines.append(f"self.play(FadeOut(VGroup({', '.join(names)})), run_time=0.35)")
+    lines.extend(_clear(block, names))
     extra = 0.25 if block.caption else 0.0
     return CompiledBlock(
-        lines, block.run_time + block.hold_seconds + 0.35 + extra
+        lines, block.run_time + block.hold_seconds + _clear_seconds(block) + extra
     )
 
 
@@ -204,8 +220,8 @@ def _function_plot(block: VisualBlock, style: StyleTokens) -> CompiledBlock:
     )
     if block.hold_seconds:
         lines.append(f"self.wait({block.hold_seconds!r})")
-    lines.append(f"self.play(FadeOut(VGroup({', '.join(names)})), run_time=0.35)")
-    return CompiledBlock(lines, block.run_time + block.hold_seconds + 0.35)
+    lines.extend(_clear(block, names))
+    return CompiledBlock(lines, block.run_time + block.hold_seconds + _clear_seconds(block))
 
 
 @register("secant_to_tangent")
@@ -265,10 +281,10 @@ def _secant_to_tangent(block: VisualBlock, style: StyleTokens) -> CompiledBlock:
         names.append(f"{stem}_caption")
     if block.hold_seconds:
         lines.append(f"self.wait({block.hold_seconds!r})")
-    lines.append(f"self.play(FadeOut(VGroup({', '.join(names)})), run_time=0.35)")
+    lines.extend(_clear(block, names))
     extra = 0.25 if block.caption else 0.0
     return CompiledBlock(
-        lines, block.run_time + block.hold_seconds + 0.35 + extra
+        lines, block.run_time + block.hold_seconds + _clear_seconds(block) + extra
     )
 
 
@@ -294,8 +310,5 @@ def _number_line(block: VisualBlock, style: StyleTokens) -> CompiledBlock:
     ]
     if block.hold_seconds:
         lines.append(f"self.wait({block.hold_seconds!r})")
-    lines.append(
-        f"self.play(FadeOut(VGroup({stem}_line, {stem}_dots, {stem}_labels)), "
-        "run_time=0.35)"
-    )
-    return CompiledBlock(lines, block.run_time + block.hold_seconds + 0.35)
+    lines.extend(_clear(block, [f"{stem}_line", f"{stem}_dots", f"{stem}_labels"]))
+    return CompiledBlock(lines, block.run_time + block.hold_seconds + _clear_seconds(block))

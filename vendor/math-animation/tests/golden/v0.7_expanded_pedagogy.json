@@ -1,7 +1,7 @@
 {
   "baseline": "v0.7",
-  "expanded_model_call_schema_sha256": "b1fc372fe631686f40ba95b22f56e3918138da8ceb964e2dd7c040413881a751",
-  "expanded_planning_artifact_schema_sha256": "023769df89bc683df1e7a8645a4f85d4405852f612dd6fbd4d1a469c86a78bb5",
   "expanded_visual_decision_schema_sha256": "2391a73a628f5933633ab1485b32303ac99096f354415e3c252e8190a60e9c2e",
+  "expanded_planning_artifact_schema_sha256": "023769df89bc683df1e7a8645a4f85d4405852f612dd6fbd4d1a469c86a78bb5",
+  "expanded_model_call_schema_sha256": "b1fc372fe631686f40ba95b22f56e3918138da8ceb964e2dd7c040413881a751",
   "pedagogy_report_schema_sha256": "f659a3166c9e5737105445702f9574163ab535ed6160a2803550ed02e58351fb"
 }

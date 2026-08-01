@@ -41,12 +41,12 @@
             },
             "ground": {
               "kind": "video",
-              "src": "assets/math/03-formula.s1.68932e6fa677.mp4"
+              "src": "assets/math/03-formula.s1.cae58074f2f9.mp4"
             },
             "_math": {
               "engine": "math-animation",
               "template": "equation_sequence",
-              "project_sha256": "68932e6fa677",
+              "project_sha256": "cae58074f2f9",
               "beat_id": "03-formula.s1",
               "formulas": [
                 "\\det A = ad - bc",
@@ -58,25 +58,31 @@
                 "c01": "assumed",
                 "c02": "assumed"
               },
-              "cached": true
+              "cached": false
             }
           },
           "start": 0.0,
-          "dur": 9.82
+          "dur": 10.82
         },
         {
           "id": "s2",
-          "type": "pull_quote",
-          "anchor": "it is just",
+          "type": "statement",
+          "anchor": "It is just",
           "data": {
-            "quote": "It is just the stretch factor.",
-            "cite": "the whole idea",
-            "_field_cues": {
-              "quote": 10.86
-            }
+            "register": "paper",
+            "lines": [
+              "It is just",
+              "the stretch factor."
+            ],
+            "operative": "stretch factor",
+            "cue": 1.5,
+            "_line_cues": [
+              10.86,
+              12.06
+            ]
           },
-          "start": 9.82,
-          "dur": 3.5
+          "start": 10.82,
+          "dur": 2.5
         }
       ]
     }

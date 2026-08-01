@@ -742,7 +742,7 @@
     <div class="clip paper-gnd" data-start="10.14" data-duration="2.5" data-track-index="1" style="background:var(--shell);"></div>
     <section class="scene clip paper blk-stat sv-hero-single" data-start="10.14" data-duration="2.5" data-archetype="centered-hero" data-track-index="2">
     <div id="s2-k" class="kick">THE DETERMINANT</div>
-    <div class="slrow v-hero-single" data-fit data-fit-w="89cqw" data-fit-origin="center center"><div class="slitem"><div class="slnumwrap"><span class="slnum" id="s2-n0"></span></div><div class="sllabel" id="s2-l0">times bigger</div></div></div>
+    <div class="slrow v-hero-single" data-fit data-fit-w="89cqw" data-fit-origin="center center"><div class="slitem"><div class="slnumwrap"><span class="slnum" id="s2-n0"></span><span class="slul" id="s2-u0"></span></div><div class="sllabel" id="s2-l0">the area</div></div></div>
     </section>
     
   </div>
@@ -756,9 +756,9 @@
     tl.fromTo("#s1-an0",{opacity:0,scale:0.86},{opacity:1,scale:1,duration:0.42,ease:"back.out(2)"},2.02);
     tl.fromTo("#s1-an1",{opacity:0,scale:0.86},{opacity:1,scale:1,duration:0.42,ease:"back.out(2)"},8.78);
     tl.fromTo("#s2-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},10.24);
-    document.getElementById("s2-n0").textContent="3";
-    tl.fromTo("#s2-n0",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.7,ease:"back.out(1.2)"},10.66);
+    (function(){var el=document.getElementById("s2-n0"),st={v:1.0},f=function(n){return ""+Math.round(n)+"x";};el.textContent=f(1.0);tl.set(el,{opacity:1},10.66);tl.fromTo(st,{v:1.0},{v:3.0,duration:1.43,ease:"back.out(1.2)",onUpdate:function(){el.textContent=f(st.v);}},10.66);})();
     tl.fromTo("#s2-l0",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},10.81);
+    tl.fromTo("#s2-u0",{scaleX:0},{scaleX:1,duration:0.45,ease:"power2.out"},11.86);
     tl.to({}, { duration: 12.64 }, 0);
     window.__timelines["02-square"] = tl;
   </script>

@@ -1,6 +1,6 @@
 {
   "baseline": "v0.3",
-  "project_schema_sha256": "c3e6894345f07cfbbc11051d45e77ba76dd71c6f18057ff237e6a31c7b691d03",
+  "project_schema_sha256": "0fdc787ca1827af893799a985d8cead0ba86b8791ba45ca273ce8773c637cfa7",
   "scene_program_schema_sha256": "4ff819bd8c84e5c35a040b0846eaa8660c36748d10f06897c87c74f8356d31e6",
   "available_blocks": [
     "equation_reveal",
