@@ -143,7 +143,27 @@ def needs_vision_check(url: Optional[str]) -> bool:
 FLOORS = {
     "archival": (700, 600_000),
     "stock": (480, 300_000),
+    # NO RESOLUTION FLOOR — for sources where CURATION is the filter and a small scan is a
+    # deliberate inclusion rather than a failure.
+    #
+    # Measured on the Public Domain Image Archive, a hand-curated 11,197-image collection: the
+    # archival floor refused 37% of it, and the refusals were not junk. It rejected a 1024x661
+    # print outright — 1024 wide, fine full-frame at 1080p and fine at any size as an inset —
+    # because the floor tests the SHORT side. Worse, it cut curated sets in half: "Design No. 9",
+    # "No. 19" and "No. 60" are plates from one book at 455x761, and admitting some while
+    # refusing others fragments exactly the thing a collection view exists to show.
+    #
+    # This waives ONLY the floor. `curated` keeps archival-strength RIGHTS (see check_candidate),
+    # because a permissive size rule must never become a permissive licence rule — and the real
+    # size defence stays where it belongs, at promotion, where `check_file` measures actual bytes
+    # for something a human has chosen to hold.
+    "curated": (0, 0),
 }
+# Tiers that demand a KNOWN-OPEN licence rather than merely flagging an unknown one. Named as a
+# set because "is this tier strict about rights?" and "what is this tier's pixel floor?" are two
+# questions, and answering both from one string is how `curated` would have silently relaxed
+# rights while only meaning to relax pixels.
+STRICT_RIGHTS_TIERS = frozenset({"archival", "curated"})
 
 # HIGH-ASPECT WAIVER. The short-side rule assumes roughly rectangular content, and a museum
 # corpus is full of things that are legitimately long and thin — a halberd, a partisan, a basting
@@ -358,11 +378,11 @@ def check_candidate(result, tier: str = "stock") -> GateVerdict:
             v.reasons.append(f"stock-preview domain: {host}")
             return v
 
-    if tier == "archival":
+    if tier in STRICT_RIGHTS_TIERS:
         if not _license_known_open(result):
             v.ok = False
             v.reasons.append(
-                f"license unknown for archival tier (source="
+                f"license unknown for {tier} tier (source="
                 f"{getattr(result, 'source', None)!r}) — open-access required")
             return v
     else:

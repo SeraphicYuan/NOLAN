@@ -1724,6 +1724,145 @@ def test_phase_b_resolves_the_image_url_it_deferred(lib, monkeypatch):
     assert lib.catalog.get_by_ref("met:12").thumb_url is None
 
 
+# --- 14b. PDIA: the first curated-collection source ------------------------------------------
+
+def _pdia_page(page, total_pages=2, sort=None, images=None):
+    return {"images": images if images is not None else [
+        {"uuid": f"u{page}-{i}", "title": f"Plate {page}-{i}",
+         "artists": [{"label": "Virginia Frances Sterrett"}],
+         "displayDate": "1920", "sortYear": 1920,
+         "src": f"/collections/old-french-fairytales/plate-{page}-{i}.jpg",
+         "width": 900, "height": 600, "publicationDate": "2019-01-31T00:00:00.000Z",
+         "encompassingWork": "Old French Fairy Tales", "openRanking": 5}
+        for i in range(3)],
+        "sort": sort if sort is not None else {"sortType": "pub-date", "sortOrder": "asc"},
+        "pagination": {"lastPage": page, "totalPages": total_pages},
+        "meta": {"totalImages": total_pages * 3}}
+
+
+def _fake_pdia(monkeypatch, pages):
+    from nolan.imagelib import harvest as H
+
+    class _Resp:
+        def __init__(self, d): self._d = d
+        def json(self): return self._d
+
+    class _Client:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, url, **kw):
+            n = int(url.rsplit("/", 1)[-1].split(".")[0])
+            return _Resp(pages(n))
+
+    monkeypatch.setattr(__import__("httpx"), "Client", lambda *a, **kw: _Client())
+    monkeypatch.setattr(H.time, "sleep", lambda *_: None)
+
+
+def test_pdia_refuses_to_walk_when_the_api_ignores_the_requested_sort(monkeypatch):
+    """The API silently substitutes its default for any sort key it does not recognise — probed:
+    `year/asc`, `title/asc` and an invented `totally-bogus-sort/asc` all returned 200 in
+    pub-date order, and `pub-date/sideways` quietly returned DESC.
+
+    Desc is the one direction that breaks a cursor: newest-first shifts every offset whenever the
+    archive publishes, so a resume silently skips a row, forever, with nothing to see. The
+    response echoes the sort it applied, so this verifies rather than trusts."""
+    from nolan.imagelib import harvest as H
+
+    _fake_pdia(monkeypatch, lambda n: _pdia_page(
+        n, sort={"sortType": "pub-date", "sortOrder": "desc"}))     # the silent flip
+    with pytest.raises(RuntimeError, match="refused the requested sort"):
+        list(H.pdia_items(limit=10, report=H.HarvestReport(collection="p")))
+
+    _fake_pdia(monkeypatch, lambda n: _pdia_page(
+        n, sort={"sortType": "date", "sortOrder": "asc"}))          # a real but wrong sort type
+    with pytest.raises(RuntimeError, match="refused the requested sort"):
+        list(H.pdia_items(limit=10, report=H.HarvestReport(collection="p")))
+
+
+def test_pdia_reads_the_collection_slug_out_of_the_image_path(monkeypatch):
+    """The single best property of this source's shape: membership costs no extra request."""
+    from nolan.imagelib import harvest as H
+
+    _fake_pdia(monkeypatch, _pdia_page)
+    items = list(H.pdia_items(limit=3, report=H.HarvestReport(collection="p")))
+    assert [i.collection.slug for i in items] == ["pdia-old-french-fairytales"] * 3
+    assert items[0].collection.rights.startswith("CC0")
+    assert items[0].width == 900 and items[0].height == 600
+    assert items[0].source_ref == "pdia:u1-0"
+
+
+def test_an_uncollected_pdia_row_falls_back_rather_than_carrying_no_collection(monkeypatch):
+    """26% of the archive belongs to no curated set — measured across pages 1, 150 and 312. That
+    is not an edge case, so it gets a real row rather than a NULL."""
+    from nolan.imagelib import harvest as H
+
+    _fake_pdia(monkeypatch, lambda n: _pdia_page(n, images=[
+        {"uuid": "loose", "title": "Unfiled", "artists": [], "displayDate": "1900",
+         "src": "/images/loose.jpg", "width": 900, "height": 600,
+         "publicationDate": "2019-01-31T00:00:00.000Z", "openRanking": 1}]))
+    items = list(H.pdia_items(limit=1, report=H.HarvestReport(collection="p")))
+    assert items[0].collection is None, "no curated set -> the harvest's own collection"
+    assert H.pdia_collection().slug == "pdia-uncollected"
+
+
+def test_a_curated_collection_is_upserted_once_not_once_per_image(lib, monkeypatch):
+    """You asked for this explicitly: don't re-fetch the same collection repeatedly. A 300-image
+    set would otherwise be 300 identical upserts."""
+    from nolan.imagelib import harvest as H
+
+    _fake_pdia(monkeypatch, lambda n: _pdia_page(n, total_pages=2))
+    seen = []
+    real = lib.upsert_collection
+
+    def _spy(c):
+        seen.append(c.slug)
+        return real(c)
+
+    monkeypatch.setattr(lib, "upsert_collection", _spy)
+    rep = H.harvest("pdia", limit=6, library=lib, pixels=False)
+
+    assert rep.added == 6
+    # 6 images, ONE curated collection -> it is upserted once, not six times
+    assert seen.count("pdia-old-french-fairytales") == 1, seen
+    rows = lib.catalog.list(held=0, limit=99)
+    cid = {r.collection_id for r in rows}
+    assert len(cid) == 1
+    assert lib.catalog.get_collection_by_id(cid.pop()).slug == "pdia-old-french-fairytales"
+
+
+def test_the_curated_tier_waives_the_floor_but_never_the_rights(lib):
+    """Dropping the resolution floor for a hand-curated source must not become a licence
+    loophole. Measured: the archival floor refused 37% of PDIA, including a 1024x661 print
+    rejected on its SHORT side and half the plates of a single book."""
+    from nolan.asset_gate import STRICT_RIGHTS_TIERS, clears_floor
+
+    assert clears_floor(455, 761, "archival") is False
+    assert clears_floor(455, 761, "curated") is True, "the floor is waived"
+    assert "curated" in STRICT_RIGHTS_TIERS, "rights are NOT waived"
+
+    # ...and end to end: a small CC0 row is admitted, a small unlicensed one is still refused
+    a, _ = lib.add_discovery(source_ref="pdia:small", thumb_url="https://e/s.jpg", source="pdia",
+                             title="Design No. 19", license="CC0 (Public Domain Image Archive)",
+                             width=455, height=761, pixels=False, tier="curated")
+    assert a.id
+    with pytest.raises(ValueError, match="license unknown"):
+        lib.add_discovery(source_ref="pdia:nolicense", thumb_url="https://e/n.jpg",
+                          source="pdia", title="Unknown rights", license=None,
+                          width=455, height=761, pixels=False, tier="curated")
+
+
+def test_pdia_coverage_counts_every_collection_it_filed_into(lib, monkeypatch):
+    """Counting by the harvest's own collection reported "32 of 11,197 (0.3%)" for a run that
+    indexed 300, because a curated-collection source files most rows elsewhere. A coverage figure
+    that understates by 10x is as misleading as one that overstates."""
+    from nolan.imagelib import harvest as H
+
+    _fake_pdia(monkeypatch, lambda n: _pdia_page(n, total_pages=2))
+    rep = H.harvest("pdia", limit=6, library=lib, pixels=False)
+    assert rep.added == 6
+    assert any("coverage: 6 of" in n for n in rep.reasons), rep.reasons
+
+
 # --- 14. source quality, measured -----------------------------------------------------------
 
 def test_every_harvest_source_is_ranked_in_the_shared_tier():

@@ -71,6 +71,16 @@ class HarvestItem:
     department: Optional[str] = None
     culture: Optional[str] = None
     place: Optional[str] = None
+    # THE CURATED COLLECTION this row belongs to, when the source has one PER ITEM rather than
+    # per harvest. `harvest()` upserts it (cached by slug, so a 300-image collection costs one
+    # upsert, not 300) and files the row under it instead of under the harvest's own collection.
+    #
+    # This is what a `curated-collection` source needs and the museums do not: artic, cleveland
+    # and the Met each yield ONE collection for a whole crawl, so their rows inherit it. PDIA
+    # yields a different one every few rows — "Photographs of Japanese Sword Guards (1916)",
+    # "Operation Doorstep (1953)" — and 26% of its rows belong to none, which is why this is
+    # optional and the harvest's own collection remains the fallback.
+    collection: Optional[Collection] = None
 
 
 @dataclass
@@ -179,6 +189,13 @@ class SourceAdapter:
     # 'per-item'      — the record carries its own rights flag (artic, met)
     # 'per-collection'— rights must be asserted for a curated set (LoC)
     rights_model: str = "per-item"
+    # Which `asset_gate` tier this source's rows are admitted under. A DECLARED PROPERTY OF THE
+    # SOURCE rather than a special case in the harvest loop, because it is a judgement about that
+    # source's curation: the museums publish everything they hold and earn the archival floor,
+    # while a hand-curated archive has already done the filtering and a small scan there is a
+    # deliberate inclusion. Never relaxes rights — `curated` keeps archival-strength licence
+    # checking (see `asset_gate.STRICT_RIGHTS_TIERS`).
+    gate_tier: str = "archival"
     notes: str = ""
 
     def __post_init__(self):
@@ -976,6 +993,217 @@ def cleveland_items(limit: int = 200, *, dept: Optional[str] = None,
             time.sleep(0.15)                              # be a good citizen on a keyless API
 
 
+# ---------------------------------------------------------------- Public Domain Image Archive
+
+PDIA_API = "https://pdimagearchive.org/api/galleries"
+PDIA_SITE = "https://pdimagearchive.org"
+# THE ONLY APPEND-ONLY ORDER. Probed: the API accepts two real sort types (`pub-date` and `date`)
+# and SILENTLY FALLS BACK to `pub-date`/`desc` for anything else — `year/asc`, `title/asc` and an
+# invented `totally-bogus-sort/asc` all returned 200 with the default order, and `pub-date/sideways`
+# quietly returned DESC. So a typo here would not fail; it would return newest-first, and
+# newest-first shifts every offset by one whenever the archive publishes, which silently skips a
+# row on every resume. `date` is a real sort but is the ARTWORK's date, so a re-dated record moves
+# and it cannot carry a cursor either.
+_PDIA_SORT, _PDIA_ORDER = "pub-date", "asc"
+_PDIA_PAGE = 36                      # the API's fixed page size; `totalPages` is derived from it
+
+
+def pdia_collection(slug: Optional[str] = None, title: Optional[str] = None,
+                    description: Optional[str] = None, url: Optional[str] = None,
+                    **_ignored) -> Collection:
+    """A PDIA collection row. With no slug this is the harvest's own FALLBACK bucket.
+
+    PDIA is the first `curated-collection` source: it publishes themed sets ("Photographs of
+    Japanese Sword Guards (1916)", "Operation Doorstep (1953)") and hands the set's slug over
+    with every image, in the `src` path. **26% of its images belong to no set at all** — measured
+    across pages 1, 150 and 312 — so the unfiled bucket is not an edge case and gets a real row
+    rather than a NULL.
+
+    RIGHTS ARE UNIFORM ACROSS THE SITE (CC0, every image), which is what makes one FK enough:
+    filing a row under its curated collection cannot lose a rights assertion, because every PDIA
+    collection asserts the same one. A source with per-collection rights (the Library of Congress)
+    would still work — that is what this shape is for — but its collections would each carry their
+    own.
+    """
+    return Collection(
+        slug=f"pdia-{slug}" if slug else "pdia-uncollected",
+        source="pdia",
+        title=title or "Public Domain Image Archive — uncollected",
+        description=description,
+        url=url or (f"{PDIA_SITE}/collections/{slug}" if slug else PDIA_SITE),
+        # Site-wide CC0. Sticky, like every collection's rights: a later pass that knows nothing
+        # about them cannot overwrite it.
+        rights="CC0 (Public Domain Image Archive)",
+        copyright_free=True,
+    )
+
+
+def pdia_upstream_count(**_ignored) -> Optional[int]:
+    """`meta.totalImages` — the denominator, stated by the API rather than inferred from pages."""
+    import httpx
+    try:
+        with httpx.Client(headers={"User-Agent": _UA}, timeout=30.0) as c:
+            d = c.get(f"{PDIA_API}/all/{_PDIA_SORT}/{_PDIA_ORDER}/1.json").json()
+        return int((d.get("meta") or {}).get("totalImages") or 0) or None
+    except Exception:
+        return None
+
+
+def _pdia_item(im: Dict[str, Any], cols: Dict[str, Collection]) -> Optional[HarvestItem]:
+    """One API record. Returns None for a row with no usable image path."""
+    import re as _re
+
+    src = (im.get("src") or "").strip()
+    uuid = (im.get("uuid") or "").strip()
+    if not src or not uuid:
+        return None
+    # The curated collection's slug is IN THE IMAGE PATH (/collections/<slug>/<file>.jpg), so
+    # membership costs no extra request — the single best property of this source's shape.
+    m = _re.match(r"/collections/([^/]+)/", src)
+    col = None
+    if m:
+        slug = m.group(1)
+        if slug not in cols:
+            cols[slug] = pdia_collection(slug=slug, title=_pdia_title_from_slug(slug))
+        col = cols[slug]
+
+    artists = [a.get("label") for a in (im.get("artists") or []) if a.get("label")]
+    bits = [im.get("encompassingWork"), im.get("alt")]
+    return HarvestItem(
+        source_ref=f"pdia:{uuid}",
+        # PDIA serves one original per image; there is no derivative ladder to choose from, so
+        # the same url is thumbnailed and promoted. `_shrink` bounds what we store locally.
+        thumb_url=f"{PDIA_SITE}{src}",
+        url=f"{PDIA_SITE}{src}",
+        source_url=f"{PDIA_SITE}/images/{uuid}/",
+        title=(im.get("title") or "").strip() or None,
+        # MULTIPLE ARTISTS are rare but real (measured: 0 of 73 sampled, though the archive's own
+        # front page carries a two-artist record). The full list is kept for display and for the
+        # contains-box; `artist_key` folds from the first, so a second artist is findable by
+        # typing but does not get her own chip. A row belonging to several artists needs a join
+        # table, which is worth doing once across every source rather than bolting on here.
+        creator=" & ".join(artists) or None,
+        date_text=(im.get("displayDate") or "").strip() or None,
+        institution="Public Domain Image Archive",
+        description=", ".join(b.strip() for b in bits if (b or "").strip()) or None,
+        license="CC0 (Public Domain Image Archive)",
+        # FULL-ORIGINAL dimensions, not a derivative's — so the gate's resolution floor runs at
+        # INDEX time here, as it does for artic and cleveland and cannot for the Met.
+        width=im.get("width") or None,
+        height=im.get("height") or None,
+        collection=col,
+    )
+
+
+def _pdia_title_from_slug(slug: str) -> str:
+    """A readable title until the collection's own page supplies the real one.
+
+    Deliberately naive and deliberately replaced: `enrich_pdia_collections` fetches the essay
+    from the Public Domain Review and overwrites title and description. Guessing here only means
+    a slug-shaped label for the minutes between a harvest and that pass, instead of a NULL.
+    """
+    return slug.replace("-", " ").strip().title()
+
+
+def pdia_items(limit: int = 200, *, report: Optional[HarvestReport] = None,
+               cursor: Optional[Dict[str, Any]] = None, **_ignored) -> Iterator[HarvestItem]:
+    """Walk the Public Domain Image Archive. Keyless JSON, 36/page, RESUMABLE by offset.
+
+    The 7 questions, probed before a line of this was written:
+
+      1. ENUMERATION   — a JSON API found in the site's own bundle
+                         (`/api/galleries/all/<sort>/<order>/<page>.json`), 312 pages x 36 =
+                         **11,197 images**. The HTML gallery is client-rendered and carries no
+                         image links at all, so scraping it would have found nothing.
+      2. RIGHTS        — CC0 site-wide, asserted per collection and uniform, so one FK is enough.
+      3. STABLE ID     — a uuid, namespaced `pdia:<uuid>`.
+      4. IMAGE URLS    — one original per image, path in `src`; no derivative ladder.
+      5. PIXEL DIMS    — full-original `width`/`height` on every record (100% of the sample), so
+                         the resolution floor runs at index time.
+      6. AUTH          — keyless. robots.txt carries only the Content Signals preamble: no signal
+                         values, no Disallow, no sitemap. Under its own clause (c) that neither
+                         grants nor restricts.
+      7. FREE EXTRAS   — `openRanking` (PDIA's OWN per-image curation score, better than any
+                         source-level tier because it discriminates WITHIN the source),
+                         `encompassingWork` (75%), `sortYear`, and the collection slug for free.
+
+    THE SORT IS VERIFIED, NOT TRUSTED. The API echoes back the `sort` it actually applied, and it
+    silently substitutes the default for anything it does not recognise — so this asserts the echo
+    matches the request and stops. Without that check a renamed sort key would degrade the crawl
+    to newest-first, which shifts every offset whenever PDIA publishes and quietly drops a row per
+    resume.
+    """
+    import httpx
+
+    start = int((cursor or {}).get("offset") or 0)
+    page = start // _PDIA_PAGE + 1
+    skip_in_page = start % _PDIA_PAGE
+    yielded = 0
+    cols: Dict[str, Collection] = {}
+    if report is not None and start:
+        report.note(f"resuming at offset {start} (page {page}, item {skip_in_page})")
+
+    with httpx.Client(headers={"User-Agent": _UA}, timeout=45.0) as c:
+        while yielded < limit:
+            url = f"{PDIA_API}/all/{_PDIA_SORT}/{_PDIA_ORDER}/{page}.json"
+            try:
+                d = c.get(url).json()
+            except Exception as e:
+                if report:
+                    report.errors += 1
+                    report.note(f"pdia page {page}: {type(e).__name__}: {e}")
+                return
+
+            got = d.get("sort") or {}
+            if (got.get("sortType"), got.get("sortOrder")) != (_PDIA_SORT, _PDIA_ORDER):
+                # LOUD. A silent fallback here is a cursor that skips rows forever.
+                msg = (f"pdia refused the requested sort: asked "
+                       f"{_PDIA_SORT}/{_PDIA_ORDER}, got {got.get('sortType')}/"
+                       f"{got.get('sortOrder')} — refusing to walk, the cursor would drift")
+                if report:
+                    report.errors += 1
+                    report.note(msg)
+                raise RuntimeError(msg)
+
+            images = d.get("images") or []
+            if report is not None and report.upstream_count is None:
+                report.upstream_count = int((d.get("meta") or {}).get("totalImages") or 0) or None
+            if not images:
+                if report is not None:
+                    report.exhausted = True
+                return
+
+            for idx, im in enumerate(images):
+                if idx < skip_in_page:
+                    continue
+                if yielded >= limit:
+                    break
+                item = _pdia_item(im, cols)
+                pos = (page - 1) * _PDIA_PAGE + idx
+                if item is None:
+                    if report is not None:
+                        report.skipped_no_image += 1
+                        report.cursor = {"offset": pos + 1}
+                    continue
+                yield item
+                yielded += 1
+                # AFTER the yield, and as an ABSOLUTE offset rather than a page number: the same
+                # within-page cursor the artic and Met walks needed. A page-granular cursor
+                # re-walks up to 35 indexed rows on every resume, and a bounded run that stops
+                # mid-page would restart before rows it had already written.
+                if report is not None:
+                    report.cursor = {"offset": pos + 1}
+
+            total_pages = int((d.get("pagination") or {}).get("totalPages") or 0)
+            if total_pages and page >= total_pages:
+                if report is not None:
+                    report.exhausted = True
+                return
+            page += 1
+            skip_in_page = 0
+            time.sleep(0.1)                          # be a good citizen on a donation-funded site
+
+
 SOURCES: Dict[str, SourceAdapter] = {
     "artic": SourceAdapter(
         id="artic",
@@ -1011,6 +1239,38 @@ SOURCES: Dict[str, SourceAdapter] = {
               "Publishes physical measurements rather than pixel dimensions, so the resolution "
               "floor lands at promotion instead of at index time. Hands over Wikidata ids free "
               "(tags 56%, artist 35%, object 19% of the public-domain subset).",
+    ),
+    "pdia": SourceAdapter(
+        id="pdia",
+        collection=pdia_collection,
+        items=pdia_items,
+        # THE FIRST curated-collection source. Unlike the museums, one crawl yields MANY
+        # collections — the slug rides in each image's `src` path, so `HarvestItem.collection`
+        # files every row under its own set and `harvest` upserts each set once.
+        enumeration="curated-collection",
+        upstream_count=pdia_upstream_count,
+        resumable=True,
+        publishes_pixel_dims=True,
+        # Uniform CC0 across every collection, which is why one FK per row is enough here. The
+        # Library of Congress will use the same shape with rights that actually differ per set.
+        rights_model="per-collection",
+        # NO RESOLUTION FLOOR. Measured: archival refused 37% of this archive, and the refusals
+        # were curated, correctly attributed CC0 pictures — including a 1024x661 print rejected
+        # on its SHORT side. It also split curated sets, admitting some plates of a book and
+        # refusing others, which is the failure the collection view exists to prevent. Rights
+        # stay archival-strength.
+        gate_tier="curated",
+        notes="Keyless JSON, 36/page, 312 pages, 11,197 images — the whole archive is ~312 "
+              "requests. The HTML gallery is CLIENT-RENDERED and contains no image links, so the "
+              "API had to be found in the site's own bundle; scraping the page would have "
+              "returned nothing. Walked pub-date/ASC because that is the only append-only order: "
+              "the API silently falls back to pub-date/desc for any sort key it does not know "
+              "(probed), and newest-first shifts every offset whenever the archive publishes. The "
+              "response echoes the sort it applied, so the adapter verifies rather than trusts. "
+              "PDIA is an AGGREGATOR (each image credits a holding institution, often the Met), "
+              "so expect overlap with the museum crawls — its value is curation and subject "
+              "metadata, not new pictures. Full-original pixel dims on every record. Carries "
+              "`openRanking`, its own per-image curation score.",
     ),
     "cleveland": SourceAdapter(
         id="cleveland",
@@ -1107,6 +1367,20 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
     # batch is closed by `_persist_cursor` every 50 rows, so rows land on disk immediately
     # before the cursor that claims them; an exception rolls the open batch back and the crawl
     # resumes from the last checkpoint.
+    # Per-item curated collections, UPSERTED ONCE EACH. A source like PDIA hands a collection
+    # over with every row, and its collections run to ~30 images — without this cache a 300-image
+    # collection would be 300 identical upserts. Keyed by slug because that is what
+    # `upsert_collection` is keyed by, so the cache and the table agree by construction.
+    col_cache: Dict[str, int] = {collection.slug: collection.id}
+
+    def _collection_id_for(item) -> Optional[int]:
+        if item.collection is None or not item.collection.slug:
+            return collection.id                    # the harvest's own — the fallback
+        slug = item.collection.slug
+        if slug not in col_cache:
+            col_cache[slug] = lib.upsert_collection(item.collection).id
+        return col_cache[slug]
+
     with lib.catalog.batched_writes():
         for item in adapter.items(limit=limit, report=report, **items_kwargs):
             report.scanned += 1
@@ -1125,8 +1399,8 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
                             institution=item.institution, description=item.description,
                             license=item.license, width=item.width, height=item.height,
                             wikidata_qid=item.wikidata_qid, tags=item.tags,
-                            collection_id=collection.id, identity_source="catalog",
-                            pixels=pixels,
+                            collection_id=_collection_id_for(item), identity_source="catalog",
+                            pixels=pixels, tier=adapter.gate_tier,
                             medium=item.medium, classification=item.classification,
                             department=item.department, culture=item.culture,
                             place=item.place)
@@ -1167,7 +1441,16 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
     report.upstream_count = upstream
 
     lib.flush_index()                       # nothing may be left buffered when a crawl returns
-    indexed = lib.catalog.count("active", held=0, collection_id=collection.id)
+    # COUNT WHAT THE HARVEST ACTUALLY FILED, which for a curated-collection source is not the
+    # harvest's own collection. PDIA spreads 300 indexed rows across a dozen curated sets and
+    # leaves ~26% in the fallback, so counting by `collection.id` reported "32 of 11,197 (0.3%)"
+    # for a run that indexed 300 — a coverage figure that understates by 10x is as misleading as
+    # one that overstates. The museums are unaffected: one collection per source means the two
+    # counts are identical.
+    if adapter.enumeration == "curated-collection":
+        indexed = lib.catalog.count("active", held=0, source=source)
+    else:
+        indexed = lib.catalog.count("active", held=0, collection_id=collection.id)
     if upstream:
         report.note(f"coverage: {indexed} of {upstream} upstream "
                     f"({indexed / upstream * 100:.1f}%)")
