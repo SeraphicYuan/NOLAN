@@ -1,4 +1,4 @@
-"""Picture library — persistent, searchable, license-aware image store.
+﻿"""Picture library â€” persistent, searchable, license-aware image store.
 
 Ties together file storage + the SQLite :class:`AssetCatalog` (provenance,
 dedup, licensing) + a ChromaDB collection of CLIP embeddings (semantic search).
@@ -32,7 +32,7 @@ _DISC_IDENT_COLLECTION = "discovery_identity"
 _THUMB_PX = 512
 # How much of a catalog TITLE a query must cover before the query counts as NAMING that work (and
 # retrieval routes to the identity channel). The lexical matcher itself admits a hit at 0.5, which
-# is right for "is this title relevant"; it is too loose for "is this query an identity question" —
+# is right for "is this title relevant"; it is too loose for "is this query an identity question" â€”
 # a pure LOOK need, "two girls on a terrace with a basket of yarn", covers 2 of the 3 distinctive
 # tokens in "Two Sisters (On the Terrace)" and was mis-routed to the identity channel. Measured
 # through the real search path (scripts/eval_visuallib_recall.py, 19 needs): see search_discovery.
@@ -64,7 +64,7 @@ def shared_library(scope: str = "global", project: Optional[str] = None,
     and its HNSW indexes). Constructing one per call re-pays both.
 
     THE INCIDENT: the hub's `_open_imagelib` did exactly that, and at 1,091 rows nobody noticed.
-    At 97,610 rows a single `/api/images/discover` request took **90 seconds** — while the same
+    At 97,610 rows a single `/api/images/discover` request took **90 seconds** â€” while the same
     search against a reused library took **2.4 s**. The search was never slow; the setup was, and
     it was being paid on every keystroke.
 
@@ -73,7 +73,7 @@ def shared_library(scope: str = "global", project: Optional[str] = None,
     throwaway scope) construct `ImageLibrary` directly.
     """
     # Keyed on the RESOLVED directory, not on (scope, project). Two scopes pointing at one
-    # directory are one library — and, more practically, `library_paths` is patchable, so a key
+    # directory are one library â€” and, more practically, `library_paths` is patchable, so a key
     # that ignored the resolved path would hand a test the instance a previous test built
     # against a different tmp dir. Caught exactly that way.
     base = Path(base_dir) if base_dir else library_paths(scope, project)
@@ -95,7 +95,7 @@ def library_paths(scope: str = "global", project: Optional[str] = None) -> Path:
 
     NOT os.getcwd()-relative: a relative base silently resolved against whatever CWD the process
     ran under, so running acquisition from render-service/_lab_hyperframes/bridge/ (as the hub's
-    run_pool does) opened an EMPTY library — every library-first need returned 0 with no error, and
+    run_pool does) opened an EMPTY library â€” every library-first need returned 0 with no error, and
     the headline feature was dead on the default path (holbein POST_MORTEM #1)."""
     if scope == "project":
         if not project:
@@ -122,7 +122,7 @@ class LibraryHit:
 @dataclass
 class _GateCandidate:
     """The duck-typed shape `asset_gate.check_candidate` reads (url / source_url / thumbnail_url /
-    source / license / width / height) — so the discovery door gates on the SAME policy tables as
+    source / license / width / height) â€” so the discovery door gates on the SAME policy tables as
     every provider result, without inventing a second dialect."""
     url: Optional[str] = None
     source_url: Optional[str] = None
@@ -136,7 +136,7 @@ class _GateCandidate:
 def _shrink(path: Path, max_edge: int) -> None:
     """Cap a thumbnail's long edge in place. Storage is the point of the not-held tier: 512px is
     enough for CLIP (which sees 224px), for a human to recognise the picture, and for the banner
-    heuristic — a full-size cache would just be the Picture Library again."""
+    heuristic â€” a full-size cache would just be the Picture Library again."""
     try:
         from PIL import Image
         with Image.open(path) as im:
@@ -169,7 +169,7 @@ class ImageLibrary:
         self._desc_collection = None
         self._disc_collection = None
         self._disc_ident_collection = None
-        # Pending identity rows, flushed in batches — see `flush_index`.
+        # Pending identity rows, flushed in batches â€” see `flush_index`.
         self._ident_buf: List[tuple] = []
 
     # ----------------------------------------------------------- lazy backends
@@ -229,7 +229,7 @@ class ImageLibrary:
                  tags=None, query=None, embed=True, describe=True):
         """Add a local image file. Returns (Asset, created: bool).
 
-        Dedups by content hash — re-adding the same bytes returns the existing row.
+        Dedups by content hash â€” re-adding the same bytes returns the existing row.
         If ``describe`` and no ``description`` is given and a ``self.describer`` is
         set, a vision description is generated and indexed (BGE text->text search).
         """
@@ -286,7 +286,7 @@ class ImageLibrary:
     def add_url(self, url: str, **meta):
         """Download an image URL into a temp file, gate it, then add it.
 
-        The library is a REUSE surface — a watermarked or preview-domain file
+        The library is a REUSE surface â€” a watermarked or preview-domain file
         ingested once poisons every future project. Gate rejections raise
         ValueError (loud, caller-visible), never a silent skip.
         """
@@ -342,7 +342,7 @@ class ImageLibrary:
         Returns ``(Asset, created)``; re-indexing a known `source_ref` refreshes it in place.
 
         TWO PHASES, because the pixels dominate the cost. `pixels=False` writes the catalog row
-        and NOTHING ELSE — no fetch, no thumbnail, no CLIP vector.
+        and NOTHING ELSE â€” no fetch, no thumbnail, no CLIP vector.
 
         BENCHMARKED, not estimated (60 records then 30 backfills, models pre-warmed):
 
@@ -353,22 +353,22 @@ class ImageLibrary:
             ratio                                 5.4x
 
         Over the 62,035-row artic public-domain catalog that is **1.5 h for records alone
-        against 9.6 h for records and pixels** — a real 8-hour saving, and deliberately not
+        against 9.6 h for records and pixels** â€” a real 8-hour saving, and deliberately not
         dressed up as more: an earlier estimate of "~50x / 29 hours" did not survive measurement,
         and this module's own history (the artic adapter's unreproducible "11 of every 12" claim)
         is what a comfortable unverified number costs.
 
         The trade is quantified on the retrieval side too. Identity-only (no pixels at all)
         measures **named 94.7 / 100 / 100** and **look 47.4 / 78.9 / 84.2**; with pixels, look@1
-        rises 47.4 → 63.2. So a record-only row is at FULL strength for "find me the Holbein
-        woodcut" and materially weaker for "find me something stormy" — pixels buy ranking, not
+        rises 47.4 â†’ 63.2. So a record-only row is at FULL strength for "find me the Holbein
+        woodcut" and materially weaker for "find me something stormy" â€” pixels buy ranking, not
         reach. `backfill_pixels` closes the gap progressively and `discovery_stats` reports how
         far it has got rather than implying it is done.
 
-        ACQUISITION DOOR — this fetches bytes from the open internet, so it calls
+        ACQUISITION DOOR â€” this fetches bytes from the open internet, so it calls
         ``asset_gate.check_candidate`` before the fetch (blocklisted host / rights floor /
         resolution floor, judged on the FULL image's dimensions, not the thumbnail's) and
-        ``asset_gate.banner_suspect`` on the stored thumbnail — for every source EXCEPT the
+        ``asset_gate.banner_suspect`` on the stored thumbnail â€” for every source EXCEPT the
         institutions the gate already classifies as open-access-by-construction (see the
         measurement at the call site). A watermark strip is plainly visible at 512px; gating here
         is what stops the discovery tier becoming a laundering route around the gate that
@@ -394,7 +394,7 @@ class ImageLibrary:
         dest = self._thumb_dest(source_ref, thumb_url)
 
         if not pixels:
-            # PHASE A — the record only. No bytes are fetched at all, so the pixel-dependent
+            # PHASE A â€” the record only. No bytes are fetched at all, so the pixel-dependent
             # checks below have nothing to run on and are skipped rather than faked. The RIGHTS
             # gate above still ran: a row entering the library on a bad licence is refused
             # whether or not we downloaded its picture.
@@ -419,12 +419,12 @@ class ImageLibrary:
         #
         # The banner heuristic hunts a RIGHTS-MANAGED AGENCY's watermark strip. An institution
         # serving its own CC0 IIIF derivative cannot be serving one, and on museum photography the
-        # heuristic's signature — a near-uniform band, discontinuous with the body, carrying a few
-        # contrasting pixels — is just an object shot on a plain mount. CHARACTERISED before
+        # heuristic's signature â€” a near-uniform band, discontinuous with the body, carrying a few
+        # contrasting pixels â€” is just an object shot on a plain mount. CHARACTERISED before
         # scoping it (checklist #11: a check whose failures are all false positives): 4 of 4
-        # refusals inspected by eye were false — a Piranesi etching on its white paper margin
+        # refusals inspected by eye were false â€” a Piranesi etching on its white paper margin
         # (artic:19), a bed rug and a gold-ground crucifix on black studio ground (artic:49691 /
-        # 16231), a Spanish retable on white (artic:88793) — at ~1% of a shallow crawl rising to
+        # 16231), a Spanish retable on white (artic:88793) â€” at ~1% of a shallow crawl rising to
         # ~5% deeper in, where object photography outnumbers framed paintings. It still runs for
         # every other source, so the Alamy shape it was written for is still caught.
         if source not in OPEN_ACCESS_SOURCES and banner_suspect(dest):
@@ -432,7 +432,7 @@ class ImageLibrary:
             raise ValueError(f"discovery refused (watermark banner strip): {source_ref}")
 
         # THE CONTENT FLOOR. `check_candidate` above judged the museum's declared dimensions,
-        # which describe the FILE — and museum object photography is an object on a wide sweep,
+        # which describe the FILE â€” and museum object photography is an object on a wide sweep,
         # so the file routinely overstates the asset. Now that a thumbnail is on disk we can
         # measure the content's share and apply the floor to what is actually there: a
         # 3000x1511 coin photo at 31% content is a 2197x644 asset, and 644px does not clear the
@@ -440,7 +440,7 @@ class ImageLibrary:
         # wiring (checklist #10/#11): 7 of 841 rows with declared dimensions newly refused, all
         # coins or small objects on large grounds, every content box inspected by eye; 834 still
         # pass. Rows whose source publishes no pixel dimensions (the Met, which publishes
-        # physical size) are unaffected — there is nothing to scale.
+        # physical size) are unaffected â€” there is nothing to scale.
         if width and height:
             from nolan.asset_gate import clears_floor
             from nolan.pixels import effective_dims
@@ -467,7 +467,7 @@ class ImageLibrary:
         """Insert-or-refresh one discovery row and index its channels.
 
         Shared by both crawl phases. `rel` is the stored thumbnail path, or None for a Phase-A
-        record-only row — in which case `path` is empty and the CLIP channel is simply not
+        record-only row â€” in which case `path` is empty and the CLIP channel is simply not
         populated, because there are no pixels to embed. `thumb_url` is recorded either way, so
         Phase B can fetch the picture later without re-walking the source.
         """
@@ -478,12 +478,12 @@ class ImageLibrary:
         fields["thumb_url"] = thumb_url
         # DERIVED, never asked of a model: the institution already catalogued the object, and a
         # regex over its own words beat the VLM on every row where the two disagreed. Order is
-        # authority order — classification, then the type tag, then the medium (the Art Institute
+        # authority order â€” classification, then the type tag, then the medium (the Art Institute
         # puts "painting" and "oil on canvas" in the SAME column, so one field is not enough).
         fields["image_kind"] = _kind(fields.get("classification"), fields.get("tags"),
                                      fields.get("medium"), fields.get("description"))
         # The museum's date STRING, parsed into something a filter can compare. Derived, so it is
-        # re-derivable — `rederive_kinds` recomputes both without a network call.
+        # re-derivable â€” `rederive_kinds` recomputes both without a network call.
         from nolan.imagelib.dates import parse_years
         yrs = parse_years(fields.get("date_text"))
         if yrs:
@@ -492,7 +492,7 @@ class ImageLibrary:
             fields["description_source"] = description_source
         if existing is not None:
             # A re-crawl refreshes the CATALOG's own facts, but must not clobber a T2 caption with
-            # the source's one-line prose — so a row already carrying a model description keeps it.
+            # the source's one-line prose â€” so a row already carrying a model description keeps it.
             if (existing.description_source or "catalog") != "catalog":
                 fields.pop("description", None)
                 fields.pop("description_source", None)
@@ -505,7 +505,7 @@ class ImageLibrary:
                 path=rel or "", held=0, source_ref=source_ref, **fields))
             created = True
         if embed:
-            # A re-crawl re-embedded every unchanged row — at catalog scale that is the whole cost
+            # A re-crawl re-embedded every unchanged row â€” at catalog scale that is the whole cost
             # of the crawl for no new information. Embed the thumbnail only when it is actually new,
             # and the identity text only when it actually changed.
             thumb = (self.base / rel) if rel else None
@@ -516,14 +516,14 @@ class ImageLibrary:
 
     def locate_subjects(self, *, limit: int = 200, collection_id: Optional[int] = None,
                         prefer: str = "energy", progress=None) -> dict:
-        """Fill the `regions` column — the producer it has been waiting for.
+        """Fill the `regions` column â€” the producer it has been waiting for.
 
         The column shipped unpopulated because it was consumer-blocked; the camera umbrella
         un-blocked it with `solve_push(target=)`. This is the other half, and it is a DETECTOR
         (`nolan.regions`), never a vision model: asked for a focal cell, a VLM answered
         middle-centre on 50 of 50 rows.
 
-        Rows with no separable subject are left NULL rather than given a centre box — "we could
+        Rows with no separable subject are left NULL rather than given a centre box â€” "we could
         not locate one" and "it is in the middle" must stay distinguishable, or every consumer
         inherits a guess it cannot detect.
         """
@@ -555,7 +555,7 @@ class ImageLibrary:
 
         This is what makes the derivations safe to change. A caption is expensive to redo (the
         reason `caption_schema` is versioned), but a bucket derived from the institution's own
-        words costs one SQL pass — so the vocabulary can be corrected the moment a source turns
+        words costs one SQL pass â€” so the vocabulary can be corrected the moment a source turns
         out to catalogue garments as "Collar" and "Cap" rather than as textiles.
 
         Four columns, one pass, because they share the expensive part (walking 97k rows):
@@ -591,12 +591,12 @@ class ImageLibrary:
             if ak:
                 attributed += 1
             elif a.creator:
-                anonymous += 1           # a creator string that names no one — see _is_anonymous
+                anonymous += 1           # a creator string that names no one â€” see _is_anonymous
             if ak != (a.artist_key or None):
                 patch["artist_key"] = ak
             if patch:
                 patches[a.id] = patch
-                # ONE transaction per chunk, not per row — see `update_many`. Chunked rather than
+                # ONE transaction per chunk, not per row â€” see `update_many`. Chunked rather than
                 # held to the end so a long pass makes durable progress and can be interrupted.
                 if len(patches) >= 2000:
                     changed += self.catalog.update_many(patches)
@@ -612,20 +612,110 @@ class ImageLibrary:
                 "attributed_pct": round(100.0 * attributed / total, 1),
                 "movement": mv}
 
+    def enrich_pdia_details(self, *, limit: int = 500, workers: int = 4,
+                            progress=None) -> dict:
+        """PHASE A2 for PDIA: the fields its listing does not carry.
+
+        The listing is enough to index a row; this pass is what makes the row good. It adds:
+
+        * **THE HOLDING INSTITUTION.** PDIA is an aggregator â€” its images are re-hosted from the
+          Met, the Library of Congress, the Internet Archive. `source` stays `pdia` (where we
+          found it) and `institution` becomes the holder (whose picture it is), which is both
+          more honest and what a credit line needs.
+        * **SUBJECT, for the first time in this library.** `classification` is a medium and
+          `culture` is a place; nothing until now answered "pictures about ghosts". PDIA's themes
+          ("Ghosts & Occult", "The Future", "Natural World") and tags ("yokai", "retrofuturism",
+          "thunderbolts") go into `tags`, which is already filterable and already embedded.
+        * **THE TWO RIGHTS CLAIMS**, verified rather than assumed. The site declares CC0
+          throughout and every sample agrees, but an aggregator's blanket statement is not a
+          per-item guarantee â€” the exact trap the Library of Congress probe flagged. A row whose
+          rights code is not in `_PDIA_RIGHTS_OPEN` is NOT relabelled and is reported, so an
+          unreadable claim surfaces instead of being waved through.
+
+        Bounded by `limit` and re-runnable: rows already carrying a holder are skipped, so this
+        can be run in slices against 11,197 rows without redoing work.
+        """
+        from nolan.imagelib.harvest import (pdia_details, pdia_is_free_worldwide,
+                                            pdia_license)
+
+        rows = [a for a in self.catalog.list(status="active", held=0, limit=limit * 4,
+                                             source="pdia")
+                if a.institution in (None, "", "Public Domain Image Archive")][:limit]
+        out = {"attempted": len(rows), "enriched": 0, "unparsed": 0,
+               "rights_unrecognised": 0, "not_free_worldwide": 0, "themes_seen": 0, "reasons": []}
+        if not rows:
+            return out
+
+        by_uuid = {(a.source_ref or "").split(":", 1)[-1]: a for a in rows}
+        got = pdia_details(list(by_uuid), workers=workers, progress=progress)
+        out["unparsed"] = len(by_uuid) - len(got)
+
+        patches: Dict[int, dict] = {}
+        for uuid, d in got.items():
+            a = by_uuid.get(uuid)
+            if a is None:
+                continue
+            subject = [*(d.get("themes") or []), *(d.get("tags") or [])]
+            patch: Dict[str, Any] = {}
+            if d.get("institution"):
+                patch["institution"] = d["institution"]
+            if d.get("styles"):
+                patch["classification"] = ", ".join(d["styles"])
+            if subject:
+                patch["tags"] = ", ".join(subject)
+                out["themes_seen"] += len(d.get("themes") or [])
+            # The description is what BGE embeds, so the subject words have to reach it or the
+            # themes would be filterable but not FINDABLE â€” an authored field with only half a
+            # consumer.
+            bits = [d.get("encompassing_work"), *(d.get("styles") or []), *subject]
+            desc = ", ".join(b for b in bits if b)
+            if desc and desc != (a.description or ""):
+                patch["description"] = desc
+            # RIGHTS ARE CORRECTED HERE, not merely recorded. The harvest stamps every row CC0
+            # from the site's blanket claim; the per-image page is the first place we learn that
+            # a work is `pd-us` â€” public domain in the United States ONLY. Leaving those labelled
+            # CC0 would be the transcript library's re-labelling incident in reverse: a
+            # permissive label asserted by a pass that did not know better.
+            lic = pdia_license(d.get("underlying_rights"), d.get("digital_rights"))
+            if lic is None:
+                out["rights_unrecognised"] += 1
+                if len(out["reasons"]) < 12:
+                    codes = sorted({d.get("underlying_rights"), d.get("digital_rights")} - {None})
+                    out["reasons"].append(f"pdia:{uuid}: unrecognised rights {codes} â€” "
+                                          f"left as harvested, NOT relabelled")
+            else:
+                if lic != (a.license or ""):
+                    patch["license"] = lic
+                if not pdia_is_free_worldwide(d.get("underlying_rights"),
+                                              d.get("digital_rights")):
+                    out["not_free_worldwide"] += 1
+            if patch:
+                patches[a.id] = patch
+        out["enriched"] = self.catalog.update_many(patches)
+        # RE-EMBED, don't "reindex". The identity text changed for every enriched row, and
+        # `reindex_identity` only fills rows MISSING from the vector store â€” it would examine
+        # these, find them present, and do nothing, leaving the themes filterable but not
+        # findable. Re-buffering upserts the new text over the old.
+        if patches:
+            for a in self.catalog.get_many(list(patches)).values():
+                self._buffer_identity(a)
+            out["reembedded"] = self.flush_index()
+        return out
+
     def backfill_movements(self, *, collection_id: Optional[int] = None) -> dict:
         """Copy `artists.movement` down onto every row that artist made.
 
         DERIVED AND THEREFORE STALE-ABLE: the artists table grows one LLM call at a time, so a
         movement learned today belongs on rows harvested last week. Idempotent and cheap (one
         catalog walk, no network), called by `rederive_kinds` and on the way out of
-        `enrich_artists` — which is what keeps the facet honest without anyone remembering to.
+        `enrich_artists` â€” which is what keeps the facet honest without anyone remembering to.
 
         The join is on the FOLDED key, not the raw name: exact-name matching reaches 24,946 rows
-        where the folded key reaches 31,091, because Cleveland writes "Auguste Louis Lepère
-        (French, 1849-1918)" for artic's "Louis Auguste Lepère".
+        where the folded key reaches 31,091, because Cleveland writes "Auguste Louis LepÃ¨re
+        (French, 1849-1918)" for artic's "Louis Auguste LepÃ¨re".
 
         Normalisation is not a `.lower()`. Measured over the live table, 106 raw strings fold to
-        101 by case alone — the real mess is elsewhere: "aestheticism, tonalism" is two movements
+        101 by case alone â€” the real mess is elsewhere: "aestheticism, tonalism" is two movements
         in one cell, "early photography, topographical photography" and "early photography /
         topographic" are the same one written twice, and "none; primarily a documentarian" is not
         a movement at all. See `normalise_movement`.
@@ -647,7 +737,7 @@ class ImageLibrary:
             votes.setdefault(m.casefold(), {})
             votes[m.casefold()][m] = votes[m.casefold()].get(m, 0) + 1
         # CAPITALISATION WINS BEFORE POPULARITY. Movements are proper nouns, and every other
-        # entry in the facet is written that way — a bare vote gave "ukiyo-e" (14 artists) over
+        # entry in the facet is written that way â€” a bare vote gave "ukiyo-e" (14 artists) over
         # "Ukiyo-e" (10) and the list read as though one entry had been mis-entered. 14-vs-10 is
         # a coin flip on a house style, not evidence about how the movement is spelled.
         display = {k: max(v.items(), key=lambda t: (t[0][:1].isupper(), t[1], -len(t[0])))[0]
@@ -683,7 +773,7 @@ class ImageLibrary:
 
     def warm_pixels(self, assets, *, concurrency: int = 8, tier: str = "archival",
                     embed: bool = True) -> dict:
-        """Fetch pixels for a HANDFUL of rows right now — the on-demand path behind search.
+        """Fetch pixels for a HANDFUL of rows right now â€” the on-demand path behind search.
 
         Retrieval returns a page of results; the ones a human is about to look at are exactly the
         ones worth spending pixels on.
@@ -691,16 +781,16 @@ class ImageLibrary:
         WHAT IS ACTUALLY PARALLEL, stated precisely because a first version of the test measured
         the wrong thing and "reported" a speed-up it had not achieved: the **fetch** runs
         `concurrency`-wide, because it is nearly all network. The gates, the CLIP embed and the
-        SQLite write stay SERIAL — the embedder is not documented thread-safe and the catalog
+        SQLite write stay SERIAL â€” the embedder is not documented thread-safe and the catalog
         serialises writes through one lock anyway.
 
-        So the honest cost model for a page of 24 is: fetch ≈ (24/8) x one round-trip, plus
+        So the honest cost model for a page of 24 is: fetch â‰ˆ (24/8) x one round-trip, plus
         ~103 ms/row of embedding that does not parallelise. The embed is therefore the floor,
-        not the network — which is the opposite of what the original 1.7 s/row estimate implied,
+        not the network â€” which is the opposite of what the original 1.7 s/row estimate implied,
         and worth knowing before anyone tries to make this faster by widening the pool.
 
         `embed=False` fetches the thumbnail and runs the gates but SKIPS the CLIP vector.
-        Measured: the download-and-gate is ~48 ms/row concurrent, the CLIP embed ~103 ms/row —
+        Measured: the download-and-gate is ~48 ms/row concurrent, the CLIP embed ~103 ms/row â€”
         so a page that only needs pictures to LOOK AT costs about a third. The row keeps its
         `thumb_path`, so it displays and is never re-fetched; it simply does not join the look
         channel until something embeds it. `backfill_pixels` remains the way to do that in bulk.
@@ -758,7 +848,7 @@ class ImageLibrary:
     def _gate_fetched_thumb(self, asset: Asset, dest: Path, *, tier: str) -> Optional[str]:
         """Run the gates that need pixels. Returns a refusal reason, or None if it passes.
 
-        One implementation for both the batch backfill and the on-demand warm path — the same
+        One implementation for both the batch backfill and the on-demand warm path â€” the same
         picture must not be admitted by one door and refused by the other.
         """
         from nolan.asset_gate import OPEN_ACCESS_SOURCES, banner_suspect, clears_floor
@@ -779,14 +869,14 @@ class ImageLibrary:
         image urls. Returns how many were resolved.
 
         This is the second half of the Met's CSV-first Phase A. The dump has 54 columns and
-        every field the catalog indexes, but no image column — so Phase A reads 248,472 records
+        every field the catalog indexes, but no image column â€” so Phase A reads 248,472 records
         for zero requests and the per-object request lands HERE instead, on rows something has
         decided are worth 470 ms of pixel work. Spending it per row that wants pixels rather
         than per row that exists is the whole saving: ~11% on top of Phase B, against ~7.6 hours
         on top of Phase A.
 
         A row the source has no usable image for keeps `thumb_url = NULL` and is simply never a
-        pixel candidate again — the resolver returns that as a real answer, so it costs one
+        pixel candidate again â€” the resolver returns that as a real answer, so it costs one
         request ever, not one per backfill run.
         """
         from nolan.imagelib.harvest import SOURCES
@@ -814,15 +904,15 @@ class ImageLibrary:
 
     def backfill_pixels(self, *, limit: int = 200, collection_id: Optional[int] = None,
                         tier: str = "archival", concurrency: int = 8, progress=None) -> dict:
-        """PHASE B — fetch thumbnails for record-only rows, so `look` retrieval grows over time.
+        """PHASE B â€” fetch thumbnails for record-only rows, so `look` retrieval grows over time.
 
         Deliberately incremental and bounded: measured at 470 ms/row, the whole artic
         public-domain catalog is ~8 hours of pixels, so this is meant to be run repeatedly (a
         cron, a background job, an idle hour) with coverage reported honestly in between rather
         than as one heroic job that must not fail.
 
-        Every gate that Phase A could not run — the banner heuristic and the content-resolution
-        floor — runs HERE, at the moment the pixels first exist, through the SAME
+        Every gate that Phase A could not run â€” the banner heuristic and the content-resolution
+        floor â€” runs HERE, at the moment the pixels first exist, through the SAME
         `_gate_fetched_thumb` the on-demand `warm_pixels` path uses. One implementation, because
         the same picture must not be admitted by one door and refused by the other.
 
@@ -852,17 +942,17 @@ class ImageLibrary:
     # ------------------------------------------------------- batched identity indexing
     #
     # The identity channel used to upsert ONE document per row, so chroma ran a BGE forward pass
-    # at batch size 1, once per row. Measured: 78 of the 87 ms it costs to index a record — the
+    # at batch size 1, once per row. Measured: 78 of the 87 ms it costs to index a record â€” the
     # SQLite write itself is 9 ms. At catalog scale that is the whole cost of a crawl.
     #
     # Buffering turns it into one forward pass per BATCH. MEASURED over a 300-row crawl:
-    # **87 -> 32 ms/row, a 2.7x speed-up** — worth having, and worth stating exactly, because the
+    # **87 -> 32 ms/row, a 2.7x speed-up** â€” worth having, and worth stating exactly, because the
     # estimate before measuring was 15-20 ms/row and that would have been wrong by 2x. Across the
     # ~290k rows still to crawl it is 7.0 h against 2.6 h.
     #
     # The correctness hazard is a row landing in SQLite while its embedding is still in memory:
     # it would be invisible to identity search and a re-crawl would NOT fix it, because a refresh
-    # with unchanged identity deliberately skips re-embedding. Three things contain that —
+    # with unchanged identity deliberately skips re-embedding. Three things contain that â€”
     # `flush_index()` runs before the crawl cursor is ever advanced (so the cursor can never run
     # ahead of the index), any READ flushes first (so batching is invisible to a reader), and
     # `reindex_identity()` repairs a gap a hard kill still manages to leave.
@@ -888,7 +978,7 @@ class ImageLibrary:
         """Repair: embed any discovery row missing from the identity collection.
 
         Exists because batching makes a gap POSSIBLE (a hard kill between the SQLite write and
-        the flush) and a re-crawl cannot close it — `_index_discovery` skips re-embedding a
+        the flush) and a re-crawl cannot close it â€” `_index_discovery` skips re-embedding a
         refreshed row whose identity has not changed, which is the right call for cost and the
         wrong one for a hole.
         """
@@ -945,18 +1035,18 @@ class ImageLibrary:
             except Exception as e:
                 _LOG.warning("discovery CLIP index failed for %s: %s", asset.source_ref, e)
         if ident:
-            # BUFFERED, not written — see the batching note above. Callers that need it durable
+            # BUFFERED, not written â€” see the batching note above. Callers that need it durable
             # right now (a single add, a test, the end of a crawl) call `flush_index()`.
             self._buffer_identity(asset)
 
     def promote_to_held(self, asset_id: int, *, tier: str = "archival", embed: bool = True,
                         describe: bool = False):
-        """Fetch a discovery row's real bytes and flip it to held=1 — the ONE edge between the
+        """Fetch a discovery row's real bytes and flip it to held=1 â€” the ONE edge between the
         two tiers. Returns ``(Asset, promoted)``; ``promoted=False`` means the bytes were already
         in the library under another row (deduped by content hash) and this row was retired.
 
         Named for the axis it moves along: `promote_to_global` (module level) moves an asset
-        between SCOPES (project → global). This moves it between TIERS. One word for two
+        between SCOPES (project â†’ global). This moves it between TIERS. One word for two
         different decisions is how dialects start.
 
         ACQUISITION DOOR: gates the downloaded FILE (`check_file`) exactly as `add_url` does.
@@ -990,7 +1080,7 @@ class ImageLibrary:
             twin = self.catalog.get_by_hash(content_hash)
             if twin is not None and twin.id != a.id:
                 # These bytes are already held under another row. Retire the discovery row rather
-                # than creating a second copy — but KEEP it (status, not delete) so its source_ref
+                # than creating a second copy â€” but KEEP it (status, not delete) so its source_ref
                 # stays claimed and a re-crawl doesn't resurrect the duplicate every pass.
                 self.set_status(a.id, "duplicate")
                 return twin, False
@@ -1030,7 +1120,7 @@ class ImageLibrary:
         return asset, True
 
     def facets(self, field: str, **filters) -> List[tuple]:
-        """Value → count for one facet, under the active filters. See `AssetCatalog.facets`."""
+        """Value â†’ count for one facet, under the active filters. See `AssetCatalog.facets`."""
         return self.catalog.facets(field, **filters)
 
     def search_discovery(self, query: str, *, k: int = 12, offset: int = 0,
@@ -1043,7 +1133,7 @@ class ImageLibrary:
         A query that NAMES something ("Seurat, La Grande Jatte") is an identity question, answered
         from the catalog's own words; a query about LOOK ("a rainy cobbled boulevard under
         umbrellas") is answered by CLIP over the thumbnail. The routing decides which channel
-        DOMINATES — the other stays as a small assist, and the lexical title cover rides in as a
+        DOMINATES â€” the other stays as a small assist, and the lexical title cover rides in as a
         BONUS rather than a hard prefix.
 
         Every part of that shape was measured through THIS code path, not assumed
@@ -1056,25 +1146,25 @@ class ImageLibrary:
             (the provider's own keyword search    look 31.6/ 47.4/ 57.9   named 94.7/ 100/100)
 
         Three lessons are baked in. Blending near-equally was worse than EITHER pure channel on
-        its own kind of query — the wrong channel demotes the right answer. The hard prefix
+        its own kind of query â€” the wrong channel demotes the right answer. The hard prefix
         (exact titles first, unconditionally) cost 10 points of named recall@1, because "first by
         lexical cover" is not "most likely": a short wrong title can cover perfectly. And the
-        ROUTING DETECTOR needs its own, stricter threshold (`_NAMED_MIN_COVER`) — at the lexical
+        ROUTING DETECTOR needs its own, stricter threshold (`_NAMED_MIN_COVER`) â€” at the lexical
         matcher's own 0.5 a pure look need was mis-read as an identity question and lost 16 points
         of look recall@1 and 10 of recall@5.
 
         The weights are a SHAPE, not a tuning: dominant ~0.9, assist ~0.1, bonus ~0.4. The golden
-        set is 19 needs, far too small to justify a third decimal — 0.8/0.2 scored within one need
+        set is 19 needs, far too small to justify a third decimal â€” 0.8/0.2 scored within one need
         of 0.9/0.1, and `_NAMED_MIN_COVER` is flat across 0.67-0.9. Re-run the eval after touching
         any of them.
         """
         # ONE lexical pass, used for both jobs: deciding whether the query names something, and
-        # supplying the title-cover bonus. (It is a full scan over the not-held rows — fine at
+        # supplying the title-cover bonus. (It is a full scan over the not-held rows â€” fine at
         # 10^3-10^4, and the place to add an FTS5 index beyond that.)
         # FILTERS FIRST, and applied to the RESULT rather than to each channel. The two vector
         # channels live in chroma and cannot join against SQLite columns, so narrowing is done by
         # resolving the allowed id set once and intersecting. That keeps one definition of "which
-        # rows are eligible" — the same `_filter_sql` that `facets()` counts — instead of a
+        # rows are eligible" â€” the same `_filter_sql` that `facets()` counts â€” instead of a
         # filter per channel that could drift apart.
         allowed = None
         # Every channel must reach PAST the requested page, or "load more" returns nothing: a
@@ -1101,7 +1191,7 @@ class ImageLibrary:
         ident = {h.asset.id: h for h in self._search_discovery_identity(
             query, k=k_ch, collection_id=collection_id)
             if allowed is None or h.asset.id in allowed}
-        # `use_clip=False` skips the look channel ENTIRELY — and because `self.embedder` is lazy,
+        # `use_clip=False` skips the look channel ENTIRELY â€” and because `self.embedder` is lazy,
         # a process that never asks for it never loads the ~150 MB model at all. That is the
         # point: a facet-and-catalog search page has no use for it.
         clip = {}
@@ -1115,7 +1205,7 @@ class ImageLibrary:
             # Without CLIP the look weighting would hand 0.9 to a channel that returns nothing
             # and leave look queries scoring on a 0.1 assist. Identity takes the full weight
             # instead, which is the identity-only system the eval measures at
-            # look 7.1/25.0/32.1 and named 92.9/100/100 — honest about what it gives up.
+            # look 7.1/25.0/32.1 and named 92.9/100/100 â€” honest about what it gives up.
             wi, wc, wcov = (1.0, 0.0, 0.4 if named else 0.0)
         assets = {h.asset.id: h.asset
                   for h in [*cover_hits, *ident.values(), *clip.values()]}
@@ -1199,7 +1289,7 @@ class ImageLibrary:
 
         own = (asset.description or "").strip()
         if asset.caption_json:
-            return own                     # captioned individually — it speaks for itself
+            return own                     # captioned individually â€” it speaks for itself
 
         parts = [own] if own else []
         if asset.collection_id is not None:
@@ -1212,7 +1302,7 @@ class ImageLibrary:
     def discovery_stats(self, collection_id: Optional[int] = None) -> dict:
         """Coverage, stated honestly, on BOTH axes a discovery row can be partial along.
 
-        A row can lack a caption (T3) and it can lack PIXELS (Phase B) — and the second is new
+        A row can lack a caption (T3) and it can lack PIXELS (Phase B) â€” and the second is new
         with the phase-split crawl, where a catalog-scale Phase A indexes records ~50x faster
         than it could fetch their thumbnails. Reporting only the row count would make a
         records-only collection look fully indexed while its `look` channel was empty.
@@ -1220,7 +1310,7 @@ class ImageLibrary:
         n = self.catalog.count("active", held=0, collection_id=collection_id)
         described = self.catalog.described_count(held=0, collection_id=collection_id)
         # COUNT in SQL, never a Python scan. The first version of this materialised every
-        # discovery row as an Asset object just to test `thumb_path` — 2.1 s at 97,610 rows, paid
+        # discovery row as an Asset object just to test `thumb_path` â€” 2.1 s at 97,610 rows, paid
         # on EVERY search, because the hub calls discovery_stats to render the result footer.
         with_pixels = self.catalog.count_with_pixels(held=0, collection_id=collection_id)
         return {"discovery": n, "held": self.catalog.count("active", held=1),
@@ -1258,27 +1348,27 @@ class ImageLibrary:
                         license_contains: Optional[str] = None,
                         held: Optional[int] = 1,
                         collection_id: Optional[int] = None) -> List[LibraryHit]:
-        """Lexical TITLE match — the retrieval CLIP can't do for NAMED works.
+        """Lexical TITLE match â€” the retrieval CLIP can't do for NAMED works.
 
         All 46 Holbein woodcuts cluster at CLIP 0.29-0.36 for any query, so text->image similarity
-        returns 'a Holbein woodcut' (and often the WRONG one — 'the knight' ranked THE WAGGONER above
+        returns 'a Holbein woodcut' (and often the WRONG one â€” 'the knight' ranked THE WAGGONER above
         THE KNIGHT, 'the abbot' missed THE ABBOT entirely), but the asset TITLE is an exact string.
 
-        Scores by how much of the asset's (short, distinctive) TITLE is NAMED IN THE QUERY —
-        ``|title_tokens ∩ query_tokens| / |title_tokens|`` — so a verbose beat query ('a merchant
+        Scores by how much of the asset's (short, distinctive) TITLE is NAMED IN THE QUERY â€”
+        ``|title_tokens âˆ© query_tokens| / |title_tokens|`` â€” so a verbose beat query ('a merchant
         robbed by death') still fully matches the titled asset ('THE MERCHANT'). An un-named query
-        ('candle flame flickering') matches no title and returns [] (→ pure CLIP handles it)."""
+        ('candle flame flickering') matches no title and returns [] (â†’ pure CLIP handles it)."""
         qset = set(_distinctive_tokens(query))
         if not qset:
             return []
-        # PRE-FILTER IN SQL. Scoring is `|title ∩ query| / |title|`, so a title can only clear
-        # `min_cover` if it shares at least one distinctive token with the query — which means
+        # PRE-FILTER IN SQL. Scoring is `|title âˆ© query| / |title|`, so a title can only clear
+        # `min_cover` if it shares at least one distinctive token with the query â€” which means
         # SQLite can throw away the rows that share none before Python ever builds an Asset.
         #
         # This method's own docstring predicted the failure ("a full scan over the not-held rows
-        # — fine at 10^3-10^4, and the place to add an FTS5 index beyond that") and the corpus
+        # â€” fine at 10^3-10^4, and the place to add an FTS5 index beyond that") and the corpus
         # crossed it: at 97,610 rows the scan was 2.35 s of a 2.43 s search. The prediction was
-        # right about where and slightly wrong about what — a LIKE pre-filter recovers most of it
+        # right about where and slightly wrong about what â€” a LIKE pre-filter recovers most of it
         # without the schema cost of FTS5, and FTS5 remains the answer if this grows again.
         scored: List[tuple] = []
         for aid, title, lic in self.catalog.title_candidates(
@@ -1305,7 +1395,7 @@ class ImageLibrary:
                               license_contains: Optional[str] = None) -> List[LibraryHit]:
         """Semantic search over asset *descriptions* (BGE text->text).
 
-        Matches a scene's description against each asset's generated description —
+        Matches a scene's description against each asset's generated description â€”
         the same approach the video library uses for segments.
         """
         try:

@@ -1851,6 +1851,95 @@ def test_the_curated_tier_waives_the_floor_but_never_the_rights(lib):
                           width=455, height=761, pixels=False, tier="curated")
 
 
+def test_pdia_rights_take_the_more_restrictive_of_two_claims():
+    """The site frames itself as entirely public domain. MEASURED over 120 random rows, it is
+    not: underlying pd-worldwide 80% / pd-us 10% / pd-50-years 1.7% / no-known-restrictions 2.5%,
+    and digital no-additional-rights 94% / unclear 4.2% / SHARE-ALIKE 1.7%.
+
+    PDIA waiving rights over its own scan cannot make a work that is still in copyright in Europe
+    free to publish in Europe, and a share-alike scan is not CC0 however public-domain the
+    painting under it is. A video essay published worldwide is exactly where that bites."""
+    from nolan.imagelib.harvest import pdia_is_free_worldwide, pdia_license
+
+    assert pdia_license("pd-worldwide", "no-additional-rights") == \
+        "CC0 (Public Domain Image Archive)"
+    assert pdia_is_free_worldwide("pd-worldwide", "no-additional-rights")
+
+    # territorial: free where we may not be publishing
+    us = pdia_license("pd-us", "no-additional-rights")
+    assert "US ONLY" in us and "CC0" not in us
+    assert not pdia_is_free_worldwide("pd-us", "no-additional-rights")
+    assert not pdia_is_free_worldwide("pd-50-years", "no-additional-rights")
+
+    # a copyleft obligation on the scan survives a public-domain work underneath it
+    sa = pdia_license("pd-worldwide", "share-alike")
+    assert "share-alike" in sa and "CC0" not in sa
+    assert not pdia_is_free_worldwide("pd-worldwide", "share-alike")
+
+    # "no known restrictions" is an absence of evidence, not an assertion of freedom
+    assert not pdia_is_free_worldwide("no-known-restrictions", "no-additional-rights")
+    assert not pdia_is_free_worldwide("pd-worldwide", "unclear")
+
+    # UNREADABLE is a refusal, never a permissive default
+    assert pdia_license("something-new", "no-additional-rights") is None
+    assert pdia_license("pd-worldwide", None) is None
+
+
+def test_enrichment_corrects_a_row_the_harvest_stamped_cc0(lib, monkeypatch):
+    """The harvest labels every PDIA row CC0 from the site's blanket claim; the per-image page is
+    the first place we learn a work is US-only. Leaving it CC0 would be the transcript library's
+    re-labelling incident in reverse — a permissive label asserted by a pass that knew less."""
+    from nolan.imagelib import harvest as H
+
+    lib.add_discovery(source_ref="pdia:us1", thumb_url="https://e/1.jpg", source="pdia",
+                      title="A US-only work", license="CC0 (Public Domain Image Archive)",
+                      institution="Public Domain Image Archive", width=900, height=600,
+                      pixels=False, tier="curated")
+    lib.add_discovery(source_ref="pdia:odd", thumb_url="https://e/2.jpg", source="pdia",
+                      title="Unreadable rights", license="CC0 (Public Domain Image Archive)",
+                      institution="Public Domain Image Archive", width=900, height=600,
+                      pixels=False, tier="curated")
+
+    monkeypatch.setattr(H, "pdia_details", lambda uuids, **kw: {
+        "us1": {"uuid": "us1", "parsed": True, "institution": "Library of Congress",
+                "underlying_rights": "pd-us", "digital_rights": "no-additional-rights",
+                "styles": ["Lithography"], "themes": ["The Future"], "tags": ["flying"]},
+        "odd": {"uuid": "odd", "parsed": True, "institution": "Somewhere",
+                "underlying_rights": "a-code-from-the-future",
+                "digital_rights": "no-additional-rights", "styles": [], "themes": [], "tags": []},
+    })
+
+    res = lib.enrich_pdia_details(limit=10)
+    assert res["enriched"] == 2 and res["not_free_worldwide"] == 1
+    assert res["rights_unrecognised"] == 1
+
+    fixed = lib.catalog.get_by_ref("pdia:us1")
+    assert "US ONLY" in fixed.license and "CC0" not in fixed.license
+    assert fixed.institution == "Library of Congress", "the HOLDER, not the aggregator"
+    assert "The Future" in (fixed.tags or "")
+
+    # the unreadable one keeps what it had — never relabelled by a pass that could not read it
+    left = lib.catalog.get_by_ref("pdia:odd")
+    assert left.license == "CC0 (Public Domain Image Archive)"
+
+
+def test_subject_is_finally_filterable(lib):
+    """`classification` is a medium and `culture` is a place. Until PDIA's themes arrived nothing
+    in this catalog could answer "pictures about ghosts" — and `tags` was populated but absent
+    from FACET_LIKE, which is an authored field with no consumer."""
+    lib.add_discovery(source_ref="pdia:g", thumb_url="https://e/g.jpg", source="pdia",
+                      title="Night Parade", license="CC0", width=900, height=600, pixels=False,
+                      tier="curated", tags="Ghosts & Occult, yokai, demons, folklore")
+    lib.add_discovery(source_ref="pdia:f", thumb_url="https://e/f.jpg", source="pdia",
+                      title="Flying Machine", license="CC0", width=900, height=600, pixels=False,
+                      tier="curated", tags="The Future, retrofuturism, machines")
+
+    assert [a.title for a in lib.catalog.list(held=0, limit=9, tags="Ghosts")] == ["Night Parade"]
+    assert [a.title for a in lib.catalog.list(held=0, limit=9, tags="retrofuturism")] \
+        == ["Flying Machine"]
+    assert "tags" in lib.catalog.FACET_LIKE
+
+
 def test_pdia_coverage_counts_every_collection_it_filed_into(lib, monkeypatch):
     """Counting by the harvest's own collection reported "32 of 11,197 (0.3%)" for a run that
     indexed 300, because a curated-collection source files most rows elsewhere. A coverage figure

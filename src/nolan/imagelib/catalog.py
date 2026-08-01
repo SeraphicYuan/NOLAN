@@ -781,7 +781,13 @@ class AssetCatalog:
     # vocabulary, not free text.
     FACET_EXACT = ("image_kind", "classification", "department", "culture",
                    "artist_key", "movement")
-    FACET_LIKE = ("creator", "place", "medium", "title")
+    # `tags` is CONTAINS and multi-valued — one row holds "Ghosts & Occult, Religion, Myth &
+    # Legend, yokai, demons, folklore". It is the only SUBJECT column this catalog has:
+    # `classification` is a medium and `culture` is a place, so until PDIA arrived nothing could
+    # answer "pictures about ghosts". It was populated and unfilterable, which is the first
+    # pitfall in the wiring checklist and was caught by the test written for the pass that fills
+    # it — not by the pass itself.
+    FACET_LIKE = ("creator", "place", "medium", "title", "tags")
 
     def _filter_sql(self, *, status=None, held=1, source=None, collection_id=None,
                     license_contains=None, year_from=None, year_to=None, **facets):

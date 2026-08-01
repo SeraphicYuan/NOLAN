@@ -36,6 +36,7 @@ CLI:  python -X utf8 -m nolan.imagelib.harvest artic --limit 500 [--query "..."]
 from __future__ import annotations
 
 import json
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -1103,6 +1104,165 @@ def _pdia_title_from_slug(slug: str) -> str:
     a slug-shaped label for the minutes between a harvest and that pass, instead of a NULL.
     """
     return slug.replace("-", " ").strip().title()
+
+
+def _pdia_text(s: str) -> str:
+    s = re.sub(r"<[^>]+>", " ", s or "")
+    for a, b in (("&amp;", "&"), ("&#39;", "'"), ("&quot;", '"'), ("&nbsp;", " ")):
+        s = s.replace(a, b)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+# The rights vocabulary, keyed by the ANCHOR FRAGMENT rather than the display text. PDIA links
+# each rights label to `/rights-labelling-on-our-site#<code>`, and a fragment is an id while
+# display wording gets reworded — "No Additional Rights" could become "No Further Restrictions"
+# tomorrow and this would keep working.
+#
+# TWO CLAIMS, AND THEY ARE NOT THE SAME CLAIM. This is the Library-of-Congress trap arriving for
+# real, and it is why PDIA publishes both fields:
+#
+#   digital_rights    what PDIA asserts over ITS SCAN      uniformly `no-additional-rights`
+#   underlying_rights the WORK's own status                `pd-worldwide` OR **`pd-us`**
+#
+# Measured on a 40-row sample: **19 were `pd-us`** — public domain in the United States only. The
+# site's blanket CC0 statement covers its own digitisation; it cannot and does not grant worldwide
+# rights over a work that is still in copyright elsewhere. A video essay published globally is
+# exactly the case where that distinction bites, so the two are combined into the license string
+# by taking the MORE RESTRICTIVE, and a `pd-us` row is never labelled CC0.
+# MEASURED over a 120-row random sample of the live archive, and it does NOT match the site's
+# blanket "everything here is public domain" framing:
+#
+#   underlying   pd-worldwide 80.0% · pd-us 10.0% · unparsed 5.8% ·
+#                no-known-restrictions 2.5% · pd-50-years 1.7%
+#   digital      no-additional-rights 94.2% · unclear 4.2% · share-alike 1.7%
+#
+# So ~1,119 of 11,197 rows are public domain in the UNITED STATES ONLY, ~190 carry a SHARE-ALIKE
+# obligation on PDIA's own scan, and ~470 say `unclear`. For a video essay published worldwide
+# those are three different answers and none of them is CC0.
+_PDIA_UNDERLYING = {
+    "pd-worldwide": ("Public Domain worldwide", True),
+    "cc0": ("CC0", True),
+    # TERRITORIAL. Free where we are not necessarily publishing.
+    "pd-us": ("Public domain in the US ONLY — may be in copyright elsewhere", False),
+    "pd-50-years": ("Public domain where the term is life+50 — NOT in life+70 territories", False),
+    # "We know of no restrictions" is an absence of evidence, not an assertion of freedom.
+    "no-known-restrictions": ("No known copyright restrictions — not an assertion of "
+                              "public domain", False),
+}
+# PDIA's claim over its OWN file, which is a separate question from the work's status.
+_PDIA_DIGITAL = {
+    "no-additional-rights": ("no additional rights asserted", True),
+    "cc0": ("CC0", True),
+    # A COPYLEFT OBLIGATION. Usable, but it propagates to whatever it is used in — never CC0.
+    "share-alike": ("share-alike required on the digital copy", False),
+    "unclear": ("digital rights UNCLEAR", False),
+}
+
+
+def pdia_license(underlying: Optional[str], digital: Optional[str]) -> Optional[str]:
+    """The license string for a PDIA row, or None when either claim is unreadable.
+
+    Takes the MORE RESTRICTIVE of the two: PDIA waiving rights over its scan cannot make a work
+    that is still in copyright in Europe free to publish in Europe, and a share-alike digital
+    copy is not CC0 however public-domain the underlying painting is. Only when BOTH sides are
+    unconditionally free does this say CC0 — 80% x 94% of the archive, not 100%.
+
+    None is a REFUSAL, not a default: a code we cannot parse leaves the row as harvested and is
+    reported, never quietly relabelled to something permissive. That is the transcript library's
+    re-labelling incident, which cost a Prelinger public-domain film its provenance.
+    """
+    if underlying not in _PDIA_UNDERLYING or digital not in _PDIA_DIGITAL:
+        return None
+    u_text, u_free = _PDIA_UNDERLYING[underlying]
+    d_text, d_free = _PDIA_DIGITAL[digital]
+    if u_free and d_free:
+        return "CC0 (Public Domain Image Archive)"
+    return f"{u_text}; {d_text} (Public Domain Image Archive)"
+
+
+def pdia_is_free_worldwide(underlying: Optional[str], digital: Optional[str]) -> bool:
+    """Can this row be published anywhere, with no obligation? What the credits pass needs."""
+    return bool(_PDIA_UNDERLYING.get(underlying, ("", False))[1]
+                and _PDIA_DIGITAL.get(digital, ("", False))[1])
+
+
+def pdia_detail(uuid: str, *, client=None) -> Dict[str, Any]:
+    """The fields the listing does not carry, from the image's own (server-rendered) page.
+
+    There is no per-image JSON endpoint — probed, every shape 404s — but the page itself is fully
+    server-rendered, so this is a parse rather than a browser automation.
+
+    What it adds over the listing: the HOLDING INSTITUTION (PDIA is an aggregator — measured
+    across four pages: The Metropolitan Museum, Library of Congress, "Internet Archive / The
+    Getty"), the two rights claims, and the taxonomy — styles, THEMES and tags. The themes are the
+    reason this pass exists at all: nothing else in this library carries SUBJECT. `classification`
+    is a medium, `culture` is a place, and until now "show me pictures about ghosts" had no column
+    to search.
+    """
+    import httpx
+
+    owns = client is None
+    c = client or httpx.Client(headers={"User-Agent": _UA}, timeout=45.0)
+    try:
+        html = c.get(f"{PDIA_SITE}/images/{uuid}/").text
+    finally:
+        if owns:
+            c.close()
+
+    out: Dict[str, Any] = {"uuid": uuid}
+    for key, label in (("date", "Date"), ("encompassing_work", "From"), ("institution", "Source")):
+        m = re.search(rf"<h3[^>]*>\s*{label}\s*</h3>\s*<p[^>]*>(.*?)</p>", html, re.S)
+        out[key] = _pdia_text(m.group(1)) or None if m else None
+    for key, box in (("underlying_rights", "Underlying Rights"),
+                     ("digital_rights", "Digital Rights")):
+        m = re.search(
+            rf"<h3[^>]*>\s*{box}\s*</h3>.*?"
+            rf'href="/rights-labelling-on-our-site#([a-z0-9-]+)"', html, re.S)
+        out[key] = m.group(1) if m else None
+    # /galleries/style/<slug>, /galleries/themes/<slug>, /galleries/tags/<slug> — these are also
+    # live gallery endpoints, so a single theme can be crawled on its own if it is ever wanted.
+    for key, path in (("styles", "style"), ("themes", "themes"), ("tags", "tags")):
+        vals = re.findall(rf'href="/galleries/{path}/[^"]+"[^>]*>(.*?)</a>', html, re.S)
+        seen, ordered = set(), []
+        for v in (_pdia_text(v) for v in vals):
+            if v and v not in seen:
+                seen.add(v)
+                ordered.append(v)
+        out[key] = ordered
+    m = re.search(r'href="(https://publicdomainreview\.org/collection[s]?/[^"]+)"[^>]*>(.*?)</a>',
+                  html, re.S)
+    out["collection_url"] = m.group(1) if m else None
+    out["collection_title"] = _pdia_text(m.group(2)) if m else None
+    # A page that yields NOTHING is a parse failure, not an image without metadata. Saying so is
+    # what stops a site redesign from quietly emptying 11,197 rows on the next enrichment run.
+    out["parsed"] = bool(out.get("institution") or out.get("themes") or out.get("digital_rights"))
+    return out
+
+
+def pdia_details(uuids: "List[str]", *, workers: int = 4,
+                 progress=None) -> Dict[str, Dict[str, Any]]:
+    """Detail pages, fetched concurrently. FOUR workers, not eight: this is a donation-funded
+    site being asked for 11,197 pages, and the pass is ~6 minutes either way."""
+    import httpx
+
+    out: Dict[str, Dict[str, Any]] = {}
+    if not uuids:
+        return out
+
+    def _one(u):
+        try:
+            with httpx.Client(headers={"User-Agent": _UA}, timeout=45.0) as c:
+                return pdia_detail(u, client=c)
+        except Exception:
+            return None
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        for got in pool.map(_one, uuids):
+            if got and got.get("parsed"):
+                out[got["uuid"]] = got
+            if progress:
+                progress(len(out))
+    return out
 
 
 def pdia_items(limit: int = 200, *, report: Optional[HarvestReport] = None,
