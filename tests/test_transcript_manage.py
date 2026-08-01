@@ -66,10 +66,45 @@ def test_origin_names_why_each_tile_exists(tmp_path):
     assert o["https://www.youtube.com/bloomberg"] == "unregistered"   # crawled, then the source was removed
 
 
-def test_remove_source_leaves_the_tile_but_purge_clears_it(tmp_path):
-    """The defect this pins: remove_source drops the sources.json row while the videos stay, so the tile
-    comes straight back as `unregistered` — a derived tile was unremovable by any UI action. purge_source
-    deletes the videos too, which is the only thing that makes the tile go."""
+def test_channel_facets_gate_promotion_on_a_resolvable_reference(tmp_path):
+    """The Indexed-videos filter is where an unregistered channel lives. `promotable` is the honest gate:
+    a bare uploader NAME can't be enumerated by list_channel, so offering to register it would create a
+    source no sync could ever crawl."""
+    from nolan import transcript_lib as tl
+    tl.upsert_source("prelinger", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("p1", {"title": "A"}, 1, "prelinger", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("t1", {"title": "B"}, 1, "television_inbox", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("t2", {"title": "C"}, 1, "television_inbox", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("c1", {"title": "D"}, 1, "Christian Sommer", catalog_dir=tmp_path)
+    f = {r["channel"]: r for r in tl.channel_facets(tmp_path)}
+    assert [r["channel"] for r in tl.channel_facets(tmp_path)][0] == "television_inbox"   # biggest first
+    assert f["prelinger"]["registered"] is True and f["prelinger"]["promotable"] is False
+    assert f["television_inbox"]["registered"] is False and f["television_inbox"]["promotable"] is True
+    assert f["Christian Sommer"]["promotable"] is False        # uploader name — no sync could crawl it
+    assert f["Christian Sommer"]["url_exact"] is False
+
+
+def test_sources_and_unregistered_channels_are_separate_lists(tmp_path):
+    """The Sources registry holds ONLY what someone added; a channel that merely has videos is reported
+    as a count and browsed on the video list. Nothing is hidden — the two together cover the catalog."""
+    from nolan import transcript_lib as tl
+    tl.upsert_source("prelinger", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("p1", {"title": "A"}, 1, "prelinger", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("t1", {"title": "B"}, 1, "television_inbox", kind="archive", catalog_dir=tmp_path)
+    tl.record_transcript("y1", {"title": "C"}, 1, "https://www.youtube.com/bloomberg", catalog_dir=tmp_path)
+    rows = tl.sources_view(tmp_path)
+    managed = [r for r in rows if r["origin"] == "managed"]
+    unreg = [r for r in rows if r["origin"] != "managed"]
+    assert [r["channel"] for r in managed] == ["prelinger"]
+    assert sorted(r["channel"] for r in unreg) == ["https://www.youtube.com/bloomberg", "television_inbox"]
+    assert sum(r["video_count"] for r in rows) == len(tl.load_catalog(tmp_path))    # nothing dropped
+    assert {r["channel"] for r in tl.channel_facets(tmp_path)} == {r["channel"] for r in rows}
+
+
+def test_remove_source_only_unregisters_but_purge_clears_the_videos(tmp_path):
+    """remove_source drops the sources.json row while the videos stay, so the channel doesn't vanish —
+    it demotes to `unregistered` and lives on in the video list. purge_source deletes the videos too,
+    which is the only thing that removes a channel from the library entirely."""
     from nolan import transcript_lib as tl
     from nolan.indexer import VideoIndex
     ch = "https://www.youtube.com/bloomberg"

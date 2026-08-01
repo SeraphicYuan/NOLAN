@@ -326,14 +326,19 @@
       <div class="card">
         <div class="row" style="justify-content:space-between"><b style="font-size:13px">Sources</b><span class="row"><button class="btn ghost mini" onclick="syncAll()" title="Re-crawl ALL channels for new uploads (incremental)">↻ Sync all</button><span id="src-stat" class="dim"></span></span></div>
         <div id="sources" style="margin-top:8px"></div>
+        <div id="unreg-note" class="dim" style="margin-top:8px;font-size:11px"></div>
       </div>
 
       <div class="card">
         <div class="row" style="justify-content:space-between"><b style="font-size:13px">Indexed videos</b><span id="lib-stat" class="dim"></span></div>
         <div class="row" style="gap:8px;margin-top:6px;font-size:12px">
+          <label class="dim">channel <select id="vchan" onchange="renderVideos()" style="max-width:320px"></select></label>
+          <span id="chan-actions" class="row" style="gap:6px"></span>
+        </div>
+        <div class="row" style="gap:8px;margin-top:6px;font-size:12px">
           <label class="dim"><input type="checkbox" id="selAll" onchange="toggleAll(this.checked)"> select all</label>
           <button class="btn ghost mini" onclick="batchCaption('sel')">🖼 Caption selected (<span id="selN">0</span>)</button>
-          <button class="btn ghost mini" onclick="batchCaption('text')" title="Caption every transcript-only video">Caption all text-only</button>
+          <button class="btn ghost mini" id="capTextBtn" onclick="batchCaption('text')" title="Caption every transcript-only video in the list — the channel filter above applies">Caption all text-only</button>
           <label class="dim" title="Re-caption even if already captioned"><input type="checkbox" id="forceCap"> force</label>
           <span id="cap-status" class="dim"></span>
         </div>
@@ -1019,23 +1024,25 @@
         const d=await jget("/api/transcripts/sources");
         $("#src-stat").textContent=`${d.count} source(s)`;
         $("#sources").innerHTML = d.sources.length ? d.sources.map(srcTile).join("") : '<div class="dim">No sources yet — add a channel above.</div>';
+        const u=d.unregistered||{};
+        // NOT sources — but never silently dropped: say what's indexed under channels nobody added, and
+        // point at the list that can actually browse / promote / clear them.
+        $("#unreg-note").innerHTML = u.channels
+          ? `${u.videos} video(s) are indexed under <b>${u.channels}</b> channel(s)/collection(s) nobody added${u.search?` — ${u.search} of them are archive.org collections a topic / 🌱 broaden search pulled items from`:""}. They aren't sources; browse, promote or clear them in <a href="#" onclick="jumpToChannels();return false">Indexed videos</a> below.`
+          : "";
       }catch(e){ $("#sources").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
+    function jumpToChannels(){ const s=$("#vchan"); s.scrollIntoView({block:"center",behavior:"smooth"}); s.focus(); }
     function srcTile(s){
       const kind = s.kind || "youtube";
       const archive = kind==="archive", cc = kind==="youtube_cc";
       const last = s.last_crawled ? `· last crawled ${esc(s.last_crawled.slice(0,10))}` : "· not yet synced";
-      const ORIGIN = {
-        search: ["via search", "Nobody added this. A topic / 🌱 Broaden search over the GLOBAL archive.org tier ingested these videos, and this is the collection archive.org files them under — the collection was never chosen."],
-        unregistered: ["unregistered", "Has indexed videos but no source row — a channel crawl whose source was later removed, or single-video ingests where this tile is just the uploader's name."],
-      }[s.origin] || null;
-      const tag = (ORIGIN ? ` <span class="chip txt" title="${esc(ORIGIN[1])}">${ORIGIN[0]}</span>` : "")
-        + (archive ? ` <span class="chip">🏛 archive</span>` : "")
+      const tag = (archive ? ` <span class="chip">🏛 archive</span>` : "")
         + (cc ? ` <span class="chip">🆓 copyright-free</span>` : "")
         + (s.copyright_free && !cc ? ` <span class="chip frames">copyright-free</span>` : "");
       const n = s.video_count||0;
-      const rm = s.managed===false ? "" : `<button class="btn ghost mini danger" onclick="removeSource('${esc(s.channel)}',${n})" title="${n?"Unregister only — the "+n+" video(s) stay indexed and this tile stays, as 'unregistered'":"Drop this source"}">Remove</button>`;
-      const purge = !n ? "" : `<button class="btn ghost mini danger" onclick="purgeSource('${esc(s.channel)}',${n})" title="Delete all ${n} video(s) everywhere (index + vectors + frames + catalog) AND the source — the only thing that makes this tile disappear">🗑 Delete ${n}</button>`;
+      const rm = `<button class="btn ghost mini danger" onclick="removeSource('${esc(s.channel)}',${n})" title="${n?"Unregister only — the "+n+" video(s) stay indexed, and move to Indexed videos as an unregistered channel":"Drop this source"}">Remove</button>`;
+      const purge = !n ? "" : `<button class="btn ghost mini danger" onclick="purgeSource('${esc(s.channel)}',${n})" title="Delete all ${n} video(s) everywhere (index + vectors + frames + catalog) AND the source">🗑 Delete ${n}</button>`;
       const curate = `<button class="btn ghost mini" onclick="openCurateFor('${esc(s.channel)}','${kind}')" title="Browse + curate this source">🎯 Curate</button>`;
       const sync = (archive||cc) ? "" : `<button class="btn ghost mini" onclick="syncSource('${esc(s.channel)}')" title="Fetch only NEW uploads (dedup skips indexed)">↻ Sync</button>`;
       const open = !s.url ? "" : (s.url_exact
@@ -1062,13 +1069,13 @@
     }
     async function removeSource(channel, n){
       const msg = n
-        ? `Unregister "${channel}"?\n\nIts ${n} indexed video(s) STAY searchable — so this tile will NOT go away: it comes back immediately as an "unregistered" tile (without Sync).\n\nTo make it disappear, use 🗑 Delete ${n} instead.`
+        ? `Unregister "${channel}"?\n\nIts ${n} indexed video(s) STAY searchable — the channel just stops being a source and moves down to Indexed videos as an unregistered channel.\n\nTo delete the videos too, use 🗑 Delete ${n} instead.`
         : `Remove "${channel}" from the managed list?`;
       if(!confirm(msg)) return;
       try{ await jdel(`/api/transcripts/sources?channel=${encodeURIComponent(channel)}`); loadSources(); }catch(e){ alert(e.message); }
     }
     async function purgeSource(channel, n){
-      if(!confirm(`DELETE all ${n} video(s) under "${channel}"?\n\nThis removes them everywhere — transcript index, embeddings, keyframes, catalog — and drops the source. NOT undoable; re-ingesting means re-crawling and re-captioning.\n\nThis is what makes the tile disappear.`)) return;
+      if(!confirm(`DELETE all ${n} video(s) under "${channel}"?\n\nThis removes them everywhere — transcript index, embeddings, keyframes, catalog — and drops its source registration if it has one. NOT undoable; re-ingesting means re-crawling and re-captioning.`)) return;
       if(!confirm(`Last check: ${n} video(s) will be permanently deleted.`)) return;
       const st=$("#src-stat"); st.textContent="deleting…";
       try{
@@ -1097,13 +1104,41 @@
         pollJob(d.job_id, st, null, ()=>loadVideos());
       }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
     }
+    let VIDS=[], FACETS=[];
     async function loadVideos(){
       try{
         const d=await jget("/api/transcripts/videos");
-        $("#lib-stat").textContent=`${d.count} videos`;
-        $("#videos").innerHTML = d.videos.length ? d.videos.map(vidRow).join("") : '<div class="dim">Nothing indexed yet.</div>';
-        if($("#selAll")) $("#selAll").checked=false; updSel();
+        VIDS=d.videos||[]; FACETS=d.channels||[];
+        const keep=$("#vchan").value;                       // survive a reload (e.g. after a delete)
+        $("#vchan").innerHTML = `<option value="">all channels (${d.count})</option>`
+          + FACETS.map(c=>`<option value="${esc(c.channel)}">${esc(c.channel)} (${c.count})${c.registered?"":" · not a source"}</option>`).join("");
+        if(keep && FACETS.some(c=>c.channel===keep)) $("#vchan").value=keep;
+        renderVideos();
       }catch(e){ $("#videos").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    function renderVideos(){
+      const ch=$("#vchan").value;
+      const rows = ch ? VIDS.filter(v=>(v.channel||"")===ch) : VIDS;
+      $("#lib-stat").textContent = ch ? `${rows.length} of ${VIDS.length} videos` : `${VIDS.length} videos`;
+      $("#videos").innerHTML = rows.length ? rows.map(vidRow).join("") : '<div class="dim">Nothing indexed yet.</div>';
+      const f = FACETS.find(c=>c.channel===ch);
+      // Actions for ONE channel live here, not in Sources — channel is a property of these videos.
+      $("#chan-actions").innerHTML = !f ? "" :
+        (f.url?`<a class="btn ghost mini" href="${esc(f.url)}" target="_blank" rel="noopener" title="${f.url_exact?"Open this channel's own page":"No channel URL was recorded — searches YouTube for the name"}">${f.url_exact?"↗ Open":"🔎 Find"}</a>`:"")
+        + (f.registered ? `<span class="chip">✓ a source</span>`
+           : f.promotable ? `<button class="btn ghost mini" onclick="promoteChannel('${esc(f.channel)}','${f.kind}')" title="Register this ${f.kind==="archive"?"collection":"channel"} as a real source so Sync all keeps it current">➕ Add as source</button>`
+           : `<span class="chip txt" title="This is yt-dlp's uploader NAME, not a resolvable channel — no sync could ever crawl it, so it can't become a source.">uploader name only</span>`)
+        + `<button class="btn ghost mini danger" onclick="purgeSource('${esc(f.channel)}',${f.count})" title="Delete all ${f.count} video(s) under this channel everywhere (index + vectors + frames + catalog)">🗑 Delete all ${f.count}</button>`;
+      // the bulk-caption scope IS the filtered list — say so rather than let "all" quietly mean "some"
+      const cb=$("#capTextBtn"); if(cb) cb.textContent = ch ? "Caption text-only in this channel" : "Caption all text-only";
+      if($("#selAll")) $("#selAll").checked=false; updSel();
+    }
+    async function promoteChannel(channel, kind){
+      try{
+        await jpost("/api/transcripts/register-source",{channel, kind});
+        $("#src-stat").innerHTML="✓ registered as a source";
+        loadSources(); loadVideos();
+      }catch(e){ alert(e.message); }
     }
     function vidRow(v){
       const badge = v.broll ? `<span class="chip frames">▸ ready b-roll</span>`

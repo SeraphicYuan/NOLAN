@@ -4,6 +4,37 @@
 **Status:** Complete
 **Last Updated:** 2026-08-01
 
+## Sources are what you added; a channel belongs to the videos (2026-08-01)
+
+"Other than the ones I manually added, I don't think any of the others should show up under Sources
+at all — that's just the wrong place for them." Right, and the sharper argument is that the card's
+own actions never applied to them: `Sync all` iterates `load_sources()`, so it worked on 5 of the
+31 tiles shown, and every derived tile offered `Curate`, which surveys a WHOLE collection —
+meaningless for an archive.org inbox holding tens of thousands of unrelated items. The invariant
+that put them there ("the tab can't hide indexed work") never argued for the Sources card
+specifically; the Indexed-videos list below already prints the channel on every row.
+
+So the two concepts split. A SOURCE is a sources.json row — what you chose to draw from. A CHANNEL
+is a distinct `catalog.json` channel value, a property of the videos. The Sources card now shows
+only the 5 real sources; the other 25 channels (91 videos) collapse to one line that says so and
+links down. `sources_view()` still returns both tagged with `origin` — the route splits it.
+
+Channel actions moved to where the channel lives. `channel_facets()` drives a filter on Indexed
+videos, and picking one gives: `↗ Open` (the collection / channel page), `➕ Add as source` to
+promote it, and `🗑 Delete all N`. Promotion is gated on `url_exact` — registering "Christian
+Sommer", which is yt-dlp's uploader NAME, would create a source `list_channel` could never
+enumerate, so `POST /api/transcripts/register-source` refuses it and says why instead of making a
+source no sync can touch. Verified live end-to-end: the refusal 400s with that sentence, and a
+throwaway collection registers, appears, and unregisters cleanly.
+
+One honesty fix while the filter went in: `Caption all text-only` reads from the rendered rows, so
+with a filter applied "all" quietly meant "this channel". The button now relabels itself to
+`Caption text-only in this channel` when the filter is on.
+
+Five tests in `tests/test_transcript_manage.py` cover the facets, the promotion gate, and the
+managed/unregistered split — including that the two lists together still account for every catalog
+row, so the split can't start hiding things.
+
 ## "auto" was the wrong word, and Remove never removed anything (2026-08-01)
 
 Follow-up to the tile-linking work, off the back of "this sources tab isn't uploaded by me? why

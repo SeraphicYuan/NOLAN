@@ -247,12 +247,35 @@ def register(app, ctx):
 
     @app.get("/api/transcripts/videos")
     async def transcripts_videos():
-        """Browse the indexed transcript videos (newest first), grouped by channel, from the sidecar."""
+        """Browse the indexed transcript videos (newest first) from the sidecar, plus the per-channel
+        facets the list filters by — `{channel, kind, count, registered, url, url_exact, promotable}`.
+        Channel is a property of the VIDEOS, so this (not the Sources registry) is where an unregistered
+        channel is browsed, promoted to a real source, or cleared out."""
         from nolan import transcript_lib as tl
         cat = tl.load_catalog()
         vids = sorted(cat.values(), key=lambda x: (x.get("added") or ""), reverse=True)
-        channels = sorted({(v.get("channel") or "?") for v in vids})
-        return {"videos": vids, "count": len(vids), "channels": channels}
+        return {"videos": vids, "count": len(vids), "channels": tl.channel_facets()}
+
+    @app.post("/api/transcripts/register-source")
+    async def transcripts_register_source(body: dict = Body(...)):
+        """PROMOTE an unregistered channel to a real source — registration only, no crawl. The path from
+        "this collection in my video list is actually good" to a source Sync all will keep current."""
+        from nolan import transcript_lib as tl
+        ref = (body.get("channel") or "").strip()
+        if not ref:
+            raise HTTPException(status_code=400, detail="channel required")
+        kind = body.get("kind") or "youtube"
+        _, exact = tl.source_url(ref, kind)
+        if not exact:                          # a bare uploader name: list_channel could never enumerate it
+            raise HTTPException(status_code=400,
+                                detail=f"'{ref}' is an uploader name, not a resolvable channel — no sync "
+                                       "could ever crawl it. Add the channel by URL or @handle instead.")
+        if kind == "archive":
+            from nolan import archive_source as ar
+            ref = ar.collection_ref(ref)
+        tl.upsert_source(ref, label=(body.get("label") or ref), kind=kind,
+                         copyright_free=bool(body.get("copyright_free", False)))
+        return {"channel": ref, "kind": kind, "registered": True}
 
     @app.get("/api/transcripts/search")
     async def transcripts_search(q: str = Query(...), n: int = Query(default=25)):
@@ -424,14 +447,22 @@ def register(app, ctx):
     # ---- Sources (managed channels) --------------------------------------------------------------
     @app.get("/api/transcripts/sources")
     async def transcripts_sources():
-        """The managed source channels + a live video count per source (recomputed from the catalog).
-        Channels that have indexed videos but were never formally added (e.g. pre-sidecar crawls, and the
-        archive.org collections the GLOBAL tier pulled items from) are surfaced as `managed:false` derived
-        tiles so the tab reflects reality and can't hide indexed work. Each row carries `url`/`url_exact`
-        — the source's own page, so a tile you don't recognize is one click from an answer."""
+        """SOURCES ARE ONLY WHAT SOMEONE ADDED — the sources.json registry, with a live video count per
+        source (recomputed from the catalog) and a `url`/`url_exact` link to the source's own page.
+
+        Channels that merely HAVE indexed videos are not sources and no longer get a tile here: the card's
+        own actions never applied to them (Sync all iterates sources.json; Curate surveys a whole
+        collection, meaningless for an archive.org inbox). They are reported as an `unregistered` summary
+        so the tab still can't understate what is indexed, and are browsable/actionable per channel on the
+        Indexed-videos list (`/api/transcripts/videos` → `channels`), which is where they belong."""
         from nolan import transcript_lib as tl
-        out = tl.sources_view()
-        return {"sources": out, "count": len(out)}
+        rows = tl.sources_view()
+        managed = [r for r in rows if r.get("origin") == "managed"]
+        unreg = [r for r in rows if r.get("origin") != "managed"]
+        return {"sources": managed, "count": len(managed),
+                "unregistered": {"channels": len(unreg),
+                                 "videos": sum(int(r.get("video_count") or 0) for r in unreg),
+                                 "search": sum(1 for r in unreg if r.get("origin") == "search")}}
 
     @app.delete("/api/transcripts/sources")
     async def transcripts_remove_source(channel: str = Query(...), purge: bool = Query(default=False)):

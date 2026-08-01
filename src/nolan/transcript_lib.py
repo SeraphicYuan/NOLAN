@@ -144,11 +144,49 @@ def source_url(ref: str, kind: str = "youtube") -> Tuple[str, bool]:
     return (f"https://www.youtube.com/results?search_query={quote_plus(ref)}", False)
 
 
+def _channel_stats(catalog_dir: Optional[Path] = None) -> Tuple[Dict[str, int], Dict[str, str]]:
+    """``({channel: video_count}, {channel: kind})`` straight off the catalog. A channel's kind is what its
+    videos ACTUALLY are (majority of their per-video ``kind``) — never inferred from the string, or
+    `FedFlix` and `PeriscopeFilm`, both archive collections, would read as YouTube channels."""
+    from collections import Counter
+    counts: Dict[str, int] = {}
+    kinds: Dict[str, Any] = {}
+    for e in load_catalog(catalog_dir).values():
+        ch = e.get("channel")
+        if not ch:
+            continue
+        counts[ch] = counts.get(ch, 0) + 1
+        if e.get("kind"):
+            kinds.setdefault(ch, Counter())[e["kind"]] += 1
+    return counts, {ch: c.most_common(1)[0][0] for ch, c in kinds.items()}
+
+
+def channel_facets(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """Per-channel rows for the Indexed-videos filter: ``{channel, kind, count, registered, url,
+    url_exact, promotable}``, biggest first. This is where an UNREGISTERED channel belongs — it is a
+    property of the videos, not an entry in the source registry (see ``sources_view``).
+
+    ``promotable`` gates the "add as source" action: only a reference we can actually resolve and crawl.
+    A bare uploader name (``url_exact`` false) can't be enumerated by ``list_channel``, so offering to
+    register it would create a source that no sync could ever touch."""
+    counts, kinds = _channel_stats(catalog_dir)
+    srcs = load_sources(catalog_dir)
+    out = []
+    for ch, n in counts.items():
+        kind = srcs[ch].get("kind", "youtube") if ch in srcs else kinds.get(ch, "youtube")
+        url, exact = source_url(ch, kind)
+        out.append({"channel": ch, "kind": kind, "count": n, "registered": ch in srcs,
+                    "url": url, "url_exact": exact, "promotable": bool(exact) and ch not in srcs})
+    out.sort(key=lambda r: (-r["count"], r["channel"].lower()))
+    return out
+
+
 def sources_view(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
-    """The Sources tab's rows: the managed sources, plus DERIVED tiles for channels that have indexed
-    videos but were never formally added (pre-sidecar crawls, and every archive.org item pulled by the
-    GLOBAL tier — its `channel` is the item's first archive collection, so tiles like `television_inbox`
-    or `altcensored` are collections we never added, not sources someone registered).
+    """Every channel the library knows, tagged by ``origin``. The ROUTE splits this: only ``managed``
+    rows are Sources (the registry of what you chose to draw from); the rest are a property of the
+    videos and are surfaced through ``channel_facets`` on the Indexed-videos list instead — a derived
+    row is not a source, and the Sources card's own buttons (Sync all iterates sources.json; Curate
+    surveys a whole collection) never applied to one.
 
     Each row carries a live ``video_count`` recomputed from the catalog, a ``url``/``url_exact`` link to
     the source's own page, and an ``origin`` naming HOW the tile exists. A derived row's ``kind`` comes
@@ -162,17 +200,8 @@ def sources_view(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     * ``unregistered`` — derived, youtube: a channel with indexed videos but no source row — a crawl
       whose source was later removed, or single-video ingests where the tile is yt-dlp's uploader name.
     """
-    from collections import Counter
     srcs = load_sources(catalog_dir)
-    counts: Dict[str, int] = {}
-    kinds: Dict[str, Any] = {}
-    for e in load_catalog(catalog_dir).values():
-        ch = e.get("channel")
-        if not ch:
-            continue
-        counts[ch] = counts.get(ch, 0) + 1
-        if e.get("kind"):
-            kinds.setdefault(ch, Counter())[e["kind"]] += 1
+    counts, kinds = _channel_stats(catalog_dir)
 
     def _row(base: Dict[str, Any], ch: str, kind: str, origin: str) -> Dict[str, Any]:
         url, exact = source_url(ch, kind)
@@ -181,10 +210,10 @@ def sources_view(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     out = [_row({**s, "managed": True, "video_count": counts.get(ch, s.get("video_count", 0))},
                 ch, s.get("kind") or "youtube", "managed")
            for ch, s in srcs.items()]
-    for ch, n in counts.items():                                   # derive tiles for un-managed channels
+    for ch, n in counts.items():                                   # derive rows for un-managed channels
         if ch in srcs:
             continue
-        kind = kinds[ch].most_common(1)[0][0] if ch in kinds else "youtube"
+        kind = kinds.get(ch, "youtube")
         out.append(_row({"channel": ch, "label": ch, "managed": False,
                          "last_crawled": None, "video_count": n}, ch, kind,
                         "search" if kind == "archive" else "unregistered"))

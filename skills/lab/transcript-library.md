@@ -87,40 +87,44 @@ reason on the said/shown blend.
 Rebuild the title index with `POST /api/transcripts/topic-index/build` or
 `transcript_vectors.build()`; it is incremental (each row carries a signature of its embed text).
 
-## The Sources tab: `origin` says why each tile exists (`transcript_lib.sources_view`)
+## A SOURCE is only what someone added; a CHANNEL is a property of the videos
 
-Only `sources.json` rows are sources anyone added. Every other tile is DERIVED from a `channel`
-value in `catalog.json` — shown, not hidden, so the tab can't understate what is indexed. The
-`origin` field names which is which, because "I never added this" is the first question the tab
-provokes:
+Two different things that used to share the Sources card, to everyone's confusion:
 
-| origin | what it is |
-|---|---|
-| `managed` | a `sources.json` row — added deliberately. Syncable, removable. |
-| `search` | derived + archive: the collection **archive.org** files these items under, picked up when a topic / 🌱 broaden search over the global tier ingested them. Nobody chose the collection. |
-| `unregistered` | derived + youtube: a channel with indexed videos but no source row — a crawl whose source was later removed, or single-video ingests where the tile is yt-dlp's uploader NAME. |
+- **Sources** = `sources.json` rows. What you chose to draw from; the card's actions are built for
+  them (Sync all iterates `load_sources()`; Curate surveys the whole collection).
+- **Channels** = every distinct `catalog.json` `channel` value. Most were never added, and the
+  Sources card's actions never applied to them. They belong to the VIDEOS, so they are surfaced as
+  the Indexed-videos filter (`channel_facets`), not as fake source tiles.
 
-`search` is the bulk of them and the confusing one: `archive_source.fetch_transcript` has no
-collection to attribute an item to, so it takes `metadata.collection[0]`, and archive.org's first
-collection is frequently an aggregator or inbox — `television_inbox`, `altcensored`, `mirrortube`,
-`fringe`, `cowmev`, `vhsvault_inbox`. A derived tile's `kind` comes from its videos' catalog `kind`,
-never guessed from the string (`FedFlix` and `PeriscopeFilm` are collections, not channels).
+`sources_view()` still returns BOTH, tagged with `origin` (`managed` / `search` / `unregistered`);
+the route splits it — `sources` are the managed rows, and the rest collapses to an `unregistered`
+`{channels, videos, search}` summary line so the tab can't understate what is indexed.
 
-Every tile carries `url` + `url_exact` from `transcript_lib.source_url()` — the collection page or
-the channel page, so an unfamiliar tile is one click from an answer. `url_exact:false` means the
-reference is a bare uploader NAME with no resolvable channel URL, and the link degrades to a
-YouTube search rather than a guessed `/c/` 404.
+`origin: "search"` is the bulk of them and the one that provokes "I never added this":
+`archive_source.fetch_transcript` has no collection to attribute a global-tier hit to, so it takes
+`metadata.collection[0]`, and archive.org's first collection is frequently an aggregator or inbox —
+`television_inbox`, `altcensored`, `mirrortube`, `fringe`, `vhsvault_inbox`. `origin:
+"unregistered"` is a youtube channel with videos but no source row (a crawl whose source was
+removed; or single-video ingests, where the value is yt-dlp's uploader NAME).
 
-**Removing: `remove_source` does not remove a tile.** It drops the `sources.json` row while the
-videos stay in the catalog, so `sources_view` re-derives the tile as `unregistered` — and a derived
-tile has no row to drop at all, so it was unremovable by any UI action. `purge_source(index,
-channel)` deletes the channel's videos everywhere (DB + vectors + frames + catalog) and then the
-source row; that is the only thing that clears a tile. `DELETE /api/transcripts/sources?purge=true`.
-It reports `deleted` vs `errors` per video and leaves a failed row in the catalog rather than
-swallowing it.
+A channel's `kind` comes from its videos' catalog `kind`, never guessed from the string — else
+`FedFlix` and `PeriscopeFilm`, both archive collections, would read as YouTube channels.
 
-Known gap: ~60 stock-channel videos carry `channel: null` and therefore get NO tile — the tab
-undercounts by that much until the ingest backfills a channel for them.
+**Links.** `source_url()` → `(url, exact)`: the collection page or the channel page. `exact=False`
+means a bare uploader name with no resolvable channel URL, so the link degrades to a YouTube search
+rather than a guessed `/c/` 404. `exact` also gates `channel_facets`' `promotable`: registering an
+uploader name would create a source `list_channel` could never crawl, so `POST
+/api/transcripts/register-source` rejects it rather than making a dead source.
+
+**Removing.** `remove_source` only UNREGISTERS — the videos stay, so the channel just demotes to
+`unregistered` and lives on in the video list. `purge_source(index, channel)` deletes the channel's
+videos everywhere (DB + vectors + frames + catalog) then the source row; that is the only thing
+that removes a channel from the library. `DELETE /api/transcripts/sources?purge=true`. It reports
+`deleted` vs `errors` per video and leaves a failed row in the catalog rather than swallowing it.
+
+Known gap: ~60 stock-channel videos carry `channel: null` and so appear under no channel facet —
+the filter's counts sum to less than the library total until the ingest backfills a channel.
 
 ## Growing the library
 
