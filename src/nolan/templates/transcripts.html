@@ -156,7 +156,8 @@
       <div class="card">
         <div class="row">
           <span id="cu-kindbadge" class="chip txt">📺 YouTube</span>
-          <input type="text" id="cu-channel" placeholder="channel URL / @handle / id — e.g. https://www.youtube.com/@AmericanExperiencePBS">
+          <label class="dim">source <select id="cu-pick" onchange="cuPick(this.value)" style="max-width:300px"><option value="">— pick a source —</option></select></label>
+          <input type="text" id="cu-channel" placeholder="…or type a channel URL / @handle / collection id">
           <button class="btn" onclick="cuSurvey(false)">Grab all titles</button>
           <button class="btn ghost mini" onclick="cuSurvey(true)" title="Re-crawl the source, ignore the stored title list">↻</button>
           <span id="cu-stat" class="dim"></span>
@@ -427,8 +428,6 @@
     let CU_VIEW = "flat";
     function cuCfParam(){ return (CU.kind==="archive" && $("#df-cf") && $("#df-cf").checked) ? "&copyright_free=true" : ""; }
     function cuKindUI(){
-      // per-item copyright-free filter only matters for archive (mixed licenses); youtube_cc is all-free
-      $("#df-cfwrap").style.display = CU.kind==="archive" ? "inline" : "none";
       const labels={youtube:"📺 YouTube", youtube_cc:"🆓 YouTube (copyright-free)", archive:"🏛 archive.org"};
       $("#cu-kindbadge").textContent = labels[CU.kind] || labels.youtube;
       $("#cu-channel").placeholder = CU.kind==="archive" ? "collection id / URL — e.g. prelinger" : "channel URL / @handle / id";
@@ -449,10 +448,7 @@
     }
     function openCurateFor(ref, kind){
       if(!ref){ alert("Enter a "+(kind==="archive"?"collection":"channel")+" first."); return; }
-      CU.kind = kind||"youtube"; DF_KIND = CU.kind; goDiscover('curate');
-      document.querySelectorAll("#df-kind button").forEach(b=>b.classList.toggle("on", b.dataset.k===CU.kind));
-      $("#df-cfwrap").style.display = (CU.kind==="archive") ? "inline" : "none";
-      cuKindUI();
+      goDiscover('curate'); setKind(kind || "youtube");   // ONE owner for the kind + cf controls
       if(ref!==cuChannel() || !CU.items.length){ $("#cu-channel").value=ref; cuSurvey(false); }
     }
     async function addCollection(){
@@ -501,6 +497,30 @@
       }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
     }
 
+    // "Where do I pick the source?" — you had to TYPE it. Everything already surveyed or registered is
+    // selectable here; picking one sets the family and grabs its (cached) titles in one step.
+    async function cuLoadPicker(){
+      try{
+        const d=await jget("/api/transcripts/browsable");
+        CU_PICK = {}; const sel=$("#cu-pick"), keep=sel.value;
+        sel.innerHTML = '<option value="">— pick a source —</option>' + (d.sources||[]).map(r=>{
+          CU_PICK[r.ref] = r;
+          const badge = {youtube:"📺", youtube_cc:"🆓", archive:"🏛"}[r.kind] || "";
+          const n = r.titles ? `${r.titles} titles` : "not surveyed yet";
+          return `<option value="${esc(r.ref)}">${badge} ${esc(r.label)} — ${n}</option>`;
+        }).join("");
+        if(keep) sel.value=keep;
+      }catch(e){ /* typing a source still works */ }
+    }
+    let CU_PICK = {};
+    function cuPick(ref){
+      if(!ref) return;
+      const r = CU_PICK[ref] || {};
+      $("#cu-channel").value = ref;
+      setKind(r.kind || "youtube");
+      if(r.titles) cuSurvey(false);          // cached — clustering is immediate, nothing is re-crawled
+      else $("#cu-stat").innerHTML = '<span class="dim">never surveyed — press <b>Grab all titles</b> first</span>';
+    }
     function cuChannel(){ return $("#cu-channel").value.trim(); }
     function cuSelN(){ $("#cu-n-sel").textContent = CU_SEL.size; }
     function cuToggle(id, on){ if(on) CU_SEL.add(id); else CU_SEL.delete(id); cuSelN(); }
@@ -662,7 +682,7 @@
       if(!confirm(`Ingest ${sel.length} video(s)${vis==="off"?" as TRANSCRIPT-ONLY (add keyframes later)":" WITH keyframes"}?`)) return;
       const brollMax = CU.kind==="youtube_cc" ? (parseInt($("#cu-broll").value,10)||0) : 0;
       try{
-        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:(CU.kind==="archive"?"off":vis), kind:CU.kind, collection:(CU.kind==="archive"?cuChannel():""), broll_max_sec:brollMax});
+        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:(CU.kind==="archive"?"off":vis), kind:CU.kind, channel:cuChannel(), collection:(CU.kind==="archive"?cuChannel():""), broll_max_sec:brollMax});
         alert(`Ingesting ${sel.length} in the background — track it in Background Jobs. Then Sources → Caption for keyframes.`);
         sel.forEach(v=>{ const row=CU.byId[v.video_id]; if(row) row.in_library=true; });
         CU_SEL.clear(); cuSelN();
@@ -776,7 +796,7 @@
       $("#tg-body").innerHTML=`<div class="dim">${useEdited?"searching with your queries":"expanding the topic + searching"} indexed transcripts and surveyed titles…</div>`;
       TG_SEL.clear(); tgSelN();
       try{
-        const body={topic, n, copyright_free:($("#df-cf") && $("#df-cf").checked && DF_KIND!=="youtube"),
+        const body={topic, n, copyright_free:($("#df-cf") && $("#df-cf").checked && $("#df-cfwrap").style.display!=="none"),
                     web:$("#tg-web").checked, rerank:$("#tg-rr").checked,
                     min_sec:60*(parseInt($("#df-min").value,10)||0),
                     max_sec:60*(parseInt($("#df-max").value,10)||0)};
@@ -914,7 +934,7 @@
       const body={count:parseInt($("#bd-n").value,10)||20, theme:$("#bd-theme").value.trim(),
                   min_fit:$("#bd-fit").value, kinds,
                   topic_source:$("#bd-src").value, expand:$("#bd-expand").checked,
-                  copyright_free:($("#df-cf") && $("#df-cf").checked && DF_KIND!=="youtube"), web:$("#bd-web").checked, rerank:$("#tg-rr").checked,
+                  copyright_free:($("#df-cf") && $("#df-cf").checked && $("#df-cfwrap").style.display!=="none"), web:$("#bd-web").checked, rerank:$("#tg-rr").checked,
                   /* the length filter is only trustworthy where the crawl carries a duration; archive rows
                      are enforced after download instead (see the note in the panel) */
                   length_kinds:["youtube","youtube_cc"],
@@ -1039,17 +1059,26 @@
       STRATEGY = sname;
       document.querySelectorAll("#df-strategy button").forEach(b=>b.classList.toggle("on", b.dataset.s===sname));
       $("#df-hint").textContent = STRAT_HINT[sname] || "";
+      syncCfVisibility();
       for(const pane of ["curate","topic","coverage"])
         $("#tab-"+pane).style.display = pane===sname ? "block" : "none";
+      if(sname==="curate") cuLoadPicker();
       if(sname==="topic"){ tgIndexStatus(); tgMemory(); tgCoverage(); bdBind(); if(!Object.keys(TG.byId||{}).length) bdRestore(); }
       if(sname==="coverage" && !CV.built) loadCoverage(false);
+    }
+
+    // ONE owner for the copyright-free control. Browsing ONE source, it is only a real question for
+    // archive (mixed licences; youtube_cc is all-free and documentary youtube never is). The topic
+    // search spans every family at once, so there it always applies.
+    function syncCfVisibility(){
+      const show = (STRATEGY === "topic") || DF_KIND === "archive";
+      $("#df-cfwrap").style.display = show ? "inline" : "none";
     }
 
     function setKind(k){
       DF_KIND = k; CU.kind = k; CV_KIND = k;
       document.querySelectorAll("#df-kind button").forEach(b=>b.classList.toggle("on", b.dataset.k===k));
-      // copyright-free is only a real question for families that CAN be free; documentary youtube never is
-      $("#df-cfwrap").style.display = (k==="archive") ? "inline" : "none";
+      syncCfVisibility();
       cuKindUI();
       CV.built = false;
       if(STRATEGY==="coverage") loadCoverage(false);
@@ -1166,11 +1195,14 @@
         // NOT sources — but never silently dropped: say what's indexed under channels nobody added, and
         // point at the list that can actually browse / promote / clear them.
         $("#unreg-note").innerHTML = u.channels
-          ? `${u.videos} video(s) are indexed under <b>${u.channels}</b> channel(s)/collection(s) nobody added${u.search?` — ${u.search} of them are archive.org collections a topic / 🌱 broaden search pulled items from`:""}. They aren't sources; browse, promote or clear them in <a href="#" onclick="jumpToChannels();return false">Indexed videos</a> below.`
+          ? `${u.videos} video(s) are indexed under <b>${u.channels}</b> channel(s)/collection(s) nobody added${u.search?` — ${u.search} of them are archive.org collections a topic / 🌱 broaden search pulled items from`:""}. They aren't sources; browse, promote or clear them in <a href="#" onclick="jumpToChannels();return false">the Videos tab</a>.`
           : "";
       }catch(e){ $("#sources").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
-    function jumpToChannels(){ const s=$("#vchan"); s.scrollIntoView({block:"center",behavior:"smooth"}); s.focus(); }
+    function jumpToChannels(){
+      showTab("videos");                       // #vchan lives in another tab now — switch, then focus it
+      const s=$("#vchan"); s.scrollIntoView({block:"center",behavior:"smooth"}); s.focus();
+    }
     function srcTile(s){
       const kind = s.kind || "youtube";
       const archive = kind==="archive", cc = kind==="youtube_cc";

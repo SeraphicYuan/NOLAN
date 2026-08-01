@@ -116,6 +116,37 @@ from the registry, `author.py` delegation, `block_registry` / `style_contract` /
 classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
 honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
 
+## The bugs behind "where do I pick the source?" (2026-08-01)
+
+**60 videos belonged to no source at all.** `ingest_videos` attributed a pick with
+`v.get("channel") or collection` — and `collection` is only ever set for archive. So every
+youtube_cc pick made from Curate landed with `channel: None`: absent from every channel facet, not
+scopable by the new search filter, not promotable, not purgeable. The caller always knew which
+source it was browsing; it just never passed it. Now `… or source`, threaded from the route and the
+Curate ingest.
+
+The existing rows were recoverable rather than lost: the surveys already record which source each
+video_id came from, so `backfill_channels()` attributes them — **60 of 61 fixed** (59 HikingFex, 1
+FreeHDvideos). The last one is an archive item archive.org itself files under no collection; it is
+left alone and COUNTED, never given an invented source. Facets now sum to 246 of 247 catalog rows.
+
+**Three bugs from the restructure, found by reasoning about it rather than waiting for them.**
+`cuKindUI` and `setKind` both wrote `#df-cfwrap`, and tying copyright-free to the source-family
+switch removed it from the Topic strategy on YouTube — but the topic search spans every family at
+once, so it always applies there. One owner now (`syncCfVisibility`): shown for the Topic strategy
+on any kind, and otherwise only for archive (youtube_cc is all-free, documentary youtube never is).
+The Sources note linked to "Indexed videos below", which after the split scrolled to an element in a
+hidden tab and did nothing — it switches tabs first. And `openCurateFor` had its own copy of the
+kind/cf toggling that would have fought the new owner; it delegates to `setKind`.
+
+**"Where can I see clustering per source?"** It was Discover → Browse a source → *By topic* — but
+you had to TYPE the channel, which is not selecting. There is a picker now, fed by a new
+`/api/transcripts/browsable`: every registered source plus anything with a cached survey, with its
+title count and family badge. Selecting one sets the family and loads its cached titles in one step;
+a registered source that has never been surveyed is selectable and says so instead of silently
+returning nothing. Live: 7 browsable sources, and picking AmericanExperiencePBS clusters its 927
+distinct titles into 40 topics with no crawl and no embedding.
+
 ## Five tabs that answered three questions (2026-08-01)
 
 "We have built lots of features and the UI is quite busy — I'm a bit lost." The page had five tabs,

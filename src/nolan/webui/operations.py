@@ -616,7 +616,7 @@ def _permanently_unusable(err: Exception) -> bool:
                                 "unable to download webpage"))
 
 
-async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str = "off",
+async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str = "off", source: str = "",
                         window_s: float = 45.0, overlap_s: float = 10.0, delay: float = 1.0,
                         refresh: bool = False, kind: str = "youtube", collection: str = "",
                         broll_max_sec: float = 0.0, copyright_free: bool = False,
@@ -712,7 +712,10 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
                 job.log(f"  ~ {ttl[:60]}: no transcript -> {'title+subject' if kind=='archive' else 'title'}-indexed")
             else:
                 job.log(f"  . {title}: no transcript -- skipped"); no_tr += 1; continue
-        vid = await asyncio.to_thread(tl.ingest_transcript, index, {**meta, "url": url}, windows, v.get("channel") or collection)
+        # attribute to the SOURCE the caller surveyed. `collection` is archive-only, so a youtube_cc
+        # ingest used to land with channel=None and then belong to no source at all.
+        chan = v.get("channel") or collection or source
+        vid = await asyncio.to_thread(tl.ingest_transcript, index, {**meta, "url": url}, windows, chan)
         if not vid:
             skipped += 1; continue
         await asyncio.to_thread(vs.sync_video, vid)
@@ -736,7 +739,7 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
         # keep the runtime we already know: once ingested, tier 1 has no survey behind it to ask
         dur_known = dur_item or float((meta or {}).get("duration") or 0) or None
         tl.record_transcript(meta.get("video_id") or yid0, {**meta, "url": url}, len(windows),
-                             v.get("channel") or collection, frames=nframes, added=now, broll=is_broll,
+                             chan, frames=nframes, added=now, broll=is_broll,
                              kind=kind, copyright_free=copyright_free, duration=dur_known)
         if not is_broll:
             job.log(f"  + {title} ({len(windows)} windows" + (f", +{nframes} frames" if nframes else "") + ")")

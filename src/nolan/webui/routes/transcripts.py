@@ -249,10 +249,37 @@ def register(app, ctx):
         job = job_manager.start(
             "transcript-ingest-videos", operations.ingest_videos, meta={"count": len(vids), "kind": kind},
             config=cfg, db_path=idb, videos=vids, visual=(body.get("visual") or "off"),
+            source=(body.get("channel") or "").strip(),      # the source the caller was browsing
             delay=float(body.get("delay", 1.0) or 1.0), kind=kind, collection=collection,
             broll_max_sec=float(body.get("broll_max_sec", 0) or 0), copyright_free=bool(cfree),
             min_sec=int(body.get("min_sec", 0) or 0), max_sec=int(body.get("max_sec", 0) or 0))
         return {"job_id": job.id, "type": "transcript-ingest-videos"}
+
+    @app.get("/api/transcripts/browsable")
+    async def transcripts_browsable():
+        """Every source you can browse BY TOPIC right now — registered sources plus any collection or
+        channel with a cached survey (a survey is all clustering needs; ingesting is a later step).
+        `titles` is 0 when a registered source has never been surveyed: selectable, but Grab first."""
+        from nolan import transcript_lib as tl
+        out, seen = [], set()
+        surveys = tl.load_surveys()
+        by_ref = {}
+        for row in surveys.values():
+            ref = row.get("channel")
+            if ref:
+                by_ref[(ref, row.get("kind") or "youtube")] = row
+        for ref, src in tl.load_sources().items():
+            kind = src.get("kind") or "youtube"
+            row = by_ref.get((ref, kind)) or {}
+            out.append({"ref": ref, "kind": kind, "label": src.get("label") or ref, "registered": True,
+                        "titles": int(row.get("count") or 0), "cached": row.get("fetched", "")})
+            seen.add((ref, kind))
+        for (ref, kind), row in by_ref.items():
+            if (ref, kind) not in seen:
+                out.append({"ref": ref, "kind": kind, "label": ref, "registered": False,
+                            "titles": int(row.get("count") or 0), "cached": row.get("fetched", "")})
+        out.sort(key=lambda r: (not r["registered"], -r["titles"]))
+        return {"sources": out, "count": len(out)}
 
     @app.get("/api/transcripts/videos")
     async def transcripts_videos():

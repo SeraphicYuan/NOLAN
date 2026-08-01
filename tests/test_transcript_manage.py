@@ -1067,3 +1067,36 @@ def test_search_joins_archive_hits_to_their_catalog_row(tmp_path):
     r = tl.search_transcripts("oil", FakeIndex(), FakeVS(), n=5, catalog_dir=tmp_path)[0]
     assert r["title"] == "American Frontier" and r["channel"] == "prelinger"
     assert r["watch_url"] == f"{url}#start/607"          # archive deep-links by fragment, not &t=
+
+
+def test_backfill_attributes_channelless_rows_from_the_surveys(tmp_path):
+    """An ingest from Curate fell back to `collection`, which is archive-only — so a youtube_cc pick
+    landed with channel=None and then belonged to no source: absent from every channel facet, not
+    scopable, not promotable, not purgeable. The surveys record which source each video_id came from,
+    so it is recoverable. A row that CANNOT be attributed is left alone and counted, never guessed."""
+    from nolan import transcript_lib as tl
+    ch = "https://www.youtube.com/@HikingFex"
+    tl.save_survey(ch, [{"video_id": "a", "url": "u", "title": "Trail"},
+                        {"video_id": "b", "url": "u", "title": "Ridge"}], tmp_path, kind="youtube_cc")
+    tl.record_transcript("a", {"title": "Trail"}, 1, None, catalog_dir=tmp_path)
+    tl.record_transcript("b", {"title": "Ridge"}, 1, None, catalog_dir=tmp_path)
+    tl.record_transcript("orphan", {"title": "?"}, 1, None, catalog_dir=tmp_path)
+
+    out = tl.backfill_channels(tmp_path)
+    assert out["fixed"] == 2 and out["still_unknown"] == 1
+    assert out["by_channel"] == {ch: 2}
+    cat = tl.load_catalog(tmp_path)
+    assert cat["a"]["channel"] == ch and cat["b"]["channel"] == ch
+    assert not cat["orphan"]["channel"]              # untouched, not invented
+    assert tl.backfill_channels(tmp_path)["fixed"] == 0        # idempotent
+
+
+def test_ingest_falls_back_to_the_browsed_source_not_just_a_collection(tmp_path, monkeypatch):
+    """The regression that produced those rows: `v.get("channel") or collection`, where `collection`
+    is only ever set for archive. The caller always knows which source it was browsing."""
+    import inspect
+    from nolan.webui import operations
+    src = inspect.getsource(operations.ingest_videos)
+    assert "or collection or source" in src, "the browsed source must be the final fallback"
+    assert "source: str" in str(inspect.signature(operations.ingest_videos)) or \
+           "source" in inspect.signature(operations.ingest_videos).parameters

@@ -1828,3 +1828,37 @@ def ingest_transcript(index, meta: Dict[str, Any], windows: List[Dict[str, Any]]
     } for w in windows]
     index.add_segments_bulk(video_id, segs)
     return video_id
+
+
+def backfill_channels(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Attribute catalog rows that carry no `channel` to the source whose SURVEY contains them.
+
+    An ingest from the Curate tab fell back to `collection`, which is only set for archive — so a
+    youtube_cc pick landed with `channel: None` and then belonged to no source, appeared under no
+    channel facet, and could not be scoped, promoted or purged. The surveys already record exactly
+    which source each video_id came from, so the attribution is recoverable rather than guessed.
+
+    Returns `{fixed, still_unknown, by_channel}` — a row we cannot attribute is left alone and
+    COUNTED, never given a made-up source."""
+    cat = load_catalog(catalog_dir)
+    owner: Dict[str, str] = {}
+    for row in load_surveys(catalog_dir).values():
+        ch = row.get("channel")
+        if not ch:
+            continue
+        for t in row.get("titles", []):
+            owner.setdefault(str(t.get("video_id")), ch)
+    fixed: Dict[str, int] = {}
+    unknown = 0
+    for vid, e in cat.items():
+        if e.get("channel"):
+            continue
+        ch = owner.get(str(vid))
+        if not ch:
+            unknown += 1
+            continue
+        e["channel"] = ch
+        fixed[ch] = fixed.get(ch, 0) + 1
+    if fixed:
+        _catalog_file(catalog_dir).write_text(json.dumps(cat, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {"fixed": sum(fixed.values()), "still_unknown": unknown, "by_channel": fixed}
