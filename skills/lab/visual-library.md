@@ -203,8 +203,13 @@ Shipped:
   the catalog indexes — title 90.1%, creator 43.1%, date 96.2%, medium 99.5%, classification
   86.9%, department 100%, culture 58.1%, place 18.4%, object QID 18.7% — and the per-object
   request buys exactly one more: `primaryImage`. Phase A does not fetch pixels, so it was
-  spending 248,472 requests on a url it would discard. Measured end to end: **2.5 h and zero
+  spending 248,472 requests on a url it would discard. Measured end to end: **1.0 h and zero
   requests**, against 7.6 h 8-wide and 11.4 h serially. The identity row is byte-identical.
+
+  The write path had to be fixed too, or the CSV would not have shown: profiled per row, the
+  CSV costs **0.01 ms**, the gate 0.00, `catalog.add` **5.48** and the identity embed **8.44**.
+  So Phase A is embed-bound and was fsync-bound — `AssetCatalog.batched_writes()` now defers
+  commits to the crawl's cursor checkpoint (2.5 h → 1.0 h). See "one commit per checkpoint".
 
   The trade, stated rather than buried: those rows carry `thumb_url = NULL`, so
   `ImageLibrary._resolve_missing_thumb_urls` pays the per-object request in **Phase B**, 8-wide,
@@ -227,6 +232,23 @@ Shipped:
   **42,255 CC0 of 68,770**. Its listing order is not perfectly stable, so a skip-cursor
   occasionally re-sees an indexed row (1 of 4 on a resumed run) — dedup makes that a refresh,
   which is exactly why the cursor may re-walk but never skip.
+
+### One commit per checkpoint (`AssetCatalog.batched_writes`)
+
+A crawl's durability boundary is the **cursor checkpoint**, not the row. `catalog.add` used to
+commit every insert — profiled at **5.48 ms/row against ~0.01 for the insert itself**, i.e. 23
+minutes of pure fsync over the Met's 248,472 records. Same defect `update_many` fixed on the
+UPDATE side; the INSERT path had never had it.
+
+`harvest()` wraps its loop in `batched_writes()` and `_persist_cursor()` closes the batch, so
+rows land on disk immediately **before** the cursor that claims them. This is stricter than what
+it replaced: individually-committed rows with a 50-row cursor could leave rows durable *past* the
+recorded cursor, which only dedup made harmless. Nests without committing early (an inner block
+must not end the outer transaction) and rolls back on exception, so an interrupted crawl resumes
+from the last checkpoint rather than a partial one. Three tests pin exactly that.
+
+Phase A is now **embed-bound, not fsync-bound**: per row, CSV 0.01 ms · gate 0.00 · add 5.48 →
+~0 · identity embed 8.44. Anything that wants Phase A faster has to attack the embed.
 
 ## Adding a source — the seven questions
 

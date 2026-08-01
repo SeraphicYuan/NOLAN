@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -467,6 +468,7 @@ class AssetCatalog:
         self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._lock = threading.Lock()
+        self._batching = False              # see batched_writes()
         with self._lock:
             self._conn.executescript(SCHEMA)
             # Migrate older DBs created before the description column existed.
@@ -496,6 +498,60 @@ class AssetCatalog:
 
     def close(self) -> None:
         self._conn.close()
+
+    # ------------------------------------------------------------ bulk write mode
+    @contextmanager
+    def batched_writes(self):
+        """Defer per-write commits to the end of the block. ONE fsync instead of one per row.
+
+        Profiled on the real Met dump, Phase A: `add()` costs **5.48 ms/row**, of which the
+        insert itself is ~0.01 — the rest is the commit. Over 248,472 rows that is 23 minutes
+        spent entirely on fsync, and it is the same defect `update_many` was written to fix on
+        the UPDATE side ("97,625 separate fsyncs, and the pass ran for tens of minutes doing
+        almost no work"). The insert path never got the same treatment.
+
+        Correctness is not weakened, it is TIGHTENED. A crawl's durability boundary is already
+        the cursor checkpoint, not the row: rows used to commit individually while the cursor
+        advanced every 50, so a kill could leave rows committed *past* the recorded cursor and
+        the next run re-walked them (harmless only because dedup caught it). Committing the
+        batch and the cursor together makes "what is on disk" and "where we resume" the same
+        point.
+
+        NESTS SAFELY — an inner block does not commit early and end the outer transaction. Any
+        exception rolls the batch back rather than leaving it half-applied, so an interrupted
+        crawl resumes from the last checkpoint instead of from a partial one.
+        """
+        if self._batching:
+            yield self                      # inner block: the outer one owns the commit
+            return
+        self._batching = True
+        try:
+            yield self
+        except BaseException:
+            with self._lock:
+                self._conn.rollback()
+            raise
+        finally:
+            self._batching = False
+        self.commit()
+
+    def commit(self) -> None:
+        """Flush whatever `batched_writes` has been holding.
+
+        UNCONDITIONAL — it does not consult `_batching`, because the only reason to call it is
+        to end a batch early (the crawl's cursor checkpoint). Routing it through `_commit` would
+        make it a no-op in exactly the situation it exists for.
+        """
+        with self._lock:
+            self._conn.commit()
+
+    def _commit(self) -> None:
+        """The per-write commit, skipped while a batch owns the transaction.
+
+        Callers already hold `self._lock`, so this must not take it.
+        """
+        if not self._batching:
+            self._conn.commit()
 
     # ------------------------------------------------------------------ writes
     def add(self, asset: Asset) -> Asset:
@@ -538,7 +594,7 @@ class AssetCatalog:
                  asset.year_from, asset.year_to,
                  asset.caption_json, asset.caption_schema),
             )
-            self._conn.commit()
+            self._commit()
         asset.id = cur.lastrowid
         return asset
 
@@ -565,7 +621,7 @@ class AssetCatalog:
         with self._lock:
             self._conn.execute(f"UPDATE assets SET {sets} WHERE id=?",
                                [*fields.values(), asset_id])
-            self._conn.commit()
+            self._commit()
 
     def update_many(self, patches: "Dict[int, dict]") -> int:
         """Patch many rows in ONE transaction. Returns rows written.
@@ -591,13 +647,13 @@ class AssetCatalog:
                 self._conn.execute(f"UPDATE assets SET {sets} WHERE id=?",
                                    [*fields.values(), asset_id])
                 n += 1
-            self._conn.commit()
+            self._commit()
         return n
 
     def set_status(self, asset_id: int, status: str) -> None:
         with self._lock:
             self._conn.execute("UPDATE assets SET status=? WHERE id=?", (status, asset_id))
-            self._conn.commit()
+            self._commit()
 
     def delete(self, asset_id: int) -> None:
         """Hard-remove a row — frees its content-hash so re-adding the SAME bytes creates a fresh asset.
@@ -605,13 +661,13 @@ class AssetCatalog:
         so identical re-captured bytes would silently dedup back to the stale (deleted) asset."""
         with self._lock:
             self._conn.execute("DELETE FROM assets WHERE id=?", (asset_id,))
-            self._conn.commit()
+            self._commit()
 
     def set_description(self, asset_id: int, description: str) -> None:
         with self._lock:
             self._conn.execute("UPDATE assets SET description=? WHERE id=?",
                                (description, asset_id))
-            self._conn.commit()
+            self._commit()
 
     # ------------------------------------------------------------------ reads
     def _row(self, row: sqlite3.Row) -> Asset:
@@ -878,7 +934,7 @@ class AssetCatalog:
                        VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                     (key, a.name, a.wikidata_qid, a.movement, a.period, a.style,
                      a.subjects, a.palette, a.note, a.source, a.added_at or now))
-                self._conn.commit()
+                self._commit()
             a.id = cur.lastrowid
             a.added_at = a.added_at or now
             return a
@@ -891,7 +947,7 @@ class AssetCatalog:
             with self._lock:
                 self._conn.execute(f"UPDATE artists SET {sets} WHERE name_key=?",
                                    [*fields.values(), key])
-                self._conn.commit()
+                self._commit()
         return self.get_artist(key)
 
     def rekey_artists(self) -> dict:
@@ -933,7 +989,7 @@ class AssetCatalog:
                        VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                     (key, d["name"], d["wikidata_qid"], d["movement"], d["period"], d["style"],
                      d["subjects"], d["palette"], d["note"], d["source"], d["added_at"]))
-            self._conn.commit()
+            self._commit()
         return {"examined": len(rows), "rekeyed": rekeyed, "merged": merged,
                 "remaining": len(seen)}
 
@@ -1005,7 +1061,7 @@ class AssetCatalog:
                      None if c.copyright_free is None else int(c.copyright_free),
                      c.era, c.topics, c.url, c.item_count, c.added_at, c.last_crawled,
                      c.upstream_count, c.cursor, c.cursor_at, c.dialect_json))
-                self._conn.commit()
+                self._commit()
             c.id = cur.lastrowid
             return c
         fields = {}
@@ -1022,7 +1078,7 @@ class AssetCatalog:
             with self._lock:
                 self._conn.execute(f"UPDATE collections SET {sets} WHERE slug=?",
                                    [*fields.values(), c.slug])
-                self._conn.commit()
+                self._commit()
         return self.get_collection(c.slug)
 
     def _collection_row(self, row: sqlite3.Row) -> Collection:

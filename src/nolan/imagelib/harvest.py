@@ -1081,6 +1081,10 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
         # work by design) — a permanent hole in identity search. Flushing here makes the cursor
         # unable to run ahead of the index.
         lib.flush_index()
+        # ...then the SQLite batch, so the rows are durable BEFORE the cursor that claims them
+        # is. `upsert_collection` below commits anyway; this makes the ordering explicit rather
+        # than incidental, and it is what turns the checkpoint into the one durability boundary.
+        lib.catalog.commit()
         if report.cursor is None or not adapter.resumable:
             return
         lib.upsert_collection(Collection(
@@ -1097,48 +1101,57 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
     # while a pixels pass must ask the API per object. Adapters that do not care ignore it.
     items_kwargs["pixels"] = pixels
 
-    for item in adapter.items(limit=limit, report=report, **items_kwargs):
-        report.scanned += 1
-        try:
-            # RETRY transient CDN failures. Measured on a 899-record crawl: 44 items (~5%) were
-            # lost to 502/504 from the IIIF host under our own request rate — noise, not a
-            # property of the item, and a harvest that drops 5% of a collection for noise silently
-            # under-covers it. A gate refusal (ValueError) is a VERDICT and never retried.
-            for attempt in range(3):
-                try:
-                    asset, created = lib.add_discovery(
-                        source_ref=item.source_ref, thumb_url=item.thumb_url, url=item.url,
-                        source=source, source_url=item.source_url, title=item.title,
-                        creator=item.creator, date_text=item.date_text,
-                        institution=item.institution, description=item.description,
-                        license=item.license, width=item.width, height=item.height,
-                        wikidata_qid=item.wikidata_qid, tags=item.tags,
-                        collection_id=collection.id, identity_source="catalog",
-                        pixels=pixels,
-                        medium=item.medium, classification=item.classification,
-                        department=item.department, culture=item.culture,
-                        place=item.place)
-                    break
-                except ValueError:
-                    raise
-                except Exception:
-                    if attempt == 2:
+    # ONE TRANSACTION PER CHECKPOINT, not one per row. `catalog.add` committing on every insert
+    # cost 5.48 ms/row against ~0.01 for the insert itself — 23 minutes of pure fsync over the
+    # Met's 248,472 records, on a pass whose only other real work is the identity embed. The
+    # batch is closed by `_persist_cursor` every 50 rows, so rows land on disk immediately
+    # before the cursor that claims them; an exception rolls the open batch back and the crawl
+    # resumes from the last checkpoint.
+    with lib.catalog.batched_writes():
+        for item in adapter.items(limit=limit, report=report, **items_kwargs):
+            report.scanned += 1
+            try:
+                # RETRY transient CDN failures. Measured on a 899-record crawl: 44 items (~5%)
+                # were lost to 502/504 from the IIIF host under our own request rate — noise, not
+                # a property of the item, and a harvest that drops 5% of a collection for noise
+                # silently under-covers it. A gate refusal (ValueError) is a VERDICT, never
+                # retried.
+                for attempt in range(3):
+                    try:
+                        asset, created = lib.add_discovery(
+                            source_ref=item.source_ref, thumb_url=item.thumb_url, url=item.url,
+                            source=source, source_url=item.source_url, title=item.title,
+                            creator=item.creator, date_text=item.date_text,
+                            institution=item.institution, description=item.description,
+                            license=item.license, width=item.width, height=item.height,
+                            wikidata_qid=item.wikidata_qid, tags=item.tags,
+                            collection_id=collection.id, identity_source="catalog",
+                            pixels=pixels,
+                            medium=item.medium, classification=item.classification,
+                            department=item.department, culture=item.culture,
+                            place=item.place)
+                        break
+                    except ValueError:
                         raise
-                    time.sleep(1.5 * (attempt + 1))
-            report.added += int(created)
-            report.refreshed += int(not created)
-        except ValueError as e:                     # a gate refusal — counted, quoted, never silent
-            report.refused_gate += 1
-            report.note(str(e))
-        except Exception as e:
-            report.errors += 1
-            report.note(f"{item.source_ref}: {type(e).__name__}: {e}")
-        if progress:
-            progress(report)
-        # Checkpoint the cursor periodically, not only at the end: a crawl killed after four
-        # hours must not resume from where it started four hours ago.
-        if report.scanned % 50 == 0:
-            _persist_cursor()
+                    except Exception:
+                        if attempt == 2:
+                            raise
+                        time.sleep(1.5 * (attempt + 1))
+                report.added += int(created)
+                report.refreshed += int(not created)
+            except ValueError as e:                 # a gate refusal — counted, quoted, never silent
+                report.refused_gate += 1
+                report.note(str(e))
+            except Exception as e:
+                report.errors += 1
+                report.note(f"{item.source_ref}: {type(e).__name__}: {e}")
+            if progress:
+                progress(report)
+            # Checkpoint the cursor periodically, not only at the end: a crawl killed after four
+            # hours must not resume from where it started four hours ago. This also CLOSES the
+            # SQLite batch above, which is why the two must stay together.
+            if report.scanned % 50 == 0:
+                _persist_cursor()
 
     # THE DENOMINATOR. Ask the source how much exists, so coverage can be stated as a share
     # rather than as a bare count — "841 indexed" reads as complete, "841 of 62,035 (1.4%)"

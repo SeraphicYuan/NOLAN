@@ -4,6 +4,40 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## ...and then Phase A was spending its time on fsync (2026-07-31)
+
+Follow-up to the same question: if the CSV is local, why is reading it 2.5 hours? Profiled the
+write path stage by stage against the real dump rather than guessing:
+
+     0.01 ms/row   stream + rights-filter the CSV      <- 2.5 seconds for all 248,472
+     0.00 ms/row   build the HarvestItem
+     0.00 ms/row   asset_gate check_candidate
+     5.48 ms/row   catalog.add — INSERT + commit PER ROW
+     8.44 ms/row   identity embed (BGE via chroma)
+
+The CSV is free. The embed is real work — it is what makes a row findable by name, ~35 min for
+the corpus. The per-row commit was 23 minutes of pure fsync, and it is the same defect
+`update_many` was written to fix on the UPDATE side ("97,625 separate fsyncs, and the pass ran
+for tens of minutes doing almost no work"); the INSERT path never got the same treatment.
+
+`AssetCatalog.batched_writes()` defers commits to the crawl's cursor checkpoint. Correctness is
+tightened rather than weakened: rows used to commit individually while the cursor advanced every
+50, so a kill could leave rows committed PAST the recorded cursor (harmless only because dedup
+caught it). Now the batch and the cursor close together, so "what is on disk" and "where we
+resume" are the same point. Nests safely, rolls back on exception.
+
+    serial API + 50 ms/row sleep      11.4 h
+    8-wide API                         7.6 h
+    CSV, commit per row                2.5 h
+    CSV, one commit per checkpoint     1.0 h    <- 2,000 real rows at 69.8 rows/s
+
+That is close to embed-bound; the remaining 14 ms/row is mostly BGE.
+
+Two bugs in my own mechanical rewrite, both caught by the suite: the script rewrote the commit
+INSIDE `_commit()` into a call to itself (infinite recursion, 55 tests down), and `commit()`
+routed through `_commit()` — which would have made the checkpoint flush a silent no-op in
+exactly the situation it exists for.
+
 ## The Met's Phase A was buying a URL it threw away (2026-07-31)
 
 Asked whether the full 248,472-row Met public-domain set was worth indexing, priced it at 7.6

@@ -1724,6 +1724,57 @@ def test_phase_b_resolves_the_image_url_it_deferred(lib, monkeypatch):
     assert lib.catalog.get_by_ref("met:12").thumb_url is None
 
 
+def test_batched_writes_defers_the_commit_but_not_the_data(tmp_path):
+    """One fsync per checkpoint instead of one per row. Profiled on the Met dump, `add()` cost
+    5.48 ms/row against ~0.01 for the insert itself — 23 minutes of pure fsync over 248,472
+    records. Rows must still be READABLE inside the batch; only durability is deferred."""
+    cat = AssetCatalog(tmp_path / "c.db")
+    with cat.batched_writes():
+        for i in range(5):
+            cat.add(Asset(content_hash=f"h{i}", path=f"f/{i}.jpg", held=0,
+                          source_ref=f"x:{i}", creator="Claude Monet"))
+        # visible to the same connection before the commit — the crawl reads its own writes
+        assert cat.count("active", held=0) == 5
+        assert cat.get_by_ref("x:3").artist_key == "claude monet"
+    assert cat.count("active", held=0) == 5
+
+    # a SECOND connection sees them only after the block closed, which is the point
+    again = AssetCatalog(tmp_path / "c.db")
+    assert again.count("active", held=0) == 5
+
+
+def test_an_interrupted_batch_rolls_back_to_the_last_checkpoint(tmp_path):
+    """A crash mid-batch must not leave a half-applied checkpoint. The crawl resumes from the
+    cursor, and the cursor is only written when the batch closes."""
+    cat = AssetCatalog(tmp_path / "c.db")
+    cat.add(Asset(content_hash="keep", path="f/k.jpg", held=0, source_ref="x:keep"))
+
+    with pytest.raises(RuntimeError):
+        with cat.batched_writes():
+            cat.add(Asset(content_hash="h9", path="f/9.jpg", held=0, source_ref="x:9"))
+            cat.commit()                      # an explicit checkpoint INSIDE the batch survives
+            cat.add(Asset(content_hash="h10", path="f/10.jpg", held=0, source_ref="x:10"))
+            raise RuntimeError("crawl killed")
+
+    assert cat.get_by_ref("x:keep") is not None
+    assert cat.get_by_ref("x:9") is not None, "a checkpointed row is durable"
+    assert cat.get_by_ref("x:10") is None, "the uncommitted tail rolled back"
+
+
+def test_batched_writes_nests_without_committing_early(tmp_path):
+    """`add_discovery` may itself batch. An inner block that committed would end the outer
+    transaction and silently break the checkpoint boundary."""
+    cat = AssetCatalog(tmp_path / "c.db")
+    with pytest.raises(RuntimeError):
+        with cat.batched_writes():
+            cat.add(Asset(content_hash="a", path="f/a.jpg", held=0, source_ref="x:a"))
+            with cat.batched_writes():
+                cat.add(Asset(content_hash="b", path="f/b.jpg", held=0, source_ref="x:b"))
+            # the inner block exited — if it committed, this rollback cannot undo either row
+            raise RuntimeError("boom")
+    assert cat.get_by_ref("x:a") is None and cat.get_by_ref("x:b") is None
+
+
 def test_every_adapter_accepts_the_kwargs_harvest_actually_passes(monkeypatch):
     """`harvest` hands the same kwargs to every adapter, so a signature that does not tolerate
     them is a TypeError on the next real crawl and NOTHING catches it — the end-to-end harvest
