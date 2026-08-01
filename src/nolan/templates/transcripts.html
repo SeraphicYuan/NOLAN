@@ -606,7 +606,8 @@
       try{
         const cap = CU_CAP ? `&cap=${CU_CAP}` : "";
         const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}&kind=${CU.kind}${k?`&k=${k}`:''}${refresh?'&refresh=true':''}${cuLenParam()}${cuCfParam()}${cap}`);
-        CU.groups=d.groups; if(!apply && !$("#cu-k").value) $("#cu-k").placeholder=`auto (${d.k})`;
+        CU.groups=d.groups; CU_OPEN = new Set();   // group indices change with every re-cluster
+        if(!apply && !$("#cu-k").value) $("#cu-k").placeholder=`auto (${d.k})`;
         $("#cu-cov").innerHTML=`<b>${d.k} topics</b> · ${d.distinct} distinct of ${d.candidates} new <span class="dim">(${d.dropped_redundant} already covered · ${d.total-d.candidates} in library)</span>`+(d.dropped_length?` <span class="dim">· ${d.dropped_length} off-length</span>`:"")+(d.capped?` <span class="warn">· newest ${d.candidates} of ${d.candidates+d.capped} clustered</span> <button class="btn ghost mini" onclick="cuClusterAll(${d.candidates+d.capped})" title="Cluster every candidate instead of the newest ${d.candidates} — embeds all ${d.candidates+d.capped} titles, so it takes longer">cluster all ${d.candidates+d.capped}</button>`:"");
         cuRenderTopics();
       }catch(e){ $("#cu-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
@@ -627,18 +628,32 @@
         const items=g.items.filter(v=>(!f || (v.title||"").toLowerCase().includes(f)) && cuLenOk(v));
         if(!items.length) return "";
         const nsel=g.items.filter(v=>CU_SEL.has(v.video_id)).length;
+        // A cluster is a browsing unit, not a list to wade through: show a few, open on demand.
+        // Everything is already in memory (unlike Coverage, whose six were a SERVER-side cut), so
+        // this is purely presentational — no refetch, and the count states what is folded away.
+        const open = CU_OPEN.has(gi);
+        const shown = open ? items : items.slice(0, CU_PEEK);
+        const more = items.length - shown.length;
+        const toggle = (more > 0)
+          ? `<button class="btn ghost mini" style="margin-top:5px" onclick="cuToggleGroup(${gi})">show ${more} more →</button>`
+          : (open && items.length > CU_PEEK
+             ? `<button class="btn ghost mini" style="margin-top:5px" onclick="cuToggleGroup(${gi})">show less</button>` : "");
         return `<div class="card" style="padding:10px 12px;margin-bottom:8px">
           <div class="row" style="justify-content:space-between">
             <b style="font-size:13px">🗂 ${esc(g.label)} <span class="dim">· ${g.size}${nsel?` · ${nsel} picked`:''}</span></b>
             <span class="row" style="gap:4px">
               <button class="btn ghost mini" onclick="cuGrpSel(${gi},'rep')" title="pick the single representative">rep</button>
-              <button class="btn ghost mini" onclick="cuGrpSel(${gi},'all')">all</button>
+              <button class="btn ghost mini" onclick="cuGrpSel(${gi},'all')" title="select every video in this cluster, including any folded away">all</button>
               <button class="btn ghost mini" onclick="cuGrpSel(${gi},'none')">none</button>
             </span></div>
-          <div style="margin-top:4px">${items.map(v=>cuGrpRow(v,g.medoid_id)).join("")}</div></div>`;
+          <div style="margin-top:4px">${shown.map(v=>cuGrpRow(v,g.medoid_id)).join("")}</div>
+          ${toggle}</div>`;
       }).join("");
       $("#cu-body").innerHTML = html || '<div class="dim">No distinct candidates to cluster.</div>';
     }
+    const CU_PEEK = 5;                       // members shown per cluster before "show more"
+    let CU_OPEN = new Set();                 // clusters the human has opened, by index
+    function cuToggleGroup(gi){ CU_OPEN.has(gi) ? CU_OPEN.delete(gi) : CU_OPEN.add(gi); cuRenderTopics(); }
     function cuGrpSel(gi, mode){
       const g=CU.groups[gi]; if(!g) return;
       g.items.forEach(v=>{
