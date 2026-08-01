@@ -186,18 +186,23 @@ def main(argv=None) -> int:
 
     from nolan.imagelib import ImageLibrary
     lib = ImageLibrary(scope=args.scope, project=args.project)
-    rows = lib.catalog.list(status="active", held=0, limit=100_000,
-                            collection_id=args.collection)
-    corpus = len(rows)
+    corpus = lib.catalog.count("active", held=0, collection_id=args.collection)
     if not corpus:
         print("No discovery rows. Harvest first:  nolan images harvest artic --limit 600")
         return 2
-    titles = [(a.title or "").lower() for a in rows]
 
+    # PRESENCE IS ASKED PER TITLE, not read off a materialised page. This used to load
+    # `limit=100_000` rows and scan their titles in Python, which silently became a SAMPLE the
+    # moment the corpus outgrew it: `list` orders by id DESC, so at 345,830 rows the window held
+    # only the newest 100k — all Met — and every artic and Cleveland golden work was reported
+    # "absent from corpus". The eval went from 28 needs to 10 and its scores stopped being
+    # comparable to any earlier run, while looking like a clean pass. An instrument with a cap
+    # that silently reframes what it measures is worse than no instrument.
     present, missing = [], []
     for expect, look, named in GOLDEN:
-        (present if any(expect.lower() in t for t in titles) else missing).append(
-            (expect, look, named))
+        hit = lib.catalog.list(status="active", held=0, limit=1,
+                               collection_id=args.collection, title=expect)
+        (present if hit else missing).append((expect, look, named))
 
     print(f"corpus: {corpus} discovery rows | golden: {len(present)} present, "
           f"{len(missing)} not in this harvest (skipped, not counted)")
