@@ -613,7 +613,7 @@ class ImageLibrary:
                 "movement": mv}
 
     def enrich_pdia_details(self, *, limit: int = 500, workers: int = 4,
-                            progress=None) -> dict:
+                            recheck_rights: bool = False, progress=None) -> dict:
         """PHASE A2 for PDIA: the fields its listing does not carry.
 
         The listing is enough to index a row; this pass is what makes the row good. It adds:
@@ -638,9 +638,19 @@ class ImageLibrary:
         from nolan.imagelib.harvest import (pdia_details, pdia_is_free_worldwide,
                                             pdia_license)
 
-        rows = [a for a in self.catalog.list(status="active", held=0, limit=limit * 4,
-                                             source="pdia")
-                if a.institution in (None, "", "Public Domain Image Archive")][:limit]
+        # `recheck_rights` re-reads rows that ALREADY have a holder. Needed when the rights
+        # PARSER changes rather than the data: 873 pages link to `/rights-labelling-on-our-site#`
+        # with an empty fragment, so before that was handled they parsed as unreadable, kept the
+        # harvest's default CC0 label, and were skipped by the ordinary selector precisely
+        # BECAUSE the same pass had already given them an institution. A row wrongly labelled CC0
+        # is the one kind of staleness that cannot be left to the next crawl.
+        pool = self.catalog.list(status="active", held=0, limit=limit * 4, source="pdia")
+        if recheck_rights:
+            rows = [a for a in pool
+                    if a.license == "CC0 (Public Domain Image Archive)"][:limit]
+        else:
+            rows = [a for a in pool
+                    if a.institution in (None, "", "Public Domain Image Archive")][:limit]
         out = {"attempted": len(rows), "enriched": 0, "unparsed": 0,
                "rights_unrecognised": 0, "not_free_worldwide": 0, "themes_seen": 0, "reasons": []}
         if not rows:
