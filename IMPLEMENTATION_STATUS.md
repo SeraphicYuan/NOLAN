@@ -4,6 +4,43 @@
 **Status:** Complete
 **Last Updated:** 2026-08-01
 
+## Visual Lib: the visual knowledge table, looked up before it is guessed (2026-08-01)
+
+`artists` held 222 rows, zero Wikidata ids, and everything in it came from a language model. That
+is the right tool for "what did this painter's work look like" and the wrong one for "when was he
+born" — across **29,766 artists covering 179,497 rows, 50% of the library**, a generated birth
+year is thousands of plausible errors nobody can audit. Wikidata now runs FIRST
+(`imagelib/wikidata.py`, `nolan images artists --wikidata`) and the model fills only what it
+leaves empty: style, typical subjects, palette. Provenance is **per field** (`sources_json`), and
+`enrich_artists` will not overwrite anything marked `wikidata`. New columns: `birth_year`,
+`death_year`, `nationality`, `biography`, `wikipedia_url`, `kind`, `sources_json`, `checked_at`.
+
+**Half of it was free and already on disk.** The Met's bulk CSV publishes `Artist Wikidata URL`
+beside `Artist Display Name` on 224,202 rows — the crawl only ever read `Object Wikidata URL`,
+which identifies the ARTWORK. Folded, that column resolves **7,242 artists / 90,693 rows for zero
+requests**. Both columns are pipe-separated and positional, blanks allowed, so they are zipped.
+
+**Firms are makers here.** The five biggest creators are tobacco-card publishers — Allen & Ginter
+(2,959 rows), Goodwin & Company, Kinney Brothers, W. Duke Sons & Co., Brewster & Co. — so `kind`
+is `person | organization`, inception stands in for a birth year, and `active_years()` drops the
+apprenticeship offset for a firm. The accept root is `business (Q4830453)`, deliberately not
+`organization (Q43229)`: a country subclasses organization, and the looser test admits "Ancient
+Roman" (1,102 rows) and files a country's description as an artist biography.
+
+**Three guards, each earned by a wrong answer that measurement caught:** (1) every lookup returned
+"not on Wikidata" in 0.2 s — a 403 for a User-Agent with no contact, swallowed into `None`, which
+cached would have marked all 29,766 artists unknown forever; `LookupUnavailable` now separates
+*could not ask* from *asked and it does not know*, and 429s are retried. (2) "Anonymous" resolved
+to a talent-management company and stamped `b. 1999` onto 810 Met rows. (3) "Nasca" — a
+pre-Columbian culture on 389 objects dated -200 to 1532 — resolved to **NASCAR**, founded 1948,
+and NASCAR is genuinely a business so no structural check refuses it; the artwork dates do.
+
+It JOINS at read time (`catalog.get_artists`, one query per page on `assets.artist_key`) rather
+than being copied down, so a card reads "Japan, 1797–1858" across 2,437 Hiroshige rows with
+nothing written to any of them, and `context_line()` carries it into the caption pass.
+`rekey_artists` now reads its columns from the schema — it DELETEs before re-inserting, and the
+hardcoded list would have dropped this whole block the first time anyone re-keyed.
+
 ## Mathematics is a source now, not a gap (2026-08-01)
 
 NOLAN's fifty composer blocks cover data, documents, structure and prose. A DERIVATION — an

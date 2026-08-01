@@ -348,7 +348,8 @@ wasteful, it is the hallucination surface.
 |---|---|---|
 | **catalog record** | free with the crawl | title, creator, date, `medium`, `place`, `classification`, `department`, `culture`, QID, rights |
 | **collection** | free, once | description, rights, era, topics — inherited down |
-| **artist** (`imagelib/artists.py`) | one LLM call **per person**, cached | movement, period, style, typical subjects, palette words |
+| **Wikidata** (`imagelib/wikidata.py`) | free (keyless), cached | birth/death year, nationality, movement, one-line bio, Wikipedia link — **facts with a citation** |
+| **artist** (`imagelib/artists.py`) | one LLM call **per person**, cached | only what Wikidata has no column for: style, typical subjects, palette words |
 | **deterministic CV** (`nolan/pixels.py`) | free, no model | every NUMBER: content box, dead margin, aspect, shape, edge contact, luminance, contrast, saturation, quiet cells |
 | **VLM caption** | one call per row, on demand | what is actually DEPICTED — and nothing else |
 
@@ -357,6 +358,54 @@ style/period/school (artist knowledge) · rights/license (collection, sticky) ·
 origin (catalog) · **any number** (CV) · **any policy** like "is this usable as a backdrop"
 (computed at read time — baking a policy into a caption means changing your mind costs a
 re-caption over 60k rows).
+
+### The visual knowledge table — `nolan images artists --wikidata` FIRST, then the LLM
+
+**Look it up before you generate it.** A birth year from Wikidata is a citable fact with a QID
+behind it; a birth year from a language model is a plausible guess, and across **29,766 artists
+covering 179,497 rows (50% of the library)** that difference is thousands of quiet errors nobody
+can audit. So the lookup runs first and the model fills only the gaps. Provenance is **per field**
+(`artists.sources_json` = `{field: "wikidata" | "<model id>"}`), and `enrich_artists` refuses to
+overwrite anything marked `wikidata` — the two claims never get mistaken for each other.
+
+**Half of it is free and was sitting on disk.** The Met's bulk CSV publishes `Artist Wikidata URL`
+beside `Artist Display Name` on 224,202 rows; the crawl only ever harvested `Object Wikidata URL`,
+which identifies the **artwork**. Folded (`harvest.met_artist_qids`), that column resolves **7,242
+of our artists — 90,693 rows — for zero requests**. Both columns are pipe-separated and
+POSITIONAL, with blanks allowed, so they are zipped, never split independently.
+
+**Organizations count as makers.** The five biggest creators here are firms, not people: Allen &
+Ginter (2,959 rows), Goodwin & Company (2,648), Kinney Brothers (2,506), W. Duke, Sons & Co.
+(2,247), Brewster & Co. (1,656). `kind` is `person | organization`; inception stands in for a
+birth year, and `active_years()` drops the 20-year apprenticeship offset for a firm. The accept
+root is **`business (Q4830453)`, not `organization (Q43229)`** — a COUNTRY subclasses
+organization, so the looser test admits "Ancient Roman" (1,102 rows) and files a country's
+description as an artist biography.
+
+**Three guards, each earned by a real wrong answer:**
+
+- **A failed lookup is not a "not found".** Every call once returned "not on Wikidata" in 0.2 s:
+  a 403, because Wikimedia's robot policy rejects a User-Agent with no contact, swallowed into
+  `None`. Cached, that is 29,766 artists permanently marked unknown. `LookupUnavailable` now
+  separates *could not ask* from *asked and it does not know*; only the second is written. 429s
+  are retried with backoff. Set `NOLAN_CONTACT` to a real address or URL.
+- **Anonymity is never looked up.** "Anonymous" resolves to a talent-management company and
+  stamped `b. 1999` on 810 Met rows. `folded_artist` deliberately KEEPS "Anonymous, British, 19th
+  century" (a school is a real narrowing), so the lookup carries its own stricter rule.
+- **The calendar checks the binding.** "Nasca" — a pre-Columbian culture on 389 objects dated
+  -200 to 1532 — resolved to **NASCAR**, founded 1948. NASCAR is genuinely a business, so no
+  structural test refuses it; the artwork dates do, via `catalog.artist_work_years` (available for
+  95% of artists). Rejections keep a note saying exactly what was refused and why. ~2 in 11 are
+  false (authors whose manuscripts postdate them by centuries) — deliberate asymmetry: a false
+  rejection loses one auditable fact, a false acceptance publishes a wrong date on everything
+  that maker signed.
+
+**It joins at read time, it is not copied down.** `catalog.get_artists` resolves a whole page of
+results in one query keyed on `assets.artist_key`, so a card shows "Japan, 1797–1858" on all
+2,437 Hiroshige rows without a byte on any of them. `context_line()` carries nationality and
+lifespan into the caption pass and the collection dialect. `rekey_artists` reads its columns from
+the schema — it DELETEs before re-inserting, and a hardcoded list would silently drop every
+column added after it was written.
 
 **Artist knowledge is the cheapest win on the list** (`nolan images artists`). Movement and style
 are facts about a PERSON, so asking a vision model per artwork pays N times for one answer.
