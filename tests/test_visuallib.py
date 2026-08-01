@@ -1480,6 +1480,119 @@ def test_met_csv_absent_fails_loudly(tmp_path, monkeypatch):
         H.met_public_domain_ids()
 
 
+def _fake_met(monkeypatch, ids, *, no_image=(), latency=None):
+    """Stand in for the Met's per-object endpoint, with CONTROLLABLE per-id latency so the
+    concurrent walk can be made to complete its requests out of order on purpose."""
+    import time as _t
+
+    from nolan.imagelib import harvest as H
+
+    monkeypatch.setattr(H, "met_public_domain_ids", lambda dept=None: list(ids))
+    monkeypatch.setattr(H, "_met_csv_path", lambda: __import__("pathlib").Path(__file__))
+    seen = []
+
+    class _Resp:
+        def __init__(self, oid):
+            self.oid = oid
+
+        def json(self):
+            return {"objectID": self.oid, "title": f"Object {self.oid}",
+                    "primaryImage": "" if self.oid in no_image else f"https://e/{self.oid}.jpg",
+                    "primaryImageSmall": f"https://e/{self.oid}s.jpg",
+                    "isPublicDomain": True, "objectURL": f"https://met/{self.oid}"}
+
+    class _Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def get(self, url, **kw):
+            oid = int(url.rsplit("/", 1)[-1])
+            if latency:
+                _t.sleep(latency(oid))
+            seen.append(oid)
+            return _Resp(oid)
+
+    monkeypatch.setattr(H.httpx if hasattr(H, "httpx") else __import__("httpx"),
+                        "Client", lambda *a, **kw: _Client())
+    return seen
+
+
+def test_the_concurrent_met_walk_still_yields_in_cursor_order(monkeypatch):
+    """The Met costs one request per object, so the walk rate IS the crawl — 8 workers took a
+    240-id sample from 8.7 to 18.8 objects/second. But the resume cursor is a single OFFSET into
+    the id list, and it only means anything if everything before it has been dealt with. So the
+    requests may race; the yields may not.
+
+    Latency here is deliberately inverted — later ids answer FIRST — so a version that yielded on
+    completion instead of on position would fail this and leave holes a resume never fills.
+    """
+    from nolan.imagelib import harvest as H
+
+    ids = list(range(100, 132))
+    _fake_met(monkeypatch, ids, latency=lambda oid: (131 - oid) * 0.002)
+
+    report = H.HarvestReport(collection="met-test")
+    got = [it for it in H.met_items(limit=999, report=report)]
+    assert [int(i.source_ref.split(":")[1]) for i in got] == ids
+    assert report.cursor == {"offset": len(ids)}, report.cursor
+    assert report.exhausted
+
+
+def test_a_bounded_met_harvest_does_not_overrun_its_limit(monkeypatch):
+    """`limit` counts ROWS INDEXED — the contract every adapter honours. A batched fetcher makes
+    it easy to break: asking for 12 must not walk a whole 64-id batch past them, or a resume
+    restarts beyond rows that were never indexed."""
+    from nolan.imagelib import harvest as H
+
+    ids = list(range(200, 400))
+    seen = _fake_met(monkeypatch, ids)
+
+    report = H.HarvestReport(collection="met-test")
+    got = list(H.met_items(limit=12, report=report))
+    assert len(got) == 12
+    assert report.cursor == {"offset": 12}, report.cursor
+    # the batch floor is the worker count, so at most one batch of over-fetch — never 64
+    assert len(seen) <= 12 + H._MET_WORKERS, f"fetched {len(seen)} records for 12 rows"
+    assert not report.exhausted
+
+
+def test_a_met_id_with_no_image_is_consumed_not_revisited(monkeypatch):
+    """A skipped id must move the cursor past itself, or a department full of imageless objects
+    re-pays for them on every run."""
+    from nolan.imagelib import harvest as H
+
+    ids = [10, 11, 12, 13]
+    _fake_met(monkeypatch, ids, no_image={11, 12})
+
+    report = H.HarvestReport(collection="met-test")
+    got = list(H.met_items(limit=999, report=report))
+    assert [int(i.source_ref.split(":")[1]) for i in got] == [10, 13]
+    assert report.skipped_no_image == 2
+    assert report.cursor == {"offset": 4}
+
+
+def test_a_met_resume_starts_after_the_last_consumed_id(monkeypatch):
+    """The whole point of the cursor: a job measured in hours that cannot resume never finishes."""
+    from nolan.imagelib import harvest as H
+
+    ids = list(range(500, 540))
+    seen = _fake_met(monkeypatch, ids)
+
+    report = H.HarvestReport(collection="met-test")
+    first = list(H.met_items(limit=10, report=report))
+    assert report.cursor == {"offset": 10}
+
+    seen.clear()
+    report2 = H.HarvestReport(collection="met-test")
+    second = list(H.met_items(limit=10, report=report2, cursor=report.cursor))
+    assert [int(i.source_ref.split(":")[1]) for i in second] == list(range(510, 520))
+    assert not set(seen) & {int(i.source_ref.split(":")[1]) for i in first}, \
+        "a resume must not re-fetch what the first pass already consumed"
+
+
 # --- 13. browsing by artist and by movement ------------------------------------------------
 
 def _seed_artists(lib):

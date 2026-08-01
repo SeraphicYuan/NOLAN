@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional
@@ -432,6 +433,20 @@ def _met_qid(url: Optional[str]) -> Optional[str]:
 # The saving is modest; the denominator and the offline rights filter are the reasons to do it.
 MET_CSV_URL = ("https://media.githubusercontent.com/media/metmuseum/openaccess/master/"
                "MetObjects.csv")
+# The Met is the only `per-object` source: every record costs a request, so the walk rate IS the
+# crawl. Measured over a 240-id random sample of the public-domain set:
+#
+#     serial, as this adapter used to run      115 ms/object   ->   8.7 obj/s
+#     8 workers                                 53 ms/object   ->  18.8 obj/s   (2.2x)
+#
+# ...against 248,472 public-domain ids, which is the difference between an 11.4-hour job (the old
+# loop also slept 50 ms per yielded row) and a ~3.7-hour one. Eight rather than sixteen because
+# the gain is already sub-linear at eight and this is a keyless public API we do not own; 19 req/s
+# is far under the Met's published ceiling.
+_MET_WORKERS = 8
+# How far ahead of the cursor a batch may fetch. Everything in flight is lost if the crawl dies,
+# so this bounds the waste, and the yield loop shrinks it further when fewer rows are still wanted.
+_MET_BATCH = 64
 # The dump is SOURCE data, not library data: one copy serves every scope and project, so it is
 # cached beside the global library rather than inside whichever scope asked for it.
 _DUMPS_DIR = Path(__file__).resolve().parents[3] / "_library" / "images" / "_dumps"
@@ -598,61 +613,85 @@ def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[s
         # raised out of the way there rather than throttling a pre-filtered walk.
         scanned = yielded = 0
         scan_cap = len(ids) if from_dump else max(limit * 20, 200)
-        for pos, oid in enumerate(ids[start:], start=start):
-            if yielded >= limit or scanned >= scan_cap:
-                break
-            scanned += 1
+
+        def _get(oid):
+            """One object record, or the exception that stopped it. Runs on a worker thread —
+            `httpx.Client` is thread-safe, so all of them share this one connection pool."""
             try:
-                o = c.get(f"{MET_API}/objects/{oid}", timeout=30.0).json()
-            except Exception as e:
-                if report:
-                    report.errors += 1
-                    report.note(f"met:{oid}: {type(e).__name__}: {e}")
-                continue
-            # A skipped id is CONSUMED — it must not be re-examined on the next run, or a
-            # department full of imageless objects re-pays for them every time.
-            if not o.get("primaryImage"):
-                if report:
-                    report.skipped_no_image += 1
-                    report.cursor = {"offset": pos + 1}
-                continue
-            if not o.get("isPublicDomain"):
-                if report:
-                    report.skipped_rights += 1
-                    report.cursor = {"offset": pos + 1}
-                continue
-            bits = [o.get("medium"), o.get("culture"), o.get("country"),
-                    o.get("classification"), o.get("department")]
-            yield HarvestItem(
-                source_ref=f"met:{o.get('objectID')}",
-                # `primaryImageSmall` is the Met's own web-large derivative (~800px) — the right
-                # thing to fetch for a thumbnail; the full original can be tens of megabytes.
-                thumb_url=o.get("primaryImageSmall") or o.get("primaryImage"),
-                url=o.get("primaryImage"),
-                source_url=o.get("objectURL"),
-                title=o.get("title"), creator=o.get("artistDisplayName") or None,
-                date_text=o.get("objectDate") or None,
-                institution="The Metropolitan Museum of Art",
-                description=", ".join(b for b in bits if b),
-                license="CC0 (The Metropolitan Museum of Art)",
-                # width/height stay UNKNOWN: the Met publishes physical measurements, not pixel
-                # dimensions, and inventing them from the thumbnail would be a false claim about
-                # the source. Consequence, stated rather than hidden: the gate's resolution floor
-                # cannot run at index time for met rows (`check_candidate` skips it when dims are
-                # absent) and lands at promotion instead, where `check_file` measures real bytes.
-                wikidata_qid=_met_qid(o.get("objectWikidata_URL")),
-                tags=o.get("classification") or None,
-                medium=o.get("medium") or None,
-                classification=o.get("classification") or None,
-                department=o.get("department") or None,
-                culture=o.get("culture") or None,
-                place=o.get("country") or o.get("region") or None)
-            yielded += 1
-            # After the yield: the consumer has finished with this id, so it is safe to move
-            # past it. Advancing BEFORE the yield would skip a row on a crash mid-index.
-            if report is not None:
-                report.cursor = {"offset": pos + 1}
-            time.sleep(0.05)                                  # be a good citizen on a keyless API
+                return oid, c.get(f"{MET_API}/objects/{oid}", timeout=30.0).json(), None
+            except Exception as e:              # reported by the caller, never swallowed
+                return oid, None, e
+
+        pos = start
+        with ThreadPoolExecutor(max_workers=_MET_WORKERS) as pool:
+            while pos < len(ids) and yielded < limit and scanned < scan_cap:
+                # Fetch no further ahead than could still be used. At the measured 99.4% image
+                # yield a request buys about one row, so `limit - yielded` is the right ask; the
+                # floor keeps every worker busy on a small harvest and the ceiling bounds how
+                # much a crash throws away.
+                size = max(_MET_WORKERS, min(_MET_BATCH, limit - yielded))
+                batch = ids[pos:pos + size]
+                # Fetched CONCURRENTLY, consumed IN ORDER. The order is not cosmetic: the resume
+                # cursor is a single offset into this id list, and it is only meaningful if
+                # everything before it has been dealt with. Out-of-order yields would make
+                # "offset 3200" mean "3200 ids, most of them" — a hole the next run never fills.
+                for i, (oid, o, err) in enumerate(pool.map(_get, batch)):
+                    if yielded >= limit or scanned >= scan_cap:
+                        break
+                    idx = pos + i
+                    scanned += 1
+                    if err is not None:
+                        if report:
+                            report.errors += 1
+                            report.note(f"met:{oid}: {type(err).__name__}: {err}")
+                        continue
+                    # A skipped id is CONSUMED — it must not be re-examined on the next run, or a
+                    # department full of imageless objects re-pays for them every time.
+                    if not o.get("primaryImage"):
+                        if report:
+                            report.skipped_no_image += 1
+                            report.cursor = {"offset": idx + 1}
+                        continue
+                    if not o.get("isPublicDomain"):
+                        if report:
+                            report.skipped_rights += 1
+                            report.cursor = {"offset": idx + 1}
+                        continue
+                    bits = [o.get("medium"), o.get("culture"), o.get("country"),
+                            o.get("classification"), o.get("department")]
+                    yield HarvestItem(
+                        source_ref=f"met:{o.get('objectID')}",
+                        # `primaryImageSmall` is the Met's own web-large derivative (~800px) — the
+                        # right thing to fetch for a thumbnail; the full original can be tens of
+                        # megabytes.
+                        thumb_url=o.get("primaryImageSmall") or o.get("primaryImage"),
+                        url=o.get("primaryImage"),
+                        source_url=o.get("objectURL"),
+                        title=o.get("title"), creator=o.get("artistDisplayName") or None,
+                        date_text=o.get("objectDate") or None,
+                        institution="The Metropolitan Museum of Art",
+                        description=", ".join(b for b in bits if b),
+                        license="CC0 (The Metropolitan Museum of Art)",
+                        # width/height stay UNKNOWN: the Met publishes physical measurements, not
+                        # pixel dimensions, and inventing them from the thumbnail would be a false
+                        # claim about the source. Consequence, stated rather than hidden: the
+                        # gate's resolution floor cannot run at index time for met rows
+                        # (`check_candidate` skips it when dims are absent) and lands at promotion
+                        # instead, where `check_file` measures real bytes.
+                        wikidata_qid=_met_qid(o.get("objectWikidata_URL")),
+                        tags=o.get("classification") or None,
+                        medium=o.get("medium") or None,
+                        classification=o.get("classification") or None,
+                        department=o.get("department") or None,
+                        culture=o.get("culture") or None,
+                        place=o.get("country") or o.get("region") or None)
+                    yielded += 1
+                    # After the yield: the consumer has finished with this id, so it is safe to
+                    # move past it. Advancing BEFORE the yield would skip a row on a crash
+                    # mid-index.
+                    if report is not None:
+                        report.cursor = {"offset": idx + 1}
+                pos += len(batch)
         if report is not None:
             if start + scanned >= len(ids):
                 report.exhausted = True
