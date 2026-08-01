@@ -60,6 +60,23 @@ OPEN_ACCESS_SOURCES = frozenset({
     "gutenberg", "internet_archive", "artvee",
 })
 
+# Sources that serve their OWN clean derivatives, so the banner heuristic is skipped on their
+# thumbnails. A SEPARATE QUESTION from rights, and separating the two is the whole point.
+#
+# `OPEN_ACCESS_SOURCES` was doing both jobs, which is fine while they coincide and wrong the
+# moment they don't. The Public Domain Image Archive serves unwatermarked images from its own
+# CDN — but 16% of its rows carry a rights caveat (US-only, share-alike, no-known-copyright), so
+# putting it in the set above would have made `_license_known_open` wave every one of them
+# through on the strength of the source's name. That is precisely the mistake `loc` is recorded
+# below for.
+#
+# Measured cost of NOT having this: the heuristic hunts "a near-uniform band, discontinuous with
+# the body, carrying a few contrasting pixels", which on a 19th-century BOOK PLATE is the printed
+# caption under the illustration. It retired 51 of the first 765 PDIA thumbnails — "The Octopus
+# (Octopus vulgaris)", "Pontoppidan's Sea Serpent" — none of them watermarked, all of them from
+# one book.
+UNWATERMARKED_SOURCES = OPEN_ACCESS_SOURCES | frozenset({"pdia"})
+
 # NOT uniformly open, and therefore NOT in the set above. `loc` used to be, which meant the gate
 # waved through anything from the Library of Congress on the strength of the institution's name.
 # The LoC holds an enormous amount of public-domain material AND a great deal that is restricted,
@@ -124,6 +141,7 @@ _SND_CCBY_RE = re.compile(r"licenses/by\b|attribution|cc[\s-]?by\b", re.I)
 # the free banner heuristic still runs on everything. Aggregators (artvee,
 # europeana redirects, unknown CDNs) keep the vision check.
 TRUSTED_MEDIA_HOSTS: Tuple[str, ...] = (
+    # (see UNWATERMARKED_SOURCES below for the source-level equivalent)
     "upload.wikimedia.org", "images.metmuseum.org", "artic.edu",
     "clevelandart.org", "rijksmuseum.nl", "iiif.wellcomecollection.org",
     "tile.loc.gov", "ids.lib.harvard.edu", "media.nga.gov",

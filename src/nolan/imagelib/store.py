@@ -978,14 +978,20 @@ class ImageLibrary:
         belongs at PROMOTION, where `check_file` measures the real bytes of something a human has
         chosen to hold, and it still runs there.
 
-        THE WATERMARK CHECK STAYS. It is skipped outright for open-access sources — which is all
-        four of the current ones, so it costs nothing today — and it is the one thing standing
-        between a future rights-managed source and a watermarked preview entering the library. A
-        picture we cannot legally show is a different problem from a picture that is merely small.
-        """
-        from nolan.asset_gate import OPEN_ACCESS_SOURCES, banner_suspect
+        THE WATERMARK CHECK STAYS. It is skipped for sources that serve their own clean
+        derivatives — all four current ones, so it costs nothing today — and it is the one thing
+        standing between a future rights-managed source and a watermarked preview entering the
+        library. A picture we cannot legally show is a different problem from a picture that is
+        merely small.
 
-        if asset.source not in OPEN_ACCESS_SOURCES and banner_suspect(dest):
+        It consults `UNWATERMARKED_SOURCES`, NOT `OPEN_ACCESS_SOURCES`: "serves clean images" and
+        "everything here is freely licensed" are different claims, and PDIA is the case that
+        separates them — its CDN images are unwatermarked while 16% of its rows carry a rights
+        caveat.
+        """
+        from nolan.asset_gate import UNWATERMARKED_SOURCES, banner_suspect
+
+        if asset.source not in UNWATERMARKED_SOURCES and banner_suspect(dest):
             dest.unlink(missing_ok=True)
             return "watermark banner strip"
         return None
