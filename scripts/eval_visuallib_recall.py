@@ -260,10 +260,14 @@ def main(argv=None) -> int:
                                    "found": sum(1 for r in ranks if r is not None)}
         print(f"  {kind:<6} {name:<24} {row[0]:>5.1f}  {row[1]:>5.1f}  {row[2]:>5.1f}")
 
-    print("\nper-need rank (visual-lib routed vs baseline), lower is better, '-' = not found:")
+    # Name it once, here, from the results themselves. The per-need table used to hardcode the
+    # row label and crashed the whole script the moment the label changed — after the table it
+    # exists to explain had already printed, so the numbers looked fine and the run exited 1.
+    shipped = next((n for (k, n) in results if n.endswith("AS SHIPPED")), None)
+    print(f"\nper-need rank ({shipped} vs baseline), lower is better, '-' = not found:")
     for i, (expect, _, _) in enumerate(present):
         for kind in ("look", "named"):
-            vl = results[(kind, "visual-lib (routed)")][i]
+            vl = results.get((kind, shipped), [None] * len(present))[i]
             bl = results.get((kind, "BASELINE artic keyword"), [None] * len(present))[i]
             print(f"  {kind:<6} {expect[:38]:<40} visual-lib={str(vl or '-'):>3}  baseline={str(bl or '-'):>3}")
 
