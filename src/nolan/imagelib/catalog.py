@@ -982,9 +982,14 @@ class AssetCatalog:
         that yields many collections from one crawl (577 of them), so anything that was O(one
         query per collection) silently became O(577).
         """
+        # `cover` rides along: the lowest-id member that HAS a downloaded thumbnail, so a
+        # collection card can show a picture instead of a title and a count. Free here — it is
+        # the same GROUP BY — where a per-collection query would be 581 more round trips.
         sql = """SELECT collection_id AS cid, COUNT(*) AS n,
                         SUM(CASE WHEN description_source IS NOT NULL
-                                  AND description_source <> 'catalog' THEN 1 ELSE 0 END) AS d
+                                  AND description_source <> 'catalog' THEN 1 ELSE 0 END) AS d,
+                        MIN(CASE WHEN thumb_path IS NOT NULL AND TRIM(thumb_path) <> ''
+                                 THEN id END) AS cover
                  FROM assets
                  WHERE status='active' AND collection_id IS NOT NULL"""
         params: List[Any] = []
@@ -994,7 +999,8 @@ class AssetCatalog:
         sql += " GROUP BY collection_id"
         with self._lock:
             rows = self._conn.execute(sql, params).fetchall()
-        return {int(r["cid"]): {"indexed": int(r["n"]), "described": int(r["d"] or 0)}
+        return {int(r["cid"]): {"indexed": int(r["n"]), "described": int(r["d"] or 0),
+                                "cover": (int(r["cover"]) if r["cover"] is not None else None)}
                 for r in rows}
 
     def count(self, status: Optional[str] = None, *, held: Optional[int] = None,

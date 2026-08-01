@@ -36,6 +36,11 @@
     .badge { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); color: var(--text-secondary); }
     .badge.qid { border-color: #4f7cff55; color: #7d9bff; }
     .badge.cap { border-color: #3fb95055; color: #4cc267; }
+    /* what the catalog KNOWS (kind, movement, place, years) vs what it says the picture is
+       ABOUT (themes and tags) — two different questions, so two different weights */
+    .badge.fact { border-color: var(--border); color: var(--text-primary); }
+    .badge.subj { border-color: #a06cd555; color: #b98ae0; }
+    .badge.warnb { border-color: #e0a83a66; color: #e0a83a; }
     .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
@@ -117,6 +122,11 @@
           <b>pictures</b>. Both work — describing is where this beats keyword search.
           Filters narrow first, so a search runs against a far smaller set. Leave the box empty to
           just <b>browse</b> a filtered slice.</div>
+        <!-- WHAT IS ACTUALLY FILTERING, in one line. Six controls plus a collection dropdown
+             plus an artist chip means the only way to know the current denominator was to read
+             all eight; a filtered result set that looks unfiltered is how you conclude the
+             library is missing something it holds. Each chip clears its own filter. -->
+        <div id="activefilters" class="row" style="margin-top:8px;gap:5px"></div>
         <div id="meta" class="dim" style="margin-top:8px"></div>
         <div id="grid" class="grid"></div>
         <!-- A grid that shows 24 of 5,480 and offers no way to the 25th reads as "that is all
@@ -240,12 +250,19 @@
           $("#colmeta").innerHTML = cols.length + " shown of <b>" + (d.total||0) + "</b>"
             + (only ? " curated collections" : " collections");
           $("#collist").innerHTML = cols.map(function(c){
-            return '<div class="tile" style="padding:11px"><div class="body" style="padding:0">'
+            // A COVER, because a wall of titles is not a way to browse pictures. The id comes
+            // from the counts query (the lowest-numbered member that has a downloaded
+            // thumbnail), so it costs nothing extra.
+            var cover = c.cover_id
+              ? '<div class="imgwrap" style="aspect-ratio:16/10;border-radius:7px 7px 0 0">'
+                + '<img loading="lazy" src="/api/images/raw?scope=global&id='+c.cover_id+'" alt=""></div>'
+              : '';
+            return '<div class="tile">'+cover+'<div class="body">'
               + '<div class="ttl">'+esc(c.title||c.slug)+"</div>"
               + '<div class="who">'+esc(c.source||"")+" · "+(c.indexed||0).toLocaleString()+" pictures</div>"
               + (c.description ? '<div class="dim" style="margin-top:5px">'
-                                 + esc(String(c.description).slice(0,150))
-                                 + (String(c.description).length>150?"…":"") + "</div>" : "")
+                                 + esc(String(c.description).slice(0,140))
+                                 + (String(c.description).length>140?"…":"") + "</div>" : "")
               + '<div class="actions" style="margin-top:8px">'
               +   (c.url ? '<a class="dim" href="'+esc(c.url)+'" target="_blank" rel="noopener">source ↗</a>' : '<span></span>')
               +   '<button class="btn mini" data-cid="'+c.id+'">Browse</button>'
@@ -276,18 +293,54 @@
     });
 
     // ---- search ------------------------------------------------------------------
+    // The RIGHTS caveat, surfaced. 16% of the PDIA rows are not free worldwide — US-only,
+    // life+50, share-alike, no-known-copyright — and on a card they looked identical to CC0.
+    // Access is unchanged; the card just stops implying something it does not know.
+    function rightsBadge(lic){
+      var s = String(lic || "");
+      if (!s) return '<span class="badge">license?</span>';
+      if (/^CC0/i.test(s)) return '<span class="badge">CC0</span>';
+      var short = /US ONLY/i.test(s) ? "US only"
+                : /share-alike/i.test(s) ? "share-alike"
+                : /life\+50/i.test(s) ? "life+50"
+                : /no KNOWN copyright/i.test(s) ? "no known ©"
+                : /UNCLEAR/i.test(s) ? "rights unclear"
+                : /attribution/i.test(s) ? "attribution"
+                : s.slice(0, 22);
+      return '<span class="badge warnb" title="'+esc(s)+'">⚠ '+esc(short)+"</span>";
+    }
+
     function tile(r){
-      var sc = (r.score != null) ? '<span class="score">'+r.score.toFixed(3)+'</span>' : '';
+      // The score badge is gone. 0.594 means nothing to a person choosing a picture, and it
+      // occupied the most valuable corner of the image.
       var who = [r.creator, r.date_text].filter(Boolean).map(esc).join(" · ");
-      var badges = '<span class="badge">'+esc(r.license||"license?")+'</span>'
+      // WHAT WE ACTUALLY KNOW. Nine fields are filled on every row in every source and the card
+      // was showing four; image_kind, the parsed year range, movement and the subject tags were
+      // all invisible, which made the catalog work look like it had bought nothing.
+      var years = (r.year_from && r.year_to && !r.date_text)
+        ? (r.year_from === r.year_to ? String(r.year_from) : r.year_from+"–"+r.year_to) : "";
+      // "unknown" is the taxonomy's fallthrough, not a fact about the picture — showing it as a
+      // badge dresses an absence up as knowledge.
+      var facts = [(r.image_kind === "unknown" ? null : r.image_kind),
+                   r.movement, r.place || r.culture, years]
+        .filter(Boolean).map(function(v){
+          return '<span class="badge fact">'+esc(String(v))+"</span>"; }).join("");
+      var subject = String(r.tags || "").split(/\s*,\s*/).filter(Boolean).slice(0, 4)
+        .map(function(v){ return '<span class="badge subj">'+esc(v)+"</span>"; }).join("");
+      var badges = rightsBadge(r.license)
         + (r.wikidata_qid ? '<span class="badge qid" title="linked to Wikidata">'+esc(r.wikidata_qid)+'</span>' : '')
         + (r.captioned ? '<span class="badge cap" title="a model has described this picture">captioned</span>' : '');
       return '<div class="tile" data-id="'+r.id+'">'
-        + '<div class="imgwrap">'+sc+'<a href="'+esc(r.raw)+'" target="_blank" rel="noopener">'
+        + '<div class="imgwrap"><a href="'+esc(r.raw)+'" target="_blank" rel="noopener">'
         +   '<img loading="lazy" src="'+esc(r.raw)+'" alt=""></a></div>'
         + '<div class="body"><div class="ttl">'+esc(r.title||"(untitled)")+'</div>'
         +   (who ? '<div class="who">'+who+'</div>' : '')
-        +   '<div class="who">'+esc(r.institution||r.source||"")+'</div>'
+        +   '<div class="who">'+esc(r.institution||r.source||"")
+        +     (r.collection_title ? ' · <a class="dim" href="#" data-jump="'+r.collection_id+'">'
+                                    + esc(r.collection_title) + "</a>" : "")
+        +   '</div>'
+        +   (facts ? '<div class="badges">'+facts+"</div>" : "")
+        +   (subject ? '<div class="badges">'+subject+"</div>" : "")
         +   '<div class="badges">'+badges+'</div>'
         +   '<div class="actions">'
         +     (r.source_url ? '<a class="dim" href="'+esc(r.source_url)+'" target="_blank" rel="noopener">source ↗</a>' : '<span></span>')
@@ -437,7 +490,46 @@
         .catch(function(e){ $("#meta").textContent = "Error: "+e.message; });
     }
 
+    // One line naming every active narrowing, each clearable on its own. Reads the SAME
+    // controls `facetParams()` sends, so it cannot drift from what the query actually did.
+    function renderActiveFilters(){
+      var out = [];
+      FACETS.forEach(function(f){
+        var v = $("#f-"+f.id).value;
+        if (v) out.push({k: f.id, label: f.id.replace("_", " ") + ": " + v});
+      });
+      var cr = $("#f-creator").value.trim();
+      if (cr) out.push({k: "creator", label: "artist contains: " + cr});
+      var yf = $("#f-year_from").value, yt = $("#f-year_to").value;
+      if (yf || yt) out.push({k: "years", label: "years: " + (yf || "…") + "–" + (yt || "…")});
+      if (artistKey) out.push({k: "artistKey", label: "artist: " + artistKey});
+      var cid = $("#collection").value;
+      if (cid) out.push({k: "collection",
+                         label: "collection: " + $("#collection").selectedOptions[0].textContent});
+
+      var el = $("#activefilters");
+      if (!out.length){ el.innerHTML = ""; return; }
+      el.innerHTML = '<span class="dim">Filtering by:</span>'
+        + out.map(function(o){
+            return '<button class="btn ghost mini" data-clear="'+esc(o.k)+'">'
+                 + esc(o.label) + ' <span class="dim">✕</span></button>'; }).join("")
+        + '<button class="btn ghost mini" data-clear="ALL"><b>clear all</b></button>';
+    }
+
+    $("#activefilters").addEventListener("click", function(ev){
+      var b = ev.target.closest && ev.target.closest("[data-clear]");
+      if (!b) return;
+      var k = b.dataset.clear;
+      if (k === "ALL"){ $("#collection").value = ""; clearFacets(); return; }
+      if (k === "artistKey") artistKey = "";
+      else if (k === "collection") $("#collection").value = "";
+      else if (k === "years"){ $("#f-year_from").value = ""; $("#f-year_to").value = ""; }
+      else $("#f-"+k).value = "";
+      doSearch();
+    });
+
     function updateMeta(q, st){
+      renderActiveFilters();
       $("#meta").innerHTML = shown + (q ? " result(s) for “"+esc(q)+"”" : " shown")
         + (lastTotal ? ' of <b>'+lastTotal.toLocaleString()+"</b> matching" : "")
         + ' · <span class="dim">'+(st.discovery||0)+" indexed, "
@@ -458,6 +550,22 @@
       var b = $("#morebtn"); b.disabled = true; b.textContent = "Loading…";
       doSearch(true);
     }
+
+    // A picture belongs to a SET, and the card now says which — so clicking through to its
+    // siblings should work from here rather than only from the Collections tab.
+    $("#grid").addEventListener("click", function(ev){
+      var j = ev.target.closest && ev.target.closest("[data-jump]");
+      if (!j) return;
+      ev.preventDefault();
+      var sel = $("#collection"), cid = j.dataset.jump;
+      if (!Array.prototype.some.call(sel.options, function(o){ return o.value === cid; })) {
+        sel.insertAdjacentHTML("beforeend",
+          '<option value="'+esc(cid)+'">'+esc(j.textContent)+"</option>");
+      }
+      sel.value = cid;
+      $("#q").value = "";
+      clearFacets();
+    });
 
     // Fetch = promote_to_held. The row leaves this tier, so re-run the search after.
     $("#grid").addEventListener("click", function(ev){

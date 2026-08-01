@@ -188,6 +188,9 @@ def register(app, ctx):
             n = got["indexed"] or 0
             d.update({"indexed": n, "described": got["described"],
                       "described_pct": round(100.0 * got["described"] / n, 1) if n else 0.0,
+                      # a member with pixels, so the card can show the collection instead of
+                      # describing it — comes free with the counts query
+                      "cover_id": got.get("cover"),
                       "curated": bool(curated)})
             out.append(d)
         out.sort(key=lambda d: -d["indexed"])

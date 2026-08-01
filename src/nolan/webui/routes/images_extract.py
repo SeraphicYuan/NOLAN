@@ -182,10 +182,17 @@ def register(app, ctx):
                         browsed = [fresh.get(a.id, a) for a in browsed
                                    if fresh.get(a.id, a).status == "active"]
                 rows = [(a, None) for a in browsed]
+            # collection id -> title, built ONCE per request (4 ms for all 581) so a card can
+            # name the set a picture belongs to. Per-row it would be 24 lookups.
+            _coll = {c.id: c.title for c in lib.catalog.list_collections()}
             out = []
             for a, score in rows:
                 d = _img_dict(a, score, scope, project)
                 d.update({"held": 0, "source_ref": a.source_ref, "creator": a.creator,
+                          # the SUBJECT axis and the collection, both of which the card shows
+                          "tags": a.tags, "culture": a.culture,
+                          "collection_id": a.collection_id,
+                          "collection_title": _coll.get(a.collection_id),
                           "date_text": a.date_text, "institution": a.institution,
                           "wikidata_qid": a.wikidata_qid,
                           "image_kind": a.image_kind, "department": a.department,
