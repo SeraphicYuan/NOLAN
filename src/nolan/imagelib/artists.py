@@ -162,18 +162,31 @@ def _date_conflict(art: Artist, work_year: Optional[Tuple[float, int]]) -> Optio
     the wrong identity — NASCAR is genuinely a business, so `maker_kind` waves it through for
     "Nasca". The dates are what disagree, and we already hold them.
 
-    MEASURED OVER THE FIRST 500 ARTISTS: 7 rejections, of which 5 are true catches (Nasca→NASCAR;
-    Chimú and Manchu, cultures the Met credits as makers, matched to unrelated modern entities;
-    two people matched to namesakes born centuries later) and 2 are FALSE — Firdausi and
-    Bhadrabahu, correctly identified authors whose surviving manuscripts were copied 400 and 1800
-    years after they died.
+    MEASURED OVER THE TOP 4,000 CREATORS: 51 rejections out of 2,586 successful lookups (2.0%).
+    Roughly 40 are true catches, in three recognisable shapes:
 
-    That asymmetry is deliberate and is why the gate stays. A false rejection loses one fact and
-    leaves a note saying exactly what was refused and why, so it is auditable and reversible; a
-    false acceptance publishes a wrong birth year onto every work that maker signed. There is no
-    threshold that separates "author of a much-later manuscript" from "namesake born 400 years
-    late" — both are a large gap between a person and their works — so the safe side is the one
-    that keeps a note.
+        namesakes born centuries later   Thomas Jenkins (2021), David King (2017), John Hull
+                                         (1972), David Clayton (1964)
+        cultures used as makers          Nasca→NASCAR, Chimú, Manchu, Venetian, Florentine, Cham
+        a maker who never existed        a plausible entity that simply is not this person
+
+    ABOUT ELEVEN ARE FALSE, and they are not noise — they are two coherent classes worth naming
+    because neither is a matching error:
+
+      1. AUTHOR OF A TEXT, MUCH LATER MANUSCRIPT. Firdausi (d. 1020, manuscripts ~1367), Nizami,
+         Sa'di, Bhadrabahu. The person is right; the objects are copies made centuries after.
+      2. FACSIMILE DATED BY WHAT IT DEPICTS. The Met's Egyptian Expedition painters — Nina and
+         Norman de Garis Davies, Charles K. Wilkinson — worked 1900–1940, and their tomb
+         facsimiles carry the date of the ANCIENT WALL (-1483, -1524, -1577). Here the catalog's
+         own year field describes the depicted original rather than the artwork, so the evidence
+         this gate trusts is, for these rows, about something else entirely.
+
+    The asymmetry is deliberate and is why the gate stays at 2% rather than being loosened. A
+    false rejection loses one fact and leaves a note saying exactly what was refused and why —
+    auditable, reversible, and countable, which is how both classes above were found at all. A
+    false acceptance publishes a wrong birth year onto every work that maker signed. No threshold
+    separates "author of a later manuscript" from "namesake born 400 years late": both are simply
+    a large gap between a person and their works.
     """
     if not work_year or work_year[1] < _DATE_MIN_WORKS:
         return None

@@ -395,10 +395,15 @@ description as an artist biography.
 - **The calendar checks the binding.** "Nasca" — a pre-Columbian culture on 389 objects dated
   -200 to 1532 — resolved to **NASCAR**, founded 1948. NASCAR is genuinely a business, so no
   structural test refuses it; the artwork dates do, via `catalog.artist_work_years` (available for
-  95% of artists). Rejections keep a note saying exactly what was refused and why. ~2 in 11 are
-  false (authors whose manuscripts postdate them by centuries) — deliberate asymmetry: a false
-  rejection loses one auditable fact, a false acceptance publishes a wrong date on everything
-  that maker signed.
+  95% of artists). Over the top 4,000 creators: **51 rejections in 2,586 lookups (2.0%)**, of
+  which ~40 are true — namesakes born centuries later (Thomas Jenkins 2021, David King 2017) and
+  cultures used as maker attributions (Nasca, Chimú, Manchu, Venetian, Florentine). The ~11 false
+  ones fall in two named classes: **authors of much-later manuscripts** (Firdausi, Nizami, Sa'di)
+  and **facsimiles dated by what they depict** — the Met's Egyptian Expedition painters worked
+  1900–1940 but their tomb copies carry the ancient wall's date (-1483), so the catalog year is
+  about the original, not the artwork. Deliberate asymmetry: a false rejection loses one fact and
+  leaves an auditable note (which is how both classes were found); a false acceptance publishes a
+  wrong date on everything that maker signed.
 
 **It joins at read time, it is not copied down.** `catalog.get_artists` resolves a whole page of
 results in one query keyed on `assets.artist_key`, so a card shows "Japan, 1797–1858" on all

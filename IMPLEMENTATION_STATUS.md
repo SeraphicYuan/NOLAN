@@ -35,6 +35,23 @@ to a talent-management company and stamped `b. 1999` onto 810 Met rows. (3) "Nas
 pre-Columbian culture on 389 objects dated -200 to 1532 — resolved to **NASCAR**, founded 1948,
 and NASCAR is genuinely a business so no structural check refuses it; the artwork dates do.
 
+**Filled over the top 4,000 creators:** 2,535 makers found (2,032 of them from the free Met QID
+column, 1,968 by name search), 1,415 honestly not on Wikidata and cached as misses, 113 skipped
+as anonymity statements, 50 rejected on dates, **0 unreachable**. The table now holds 4,115 rows
+— 2,616 with a QID, 2,401 with life dates, 2,284 with a nationality, 2,555 with a biography,
+2,120 with a Wikipedia link, 106 firms. Leverage: **22.2 rows per lookup, 56,253 rows covered.**
+`movement` on the rows rose from 41,875 to **53,082 of 179,497 attributed (23.3% → 29.6%)**, and
+the vocabulary from 70 movements to 146 — artic 41.6%, cleveland 27.7%, pdia 8.7%, met 7.0%
+(the Met's 248k rows have the longest artist tail, so a 4,000-creator budget reaches least of it).
+
+The 51 date rejections were then characterised rather than assumed: ~40 true (namesakes born
+centuries later; cultures used as maker attributions), ~11 false in two coherent classes —
+authors of much-later manuscripts (Firdausi, Nizami, Sa'di), and **facsimiles dated by what they
+depict**, where the Met's Egyptian Expedition painters worked 1900–1940 but their tomb copies
+carry the ancient wall's date. In that second class the catalog's own year field is about the
+depicted original, not the artwork, so the evidence the gate trusts is measuring something else.
+Both classes were findable only because a rejection keeps a note saying what it refused and why.
+
 It JOINS at read time (`catalog.get_artists`, one query per page on `assets.artist_key`) rather
 than being copied down, so a card reads "Japan, 1797–1858" across 2,437 Hiroshige rows with
 nothing written to any of them, and `context_line()` carries it into the caption pass.
