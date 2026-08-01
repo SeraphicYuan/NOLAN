@@ -305,26 +305,46 @@ def video_detail(index, video_id: str, catalog_dir: Optional[Path] = None) -> Di
 
 
 def search_transcripts(query: str, index, vs, n: int = 20,
-                       catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+                       catalog_dir: Optional[Path] = None,
+                       channels: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """Semantic search SCOPED to the transcript tier → timestamped, titled results for the UI:
     [{title, channel, url, watch_url, start, snippet, score}]. Joins each hit's video (by YouTube id
-    parsed from the URL) to the display sidecar; a watch_url deep-links to the timestamp on YouTube."""
+    parsed from the URL) to the display sidecar; a watch_url deep-links to the timestamp on YouTube.
+
+    `channels` narrows to those catalog channels — "search THIS source", not the whole library.
+
+    The scope is applied IN the query (a Chroma `$in` on video_id), not after it. This used to
+    over-fetch `max(n*8, 200)` across the whole library and then keep the transcript rows: correct
+    while transcripts are most of the index, and quietly lossy as real footage grows, because the
+    transcript hits can be crowded out of the candidate pool before the filter ever sees them. A
+    channel filter made that far worse — one source is a thin slice of a whole-library ranking."""
     from nolan.youtube import extract_video_id
     cat = load_catalog(catalog_dir)
     t_ids = index.transcript_video_ids()
     if not t_ids:
         return []
-    # Over-fetch: vs.search ranks across the WHOLE library (footage + transcripts), then we keep only the
-    # transcript tier — so pull a wide candidate pool or footage hits can crowd transcript hits out before
-    # the filter. (A Chroma where-filter scoped to transcript ids would be the tighter fix — follow-up.)
-    hits = vs.search(query=query, limit=max(n * 8, 200), search_level="segments") or []
+    scope = set(t_ids)
+    if channels:
+        want = set(channels)
+        keep_yids = {vid for vid, e in cat.items() if (e.get("channel") or "") in want}
+        # map catalog (youtube) ids -> VideoIndex ids via the same fingerprint the ingest wrote
+        scope = {v for v in (index.get_video_id(f"yt:{y}") for y in keep_yids) if v is not None} & scope
+        if not scope:
+            return []
+    hits = vs.search(query=query, limit=n, search_level="segments", video_ids=sorted(scope)) or []
     out: List[Dict[str, Any]] = []
     seen = set()
     for h in hits:
         if getattr(h, "video_id", None) not in t_ids:
             continue
         url = getattr(h, "video_path", "") or ""
+        # The catalog key is a YouTube id OR an archive.org identifier — join on both. Parsing only the
+        # YouTube shape left every archive hit (most of the library) titled with its own raw URL and no
+        # channel, because `extract_video_id` returns "" for `archive.org/details/<id>`.
         yid = extract_video_id(url) or ""
+        if not yid and "/details/" in url:
+            from nolan import archive_source as ar
+            yid = ar.collection_ref(url)
         m = cat.get(yid, {})
         start = float(getattr(h, "timestamp_start", 0) or 0)
         key = (yid, round(start, 0))
@@ -333,7 +353,9 @@ def search_transcripts(query: str, index, vs, n: int = 20,
         seen.add(key)
         out.append({
             "title": m.get("title") or yid or url, "channel": m.get("channel"),
-            "url": url, "watch_url": (f"{url}&t={int(start)}s" if "watch?v=" in url else url),
+            "url": url,
+            "watch_url": (f"{url}&t={int(start)}s" if "watch?v=" in url else
+                          f"{url}#start/{int(start)}" if "/details/" in url else url),
             "start": round(start, 1), "score": round(float(getattr(h, "score", 0) or 0), 3),
             "snippet": (getattr(h, "description", "") or getattr(h, "transcript", "") or "")[:220],
         })
@@ -383,12 +405,20 @@ def _rrf_fuse(text_hits: List[Dict[str, Any]], visual_hits: List[Dict[str, Any]]
 
 
 def search_both(query: str, index, vs, n: int = 25, content_kind: str = "",
-                catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+                catalog_dir: Optional[Path] = None,
+                channels: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """"Both" search — RRF blend of what's SAID (transcript) + what's SHOWN (frames) into one ranked list of
-    MOMENTS. The killer result: moments both discussed AND shown rank top."""
+    MOMENTS. The killer result: moments both discussed AND shown rank top. `channels` scopes BOTH sides,
+    so the blend can't quietly reintroduce a source the caller excluded."""
     from nolan import transcript_frames as tfr
-    text_hits = search_transcripts(query, index, vs, n=max(n, 20), catalog_dir=catalog_dir)
+    text_hits = search_transcripts(query, index, vs, n=max(n, 20), catalog_dir=catalog_dir,
+                                   channels=channels)
     visual_hits = tfr.visual_search(query, n=max(n, 20), content_kind=content_kind)
+    if channels:
+        cat = load_catalog(catalog_dir)
+        want = set(channels)
+        keep = {vid for vid, e in cat.items() if (e.get("channel") or "") in want}
+        visual_hits = [h for h in visual_hits if str(h.get("video_id") or "") in keep]
     return _rrf_fuse(text_hits, visual_hits, n)
 
 
@@ -1623,7 +1653,7 @@ def diverse_sample(channel: str, n: int = 20, catalog_dir: Optional[Path] = None
 def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: Optional[Path] = None,
                  refresh: bool = False, per_channel_limit: int = 0, min_sec: int = 0, max_sec: int = 0,
                  kind: str = "youtube", copyright_free_only: bool = False,
-                 cap: int = MAX_CANDIDATES) -> Dict[str, Any]:
+                 cap: int = MAX_CANDIDATES, detail: str = "") -> Dict[str, Any]:
     """COVERAGE map for ONE source kind (youtube channels OR archive collections — kept SEPARATE because their
     metadata differs). Clusters the UNION of (library titles + every source's available-but-not-yet-ingested
     titles) into topics, reporting per topic how much the LIBRARY covers vs what's still AVAILABLE and from
@@ -1699,11 +1729,16 @@ def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: 
         lib_n = sum(1 for m in members if m["in_lib"])
         new_m = [m for m in members if not m["in_lib"]]
         ch_counts = Counter(m["channel"] for m in new_m)
-        # a couple of representative new titles (prefer full docs)
-        samples = sorted(new_m, key=lambda m: _is_fragment(m["title"]))[:6]
+        label = _topic_label([m["title"] for m in members], gdf, len(rows))
+        # The list view carries a handful of representatives; `detail` asks for ONE topic in full.
+        # Six was a hard server-side truncation, so no amount of scrolling could reach member seven —
+        # `sample_total` now states what is being withheld, and the drill-down returns all of it.
+        ordered = sorted(new_m, key=lambda m: _is_fragment(m["title"]))
+        samples = ordered if (detail and label == detail) else ordered[:6]
         topics.append({
-            "label": _topic_label([m["title"] for m in members], gdf, len(rows)),
+            "label": label, "detail": bool(detail and label == detail),
             "size": len(members), "lib_count": lib_n, "available": len(new_m),
+            "sample_total": len(ordered),
             "channels": [{"label": c, "count": n} for c, n in ch_counts.most_common()],
             "samples": [{"video_id": s.get("video_id"), "url": s.get("url"), "title": s["title"],
                          "channel": s["channel"], "duration": s.get("duration")} for s in samples],

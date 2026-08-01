@@ -977,3 +977,93 @@ def test_reused_vectors_still_collapse_near_duplicates(tmp_path):
 
     # youtube rows have no subject -> the index's embed text IS the bare title
     assert tvec.embed_text("Alpine Railways", None) == "Alpine Railways"
+
+
+def test_search_scope_goes_into_the_query_not_after_it(tmp_path, monkeypatch):
+    """The old path ranked the WHOLE library and kept the transcript rows afterwards, so as real
+    footage grows the transcript hits get crowded out of the candidate pool before the filter sees
+    them — quietly fewer results, never an error. The scope is now a Chroma `$in` in the query."""
+    from nolan import transcript_lib as tl
+
+    class FakeIndex:
+        db_path = str(tmp_path / "i.db")
+        def transcript_video_ids(self): return {1, 2, 3}
+        def get_video_id(self, fp): return {"yt:a": 1, "yt:b": 2, "yt:c": 3}.get(fp)
+
+    seen = {}
+
+    class FakeVS:
+        def search(self, query, limit, search_level, video_ids=None, **kw):
+            seen["limit"], seen["ids"] = limit, video_ids
+            return []
+
+    tl.record_transcript("a", {"title": "A", "url": "https://youtu.be/a"}, 1, "chan1", catalog_dir=tmp_path)
+    tl.record_transcript("b", {"title": "B", "url": "https://youtu.be/b"}, 1, "chan2", catalog_dir=tmp_path)
+    tl.record_transcript("c", {"title": "C", "url": "https://youtu.be/c"}, 1, "chan1", catalog_dir=tmp_path)
+
+    tl.search_transcripts("q", FakeIndex(), FakeVS(), n=10, catalog_dir=tmp_path)
+    assert seen["ids"] == [1, 2, 3]                     # the transcript tier, pushed into the query
+    assert seen["limit"] == 10                          # no 8x over-fetch to survive post-filtering
+
+    tl.search_transcripts("q", FakeIndex(), FakeVS(), n=10, catalog_dir=tmp_path, channels=["chan1"])
+    assert seen["ids"] == [1, 3]                        # only that source's videos
+
+    # a channel with nothing indexed must return nothing, never fall back to the whole library
+    assert tl.search_transcripts("q", FakeIndex(), FakeVS(), n=10, catalog_dir=tmp_path,
+                                 channels=["nope"]) == []
+
+
+def test_empty_scope_cannot_degrade_into_an_unfiltered_search():
+    """An empty allow-list is an impossible condition, not a dropped filter."""
+    from nolan.vector_search import VectorSearch
+    w = VectorSearch.__dict__["_build_where_filter"](object.__new__(VectorSearch), None, None, None, [])
+    assert w == {"video_id": {"$lt": 0}}
+    w = VectorSearch.__dict__["_build_where_filter"](object.__new__(VectorSearch), None, None, None, [7, 9])
+    assert w == {"video_id": {"$in": [7, 9]}}
+
+
+def test_coverage_reports_what_the_six_sample_preview_withholds(tmp_path, monkeypatch):
+    """Six samples per topic was a hard server-side truncation, so member seven was unreachable by any
+    UI. The list view now states the true count, and `detail` returns one topic in full."""
+    from nolan import transcript_lib as tl
+    from nolan import transcript_vectors as tvec
+    rows = [{"video_id": f"v{i}", "url": "u", "title": f"Steam locomotive engine number {i}"}
+            for i in range(14)]
+    tl.save_survey("chan", rows, tmp_path, kind="youtube", total=len(rows))
+    tvec.build(tmp_path)
+    monkeypatch.setattr(tl, "load_sources", lambda cd=None: {"chan": {"label": "Chan"}})
+
+    cov = tl.coverage_map(None, k=2, catalog_dir=tmp_path, kind="youtube")
+    big = max(cov["topics"], key=lambda t: t["available"])
+    assert big["sample_total"] == big["available"] > 6
+    assert len(big["samples"]) == 6 and big["detail"] is False
+
+    full = tl.coverage_map(None, k=2, catalog_dir=tmp_path, kind="youtube", detail=big["label"])
+    got = next(t for t in full["topics"] if t["label"] == big["label"])
+    assert got["detail"] is True and len(got["samples"]) == got["sample_total"]
+
+
+def test_search_joins_archive_hits_to_their_catalog_row(tmp_path):
+    """The catalog key is a YouTube id OR an archive.org identifier. Joining only on the YouTube shape
+    left every archive hit — most of this library — displaying its own raw URL as the title, with no
+    channel, and no timestamp deep-link."""
+    from nolan import transcript_lib as tl
+    ident = "0007_American_Frontier_07_30_37_00"
+    url = f"https://archive.org/details/{ident}"
+    tl.record_transcript(ident, {"title": "American Frontier", "url": url}, 3, "prelinger",
+                         kind="archive", catalog_dir=tmp_path)
+
+    class Hit:
+        video_id, video_path, timestamp_start = 1, url, 607.1
+        score, description, transcript = 0.69, "the oil companies came in", ""
+
+    class FakeIndex:
+        def transcript_video_ids(self): return {1}
+        def get_video_id(self, fp): return 1
+
+    class FakeVS:
+        def search(self, query, limit, search_level, video_ids=None, **kw): return [Hit()]
+
+    r = tl.search_transcripts("oil", FakeIndex(), FakeVS(), n=5, catalog_dir=tmp_path)[0]
+    assert r["title"] == "American Frontier" and r["channel"] == "prelinger"
+    assert r["watch_url"] == f"{url}#start/607"          # archive deep-links by fragment, not &t=

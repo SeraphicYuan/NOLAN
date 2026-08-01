@@ -195,14 +195,16 @@ def register(app, ctx):
                                    min_sec: int = Query(default=0), max_sec: int = Query(default=0),
                                    kind: str = Query(default="youtube"),
                                    copyright_free: bool = Query(default=False),
-                                   cap: int = Query(default=0)):
+                                   cap: int = Query(default=0), detail: str = Query(default="")):
         """COVERAGE map for ONE source kind (youtube channels or archive collections — kept separate).
-        `cap` bounds the newest candidates clustered PER SOURCE (0 = the 2500 default)."""
+        `cap` bounds the newest candidates clustered PER SOURCE (0 = the 2500 default). `detail=<label>`
+        returns that ONE topic's members in full instead of the six-sample preview — clustering is
+        deterministic (`random_state=0`) and now costs no embedding, so the recompute is honest."""
         import asyncio
         from nolan import transcript_lib as tl
         return await asyncio.to_thread(tl.coverage_map, None, int(k or 0), None, bool(refresh), 0,
                                        int(min_sec or 0), int(max_sec or 0), kind, bool(copyright_free),
-                                       int(cap or tl.MAX_CANDIDATES))
+                                       int(cap or tl.MAX_CANDIDATES), detail)
 
     @app.post("/api/transcripts/add-collection")
     async def transcripts_add_collection(body: dict = Body(...)):
@@ -285,7 +287,10 @@ def register(app, ctx):
         return {"channel": ref, "kind": kind, "registered": True}
 
     @app.get("/api/transcripts/search")
-    async def transcripts_search(q: str = Query(...), n: int = Query(default=25)):
+    async def transcripts_search(q: str = Query(...), n: int = Query(default=25),
+                                 channel: str = Query(default="")):
+        """`channel` (comma-separated) scopes the search to those sources. The scope goes INTO the
+        vector query, so N results are N results however big the rest of the library gets."""
         import asyncio
         from nolan import transcript_lib as tl
         from nolan.indexer import VideoIndex
@@ -295,8 +300,10 @@ def register(app, ctx):
             return {"results": [], "count": 0}
         index = VideoIndex(idb)
         vs = VectorSearch(Path(idb).parent / "vectors", index=index)
-        results = await asyncio.to_thread(tl.search_transcripts, q, index, vs, int(n))
-        return {"results": results, "count": len(results)}
+        chans = [c for c in (channel or "").split(",") if c.strip()]
+        results = await asyncio.to_thread(tl.search_transcripts, q, index, vs, int(n), None,
+                                          chans or None)
+        return {"results": results, "count": len(results), "scoped_to": chans}
 
     @app.post("/api/transcripts/suggest-topic")
     async def transcripts_suggest_topic(body: dict = Body(...)):
@@ -427,7 +434,8 @@ def register(app, ctx):
 
     @app.get("/api/transcripts/search-both")
     async def transcripts_search_both(q: str = Query(...), n: int = Query(default=25),
-                                      content_kind: str = Query(default="")):
+                                      content_kind: str = Query(default=""),
+                                      channel: str = Query(default="")):
         """BOTH search: RRF blend of transcript (said) + visual (shown) into ranked moments."""
         import asyncio
         from nolan import transcript_lib as tl
@@ -438,8 +446,10 @@ def register(app, ctx):
             return {"results": [], "count": 0}
         index = VideoIndex(idb)
         vs = VectorSearch(Path(idb).parent / "vectors", index=index)
-        results = await asyncio.to_thread(tl.search_both, q, index, vs, int(n), content_kind)
-        return {"results": results, "count": len(results)}
+        chans = [c for c in (channel or "").split(",") if c.strip()]
+        results = await asyncio.to_thread(tl.search_both, q, index, vs, int(n), content_kind, None,
+                                          chans or None)
+        return {"results": results, "count": len(results), "scoped_to": chans}
 
     @app.get("/api/transcripts/frame")
     async def transcripts_frame(path: str = Query(...)):

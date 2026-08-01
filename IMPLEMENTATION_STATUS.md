@@ -62,6 +62,35 @@ from the registry, `author.py` delegation, `block_registry` / `style_contract` /
 classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
 honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
 
+## Search that stays correct as the library grows, and a topic you could not open (2026-08-01)
+
+Two review findings, both backend, both fixed before the UI restructure that will surface them.
+
+**The search scope now goes INTO the query.** `search_transcripts` ranked the WHOLE library and kept
+the transcript rows afterwards, over-fetching `max(n*8, 200)` to compensate — its own comment named
+the right fix as a follow-up. Correct while transcripts are most of the index, quietly lossy as real
+footage grows: the transcript hits get crowded out of the candidate pool before the filter ever sees
+them, so you get fewer results and no error. `VectorSearch.search` takes a `video_ids` scope that
+becomes a ChromaDB `$in`, so N results are N results. An EMPTY allow-list compiles to an impossible
+condition rather than a dropped filter — "nothing is in scope" must return nothing, never the whole
+library.
+
+That also makes per-source search possible: `?channel=` (comma-separated) narrows to those sources,
+and `search_both` scopes the visual side too so the RRF blend can't reintroduce an excluded source.
+Verified live: bloomberg-scoped returns only bloomberg, an unknown channel returns 0.
+
+**Archive hits had been displaying their own URL as the title.** The catalog join parsed only the
+YouTube id shape, so every `archive.org/details/<id>` hit — most of this library — came back titled
+`https://archive.org/details/0007_American_Frontier_07_30_37_00` with `channel: null`. It joins on
+the archive identifier too now, and deep-links by `#start/<s>` (archive's fragment) instead of
+YouTube's `&t=`. Live: that row is now *American Frontier · prelinger · #start/607*.
+
+**Coverage's six samples were a server-side truncation.** `coverage_map` returned `samples[:6]` per
+topic, so member seven was unreachable by any front-end change. Topics now report `sample_total`,
+and `?detail=<label>` returns one topic's members in full — clustering is deterministic
+(`random_state=0`) and, since the vector reuse landed, costs no embedding, so the recompute is
+cheap. The biggest archive topic was showing 6 of **395**.
+
 ## The 118 MB index nothing read (2026-08-01)
 
 `title_vectors.npz` holds a BGE embedding for all 61,809 surveyed titles, is kept incremental, and

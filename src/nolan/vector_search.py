@@ -538,7 +538,8 @@ class VectorSearch:
         search_level: Literal["segments", "clusters", "both"] = "both",
         project_id: Optional[str] = None,
         people_filter: Optional[List[str]] = None,
-        location_filter: Optional[str] = None
+        location_filter: Optional[str] = None,
+        video_ids: Optional[List[Any]] = None
     ) -> List[SemanticSearchResult]:
         """Semantic search across video index.
 
@@ -549,6 +550,10 @@ class VectorSearch:
             project_id: Optional project ID to filter by.
             people_filter: Optional list of people names to filter by.
             location_filter: Optional location string to filter by.
+            video_ids: Restrict to these videos IN THE QUERY (a ChromaDB `$in`), not afterwards.
+                Post-filtering a whole-library ranking silently loses results as the library grows —
+                the caller's slice can be crowded out of the candidate pool before it is ever seen.
+                Filtering in the query means `limit` results are `limit` results.
 
         Returns:
             List of SemanticSearchResult sorted by similarity score.
@@ -564,7 +569,7 @@ class VectorSearch:
                 allowed_ids = self.index.get_project_video_ids(project_id)
             except Exception:
                 allowed_ids = None
-        where_filter = self._build_where_filter(None, people_filter, location_filter)
+        where_filter = self._build_where_filter(None, people_filter, location_filter, video_ids)
         # Fetch extra when post-filtering so enough in-scope results survive.
         fetch = limit * 6 if allowed_ids is not None else limit
 
@@ -589,10 +594,17 @@ class VectorSearch:
         self,
         project_id: Optional[str],
         people_filter: Optional[List[str]],
-        location_filter: Optional[str]
+        location_filter: Optional[str],
+        video_ids: Optional[List[Any]] = None
     ) -> Optional[Dict[str, Any]]:
         """Build ChromaDB where filter from parameters."""
         conditions = []
+
+        if video_ids is not None:
+            # An EMPTY allow-list means "nothing is in scope" and must return nothing — an impossible
+            # condition, never a silently dropped filter (which would search the whole library).
+            conditions.append({"video_id": {"$in": [int(v) for v in video_ids]}} if video_ids
+                              else {"video_id": {"$lt": 0}})
 
         if project_id:
             conditions.append({"project_id": {"$eq": project_id}})

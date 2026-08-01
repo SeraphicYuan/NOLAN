@@ -36,7 +36,10 @@ def test_search_transcripts_scopes_to_tier_and_joins_titles(tmp_path):
             return {1}                                    # only db-id 1 is a transcript row
 
     class FakeVS:
-        def search(self, query, limit, search_level):
+        def search(self, query, limit, search_level, video_ids=None, **kw):
+            assert video_ids == [1], "the tier scope must go INTO the query, not be applied after it"
+            # the store honouring the scope would never return video 2; it is here to prove the
+            # belt-and-braces post-check still drops a footage row if one ever slips through
             return [FakeHit(1, url, 95.0, 0.72, "oil prices spike"),
                     FakeHit(2, "/local/footage.mp4", 10.0, 0.9, "unrelated footage")]  # footage → dropped
 
