@@ -732,6 +732,30 @@ class ImageLibrary:
         if progress:
             progress(out)
 
+    def repair_pdia_image_urls(self) -> dict:
+        """Repoint PDIA rows at the CDN. No network — the path was always right, the host wasn't.
+
+        The listing's `src` is a path on `images.pdimagearchive.org`, not on the site. Joining it
+        to the site produced a 404 HTML page for all 11,197 rows, which is why "Get thumbnails"
+        appeared to do nothing for them: warming had a `thumb_url`, so it tried, and every fetch
+        came back as a 404 page rather than an image.
+
+        Rewritten in place from what is already stored, so this costs one SQL pass and not a
+        re-crawl. The thumbnail also gains `?width=512` from the CDN's resizer — 47 KB instead of
+        380 KB on the file measured.
+        """
+        from nolan.imagelib.harvest import PDIA_CDN, PDIA_SITE, _PDIA_THUMB_PX
+
+        patches: Dict[int, dict] = {}
+        for a in self.catalog.list(status="active", held=0, limit=1_000_000, source="pdia"):
+            raw = a.url or a.thumb_url or ""
+            if not raw.startswith(PDIA_SITE):
+                continue
+            path = raw[len(PDIA_SITE):].split("?", 1)[0]
+            patches[a.id] = {"url": f"{PDIA_CDN}{path}",
+                             "thumb_url": f"{PDIA_CDN}{path}?width={_PDIA_THUMB_PX}"}
+        return {"repaired": self.catalog.update_many(patches)}
+
     def enrich_pdia_collections(self, *, limit: int = 600, workers: int = 4,
                                 progress=None) -> dict:
         """Give each curated PDIA collection its real title and the editors' blurb.
@@ -945,22 +969,25 @@ class ImageLibrary:
         return out
 
     def _gate_fetched_thumb(self, asset: Asset, dest: Path, *, tier: str) -> Optional[str]:
-        """Run the gates that need pixels. Returns a refusal reason, or None if it passes.
+        """Gate a fetched THUMBNAIL. Returns a refusal reason, or None if it passes.
 
-        One implementation for both the batch backfill and the on-demand warm path — the same
-        picture must not be admitted by one door and refused by the other.
+        NO RESOLUTION FLOOR HERE. A thumbnail is a 512px preview — something to LOOK at in the
+        grid — and refusing to show a picture because the original is small is a judgement about
+        USE, made at the wrong moment and with the wrong consequence: the old version deleted the
+        file AND set the row to `rejected`, retiring a catalogue record over a preview. The floor
+        belongs at PROMOTION, where `check_file` measures the real bytes of something a human has
+        chosen to hold, and it still runs there.
+
+        THE WATERMARK CHECK STAYS. It is skipped outright for open-access sources — which is all
+        four of the current ones, so it costs nothing today — and it is the one thing standing
+        between a future rights-managed source and a watermarked preview entering the library. A
+        picture we cannot legally show is a different problem from a picture that is merely small.
         """
-        from nolan.asset_gate import OPEN_ACCESS_SOURCES, banner_suspect, clears_floor
-        from nolan.pixels import effective_dims
+        from nolan.asset_gate import OPEN_ACCESS_SOURCES, banner_suspect
 
         if asset.source not in OPEN_ACCESS_SOURCES and banner_suspect(dest):
             dest.unlink(missing_ok=True)
             return "watermark banner strip"
-        if asset.width and asset.height:
-            eff = effective_dims(dest, declared=(int(asset.width), int(asset.height)))
-            if eff and not clears_floor(eff[0], eff[1], tier):
-                dest.unlink(missing_ok=True)
-                return f"content {eff[0]}x{eff[1]} below the {tier} floor"
         return None
 
     def _resolve_missing_thumb_urls(self, rows) -> int:
@@ -1002,7 +1029,8 @@ class ImageLibrary:
         return n
 
     def backfill_pixels(self, *, limit: int = 200, collection_id: Optional[int] = None,
-                        tier: str = "archival", concurrency: int = 8, progress=None) -> dict:
+                        source: Optional[str] = None, tier: Optional[str] = None,
+                        embed: bool = True, concurrency: int = 8, progress=None) -> dict:
         """PHASE B — fetch thumbnails for record-only rows, so `look` retrieval grows over time.
 
         Deliberately incremental and bounded: measured at 470 ms/row, the whole artic
@@ -1019,7 +1047,7 @@ class ImageLibrary:
         its whole wall-clock waiting on museum CDNs.
         """
         pool_rows = [a for a in self.catalog.list(status="active", held=0,
-                                                  collection_id=collection_id,
+                                                  collection_id=collection_id, source=source,
                                                   limit=max(limit * 4, 200))
                      if not a.thumb_path]
         resolved = self._resolve_missing_thumb_urls(pool_rows[:limit * 2])
@@ -1028,9 +1056,13 @@ class ImageLibrary:
         out = {"attempted": 0, "fetched": 0, "refused": 0, "errors": 0,
                "urls_resolved": resolved, "reasons": []}
         # Chunked so `progress` still ticks during a long run and a crash loses at most a chunk.
+        # No per-source tier juggling here: the thumbnail path no longer applies a resolution
+        # floor at all (see `_gate_fetched_thumb`), so the tier only reaches the watermark check,
+        # which does not consult it.
         step = max(1, concurrency * 2)
         for i in range(0, len(rows), step):
-            res = self.warm_pixels(rows[i:i + step], concurrency=concurrency, tier=tier)
+            res = self.warm_pixels(rows[i:i + step], concurrency=concurrency,
+                                   tier=tier or "archival", embed=embed)
             for k in ("attempted", "fetched", "refused", "errors"):
                 out[k] += res[k]
             out["reasons"].extend(res["reasons"][:max(0, 12 - len(out["reasons"]))])

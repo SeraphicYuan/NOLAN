@@ -521,27 +521,38 @@ def test_backfill_fetches_pixels_and_runs_the_gates_phase_a_could_not(lib, tmp_p
     assert lib.discovery_stats()["pixels_pct"] == 100.0
 
 
-def test_backfill_retires_a_row_whose_pixels_fail_the_content_floor(lib, tmp_path, monkeypatch):
-    """The D2 floor, applied at the moment the pixels first exist."""
-    from PIL import Image
+def test_a_small_picture_is_KEPT_as_a_thumbnail_not_retired(lib, tmp_path, monkeypatch):
+    """The thumbnail path no longer applies a resolution floor.
+
+    A thumbnail is a 512px preview — something to LOOK at in the grid — and refusing to show a
+    picture because its original is small is a judgement about USE, made at the wrong moment and
+    with a wildly disproportionate consequence: the old behaviour deleted the file AND set the
+    row to `rejected`, retiring a catalogue record over a preview.
+
+    The floor still exists; it runs at PROMOTION, on the real bytes of something a human has
+    chosen to hold.
+    """
     import numpy as np
+    from PIL import Image
 
     lib.add_discovery(source_ref="artic:8", thumb_url="https://e.org/8.jpg", source="artic",
                       title="eight", license="CC0", width=1000, height=1000, pixels=False)
 
     def _fake_dl(url, dest, **kw):
         Path(dest).parent.mkdir(parents=True, exist_ok=True)
-        # a tiny object adrift on a huge grey sweep: content is ~4% of the frame
+        # a tiny object adrift on a huge grey sweep: content is ~4% of the frame, which the
+        # content floor used to refuse outright
         canvas = np.full((400, 400, 3), 128, dtype="uint8")
         rng = np.random.default_rng(9)
         canvas[190:210, 190:210] = rng.integers(0, 255, size=(20, 20, 3), dtype="uint8")
         Image.fromarray(canvas).save(dest)
 
     monkeypatch.setattr("nolan.http_client.download_file_sync", _fake_dl)
-    res = lib.backfill_pixels(limit=10, tier="archival")
-    assert res["refused"] == 1 and res["fetched"] == 0, res
-    assert any("below the archival floor" in r for r in res["reasons"]), res["reasons"]
-    assert lib.catalog.get_by_ref("artic:8").status == "rejected"
+    res = lib.backfill_pixels(limit=10, embed=False)
+    assert res["fetched"] == 1 and res["refused"] == 0, res
+    a = lib.catalog.get_by_ref("artic:8")
+    assert a.status == "active", "a small preview must not retire the catalogue row"
+    assert a.thumb_path, "and the picture is kept, so the card can show it"
 
 
 # --- on-demand pixels: concurrent, gated, and after ranking ----------------------------------
@@ -617,7 +628,7 @@ def test_warm_pixels_honours_a_serial_setting(lib, monkeypatch):
 
 def test_warm_pixels_runs_the_same_gate_as_the_batch_path(lib, monkeypatch):
     """One implementation for both doors — the same picture must not be admitted by one and
-    refused by the other."""
+    refused by the other. Still true now that the floor is gone: BOTH keep it."""
     import numpy as np
     from PIL import Image
 
@@ -632,9 +643,53 @@ def test_warm_pixels_runs_the_same_gate_as_the_batch_path(lib, monkeypatch):
     a, _ = lib.add_discovery(source_ref="artic:1", thumb_url="https://e.org/1.jpg",
                              source="artic", title="t", license="CC0",
                              width=1000, height=1000, pixels=False)
-    res = lib.warm_pixels([a], tier="archival")
-    assert res["refused"] == 1 and res["fetched"] == 0
-    assert lib.catalog.get(a.id).status == "rejected"
+    res = lib.warm_pixels([a], tier="archival", embed=False)
+    assert res["fetched"] == 1 and res["refused"] == 0
+    assert lib.catalog.get(a.id).status == "active"
+
+
+def test_the_watermark_door_is_still_shut(lib, monkeypatch):
+    """Dropping the floor is not dropping the gate. The watermark check is skipped outright for
+    open-access sources — all four current ones — so it costs nothing today, and it is the one
+    thing between a future rights-managed source and a watermarked preview in the library. A
+    picture we cannot legally show is a different problem from one that is merely small."""
+    import numpy as np
+    from PIL import Image
+
+    def _dl(url, dest, **kw):
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        rng = np.random.default_rng(5)
+        Image.fromarray(rng.integers(60, 200, size=(400, 600, 3), dtype="uint8")).save(dest)
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _dl)
+    # The heuristic's OWN behaviour is tested against real images elsewhere; what changed here is
+    # whether it is still CALLED, so that is what this asserts — stub its verdict and check the
+    # refusal is honoured. Synthesising an image that trips it would be testing the heuristic.
+    called = []
+
+    def _suspect(path):
+        called.append(path)
+        return True
+
+    monkeypatch.setattr("nolan.asset_gate.banner_suspect", _suspect)
+
+    # declared dims clear the INDEX-time floor (a separate door, on the source's own numbers,
+    # deliberately still in place) so the row is admitted and the watermark check gets to run
+    a, _ = lib.add_discovery(source_ref="agency:1", thumb_url="https://e.org/w.jpg",
+                             source="some_agency", title="stock", license="CC0",
+                             width=2400, height=1600, pixels=False)
+    res = lib.warm_pixels([a], embed=False)
+    assert called, "banner_suspect must still be consulted for a non-open-access source"
+    assert res["refused"] == 1 and res["fetched"] == 0, res
+    assert any("watermark" in r for r in res["reasons"]), res["reasons"]
+
+    # ...and NOT consulted for the open-access museums, where it is a pure waste of ~2.4 ms/row
+    called.clear()
+    b, _ = lib.add_discovery(source_ref="artic:9", thumb_url="https://e.org/9.jpg",
+                             source="artic", title="a print", license="CC0",
+                             width=2400, height=1600, pixels=False)
+    assert lib.warm_pixels([b], embed=False)["fetched"] == 1
+    assert not called, "open-access sources skip the watermark check"
 
 
 def test_warming_only_ever_touches_the_returned_page(lib, monkeypatch):
@@ -1777,6 +1832,56 @@ def test_pdia_refuses_to_walk_when_the_api_ignores_the_requested_sort(monkeypatc
         n, sort={"sortType": "date", "sortOrder": "asc"}))          # a real but wrong sort type
     with pytest.raises(RuntimeError, match="refused the requested sort"):
         list(H.pdia_items(limit=10, report=H.HarvestReport(collection="p")))
+
+
+def test_every_pdia_row_carries_BOTH_a_thumbnail_and_a_full_size_url(monkeypatch):
+    """Two urls, two jobs: `thumb_url` is what warming keeps locally, `url` is the untouched
+    original that promotion fetches. Storing only one makes a row either un-previewable or
+    un-fetchable, and nothing complains until someone clicks.
+
+    They must also point at the CDN. The listing's `src` is a path on
+    images.pdimagearchive.org, NOT on the site — joining it to the site gave a 404 HTML page
+    for all 11,197 rows, so warming "succeeded" at downloading an error page and "Get
+    thumbnails" appeared to do nothing.
+    """
+    from nolan.imagelib import harvest as H
+
+    _fake_pdia(monkeypatch, _pdia_page)
+    for it in H.pdia_items(limit=3, report=H.HarvestReport(collection="p")):
+        assert it.thumb_url and it.url, it
+        assert it.thumb_url.startswith(H.PDIA_CDN), it.thumb_url
+        assert it.url.startswith(H.PDIA_CDN), it.url
+        # the thumbnail asks the CDN to resize; the full size is deliberately untouched
+        assert it.thumb_url.endswith(f"?width={H._PDIA_THUMB_PX}"), it.thumb_url
+        assert "?" not in it.url, "promotion must fetch the ORIGINAL, not a derivative"
+        assert not it.thumb_url.startswith(H.PDIA_SITE + "/"), "the site is not the image host"
+
+
+def test_the_pdia_thumbnail_width_matches_what_the_library_keeps():
+    """Asking the CDN for more pixels than `_shrink` keeps means paying for bytes that are
+    thrown away. The constant is restated in `harvest` (store imports harvest, so it cannot be
+    imported the other way) — this is what stops the two drifting."""
+    from nolan.imagelib.harvest import _PDIA_THUMB_PX
+    from nolan.imagelib.store import _THUMB_PX
+    assert _PDIA_THUMB_PX == _THUMB_PX
+
+
+def test_repairing_the_urls_needs_no_recrawl(lib):
+    """The path was always right and only the host was wrong, so 11,197 rows are fixable from
+    what is already stored — one SQL pass, no network."""
+    from nolan.imagelib import harvest as H
+
+    lib.add_discovery(source_ref="pdia:x", source="pdia", title="A Plate", license="CC0",
+                      thumb_url=f"{H.PDIA_SITE}/collections/set/a.jpg",
+                      url=f"{H.PDIA_SITE}/collections/set/a.jpg",
+                      width=900, height=600, pixels=False, tier="curated")
+
+    assert lib.repair_pdia_image_urls() == {"repaired": 1}
+    a = lib.catalog.get_by_ref("pdia:x")
+    assert a.url == f"{H.PDIA_CDN}/collections/set/a.jpg"
+    assert a.thumb_url == f"{H.PDIA_CDN}/collections/set/a.jpg?width={H._PDIA_THUMB_PX}"
+    # idempotent — a second run finds nothing left pointing at the site
+    assert lib.repair_pdia_image_urls() == {"repaired": 0}
 
 
 def test_pdia_reads_the_collection_slug_out_of_the_image_path(monkeypatch):

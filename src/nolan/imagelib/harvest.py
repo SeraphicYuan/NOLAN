@@ -998,6 +998,20 @@ def cleveland_items(limit: int = 200, *, dept: Optional[str] = None,
 
 PDIA_API = "https://pdimagearchive.org/api/galleries"
 PDIA_SITE = "https://pdimagearchive.org"
+# THE IMAGE HOST IS A DIFFERENT HOST. `src` in the listing ("/collections/<set>/<file>.jpg",
+# or "/essays/<essay>/<file>.jpg" for the ~15% published with an essay rather than a set) is a
+# path on the CDN, NOT on the site — joining it to PDIA_SITE produces a 404 page, which is what
+# the first version stored for all 11,197 rows and why "Get thumbnails" did nothing for them.
+#
+# The CDN also RESIZES on request (`?width=`), which the museums do not offer. Measured on one
+# file: 380 KB for the original against 47 KB at width=512 — so a thumbnail costs an eighth of
+# the bytes and there is no reason to pull a 6,305px original to make a 512px derivative.
+PDIA_CDN = "https://images.pdimagearchive.org"
+# The width we ask the CDN for. Deliberately equal to `store._THUMB_PX` — asking for anything
+# larger just means `_shrink` throws the extra pixels away after paying for them. Restated here
+# rather than imported because `store` imports `harvest`, and
+# `test_the_pdia_thumbnail_width_matches_what_the_library_keeps` fails if the two ever drift.
+_PDIA_THUMB_PX = 512
 # THE ONLY APPEND-ONLY ORDER. Probed: the API accepts two real sort types (`pub-date` and `date`)
 # and SILENTLY FALLS BACK to `pub-date`/`desc` for anything else — `year/asc`, `title/asc` and an
 # invented `totally-bogus-sort/asc` all returned 200 with the default order, and `pub-date/sideways`
@@ -1072,10 +1086,11 @@ def _pdia_item(im: Dict[str, Any], cols: Dict[str, Collection]) -> Optional[Harv
     bits = [im.get("encompassingWork"), im.get("alt")]
     return HarvestItem(
         source_ref=f"pdia:{uuid}",
-        # PDIA serves one original per image; there is no derivative ladder to choose from, so
-        # the same url is thumbnailed and promoted. `_shrink` bounds what we store locally.
-        thumb_url=f"{PDIA_SITE}{src}",
-        url=f"{PDIA_SITE}{src}",
+        # A DERIVATIVE LADDER OF TWO, from the CDN's own resizer: `?width=512` for the thumbnail
+        # we keep, the untouched original for promotion. Better than the fixed ladders the
+        # museums publish, because the width is ours to choose.
+        thumb_url=f"{PDIA_CDN}{src}?width={_PDIA_THUMB_PX}",
+        url=f"{PDIA_CDN}{src}",
         source_url=f"{PDIA_SITE}/images/{uuid}/",
         title=(im.get("title") or "").strip() or None,
         # MULTIPLE ARTISTS are rare but real (measured: 0 of 73 sampled, though the archive's own
