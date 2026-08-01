@@ -1,5 +1,6 @@
 ---
 id: organ.sync
+harness: nolan-sync
 name: Word-level narration → scene sync
 description: >
   How each scene lands on the spoken word. `sync-durations` pins only the 7 FRAME boundaries;

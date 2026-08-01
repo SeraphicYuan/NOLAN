@@ -1,5 +1,6 @@
 ---
 id: organ.asset-engine
+harness: nolan-asset-engine
 name: Asset engine (source-resolution ladder)
 description: >
   The ONE per-scene source-resolution ladder shared by all pipelines. For each scene it picks the

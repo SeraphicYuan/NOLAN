@@ -92,3 +92,27 @@ def test_router_region_is_fresh():
     assert router_is_fresh(), (
         "the `nolan` skill's AUTOGEN:skill-router region is stale — "
         "run `python -m nolan.skills --emit-router`")
+
+
+def test_every_harness_copy_is_a_real_file_and_in_sync():
+    """A skill authored in `skills/` reaches the agent harness through a REAL generated file at
+    `.claude/skills/<harness>/SKILL.md` — never a symlink.
+
+    This is not a style rule. A symlink created from WSL is a Linux reparse point that Windows cannot
+    even stat (`OSError: [WinError 1920]`), so on the Windows client the skill silently does not
+    exist: `Skill(nolan-transcript-library)` answers "Unknown skill", and `git add` fails with
+    "Invalid argument". Both clients have to work, so the copy must be a plain file with its source's
+    exact bytes. Regenerate with `python -m nolan.skills --sync-harness`."""
+    from nolan import skills as sk
+    drift = sk.harness_drift()
+    assert not drift, "harness copies out of sync:\n" + "\n".join(
+        f"  {sid:28} {slug:26} {why}" for sid, slug, why in drift)
+
+
+def test_organ_skills_declare_a_harness_slug():
+    """Every organ/lab/pipeline skill is routable by name from the harness — CLAUDE.md's "LOAD its
+    skill before modifying a subsystem" is unfollowable for a skill with no `.claude/skills/` entry."""
+    from nolan import skills as sk
+    missing = [s.id for s in sk.load_skills()
+               if s.tier in ("primary", "organ", "lab") and s.status == "active" and not s.harness]
+    assert not missing, f"no harness: slug, so unreachable via Skill(): {missing}"

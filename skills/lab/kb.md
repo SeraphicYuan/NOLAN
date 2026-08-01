@@ -1,5 +1,6 @@
 ---
 id: lab.kb
+harness: nolan-kb
 name: Knowledge base (video-craft KB)
 description: >
   NOLAN's video-craft knowledge base, backed by an Obsidian vault. Markdown-first: the vault .md

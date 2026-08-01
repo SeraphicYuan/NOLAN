@@ -1,5 +1,6 @@
 ---
 id: organ.render
+harness: nolan-render
 name: Render dispatch + render modes
 description: >
   How ONE scene becomes pixels — the per-scene render router shared by the segment and

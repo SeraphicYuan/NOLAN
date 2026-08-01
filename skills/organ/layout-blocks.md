@@ -1,5 +1,6 @@
 ---
 id: organ.layout-blocks
+harness: nolan-layout-blocks
 name: Layout-block adapters (Remotion-first rendering)
 description: >
   How a layout scene's template params become Remotion flow-block props. `render_layout` tries the

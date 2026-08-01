@@ -1,5 +1,6 @@
 ---
 id: lab.deconstruct
+harness: nolan-deconstruct
 name: Video deconstruction (inverse Director)
 description: >
   The inverse Director — given an ingested library video, RECOVER its editorial plan: beats, the

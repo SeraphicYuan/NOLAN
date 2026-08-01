@@ -1,5 +1,6 @@
 ---
 id: lab.visual-library
+harness: nolan-visual-library
 name: Visual Lib (not-held picture discovery tier)
 description: >
   The library of pictures we do NOT hold — museum and archive collections harvested as catalog

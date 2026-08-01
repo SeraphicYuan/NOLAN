@@ -1,5 +1,6 @@
 ---
 id: lab.transcript-library
+harness: nolan-transcript-library
 name: Transcript library (discovery tier + topic search)
 description: >
   The library of what other people's videos SAY and SHOW — YouTube channels and archive.org

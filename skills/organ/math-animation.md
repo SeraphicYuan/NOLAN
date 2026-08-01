@@ -1,5 +1,6 @@
 ---
 id: organ.math-animation
+harness: nolan-math-animation
 name: Math animation source (Manim)
 description: >
   How NOLAN puts real mathematics on screen: a `math` scene declares a typed template plus a

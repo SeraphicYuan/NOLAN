@@ -68,13 +68,21 @@ docs claim, tests enforce — a rule without its honesty test doesn't exist
 coverage all have one; your new thing does too, or it isn't done).
 
 **Organ-skills stay bound (anti-rot).** Each subsystem has a skill in
-`skills/<domain>/` (author once; symlinked into `.claude/skills/` so BOTH the
-harness routes to it AND code can `handoff()` it). Before modifying a
-subsystem, LOAD its skill; when you change the subsystem, UPDATE its skill —
-`tests/test_organ_skills.py` enforces the binding (a `documents:` target that
-drifts, or an undocumented DAG step, fails CI). Find the right skill via the
-`nolan` router (auto-generated — `python -m nolan.skills --emit-router`) or
-`/skills`. Load the skill for what you're ABOUT to touch, not preemptively.
+`skills/<domain>/` — authored ONCE there, and reaching the harness through a
+GENERATED REAL FILE at `.claude/skills/<harness>/SKILL.md`, declared by the
+doc's own `harness:` slug and written by `python -m nolan.skills
+--sync-harness`. **Never symlink it.** A WSL-made symlink is a Linux reparse
+point Windows cannot stat (WinError 1920), so the Claude desktop app sees no
+skill at all (`Skill(...)` → "Unknown skill") and `git add` fails with "Invalid
+argument" — this repo is worked from BOTH WSL and Windows, so a copy every
+client can read is the contract. Edit the doc under `skills/`, then re-run
+`--sync-harness`; `tests/test_organ_skills.py` fails on a copy that is missing,
+stale, symlinked, or unreadable. Before modifying a subsystem, LOAD its skill;
+when you change the subsystem, UPDATE its skill — the same test enforces the
+binding (a `documents:` target that drifts, or an undocumented DAG step, fails
+CI). Find the right skill via the `nolan` router (auto-generated — `python -m
+nolan.skills --emit-router`) or `/skills`. Load the skill for what you're ABOUT
+to touch, not preemptively.
 
 ## Non-negotiable invariants
 

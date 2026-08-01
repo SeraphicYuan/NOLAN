@@ -16,6 +16,17 @@ Skills live in two roots:
   - `.claude/skills/` harness-invoked Claude Code skills — the runtime owns that path, so
                       they are cataloged IN PLACE, never moved (moving breaks invocation).
 
+A skill authored in `skills/` reaches the harness through a GENERATED COPY at
+`.claude/skills/<harness>/SKILL.md`, declared by a `harness:` slug in its frontmatter and
+written by `sync_harness()` (`python -m nolan.skills --sync-harness`).
+
+It used to be a symlink, and that quietly broke half the clients. A symlink created from WSL is
+not followed by the Windows Claude app — it reads the link as a plain file whose CONTENT is the
+target path, so the skill registers with a one-line body and `Skill(nolan-transcript-library)`
+answers "Unknown skill". Windows git can't hash it either (`Invalid argument`), so those paths sit
+permanently dirty in `git status`. Real files work in every client on every OS; the cost is a
+generated duplicate, and `tests/test_organ_skills.py` fails the moment one drifts from its source.
+
 A skill = any `.md` whose YAML frontmatter carries an `id`. Untagged `.md` are ignored,
 so migration is incremental and a half-migrated tree still lints clean.
 """
@@ -44,9 +55,10 @@ _ROUTER_END = "<!-- END AUTOGEN:skill-router -->"
 _ROUTER_FILE = ROOT / ".claude" / "skills" / "nolan" / "SKILL.md"
 # manifest fields carried onto Skill (besides id); value = default
 _FIELDS = {"name": "", "kind": "", "purpose": "", "status": "active", "version": 1,
-           "tier": "", "description": "",
+           "tier": "", "description": "", "harness": "",
            "handoffs": list, "uses": list, "overrides": list, "loaded_by": list,
            "documents": None, "evals": list}
+HARNESS_ROOT = ROOT / ".claude" / "skills"
 
 _FM = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.S)
 
@@ -61,6 +73,7 @@ class Skill:
     version: object = 1
     tier: str = ""                                  # router bucket: primary|organ|craft|legacy
     description: str = ""                            # harness routing text (Claude Code SKILL.md)
+    harness: str = ""                                # .claude/skills/<slug>/ this generates into
     handoffs: list = field(default_factory=list)   # [{process, stage, gate?}]
     uses: list = field(default_factory=list)       # skill ids this composes with
     overrides: list = field(default_factory=list)  # skill ids this supersedes
@@ -91,24 +104,25 @@ def _parse(text: str):
 def load_skills(roots=None) -> list[Skill]:
     """Every `.md` under the skill roots whose frontmatter has an `id`."""
     out: list[Skill] = []
-    seen_real: set[str] = set()   # dedup: one file symlinked into >1 root counts once (home wins)
+    # Dedup by ID, not by real path: the harness copy under `.claude/skills/` is a real FILE (see the
+    # module docstring — symlinks are invisible to the Windows client), so a skill legitimately exists at
+    # two distinct paths. `skills/` is listed first, so the home doc wins and the generated copy is
+    # skipped. `lint_skills`' dup-id check still fires for two DIFFERENT skills claiming one id, because
+    # the harness copy is proven byte-identical to its source by `sync_harness` + its test.
+    seen_id: set[str] = set()
     for root in (roots or SKILL_ROOTS):
         if not root.exists():
             continue
         for p in sorted(root.rglob("*.md")):
-            try:
-                real = str(p.resolve())
-            except OSError:
-                continue                # broken symlink — skip, don't crash the catalog
-            if real in seen_real:
-                continue                # already cataloged at its home root
             try:
                 fm, body = _parse(p.read_text(encoding="utf-8"))
             except OSError:
                 continue
             if not fm or "id" not in fm:
                 continue
-            seen_real.add(real)
+            if str(fm["id"]) in seen_id:
+                continue                # already cataloged at its home root
+            seen_id.add(str(fm["id"]))
             kw = {k: fm.get(k, (d() if callable(d) else d)) for k, d in _FIELDS.items()}
             out.append(Skill(id=str(fm["id"]), body=body,
                              path=str(p.relative_to(ROOT)).replace("\\", "/"), **kw))
@@ -527,8 +541,78 @@ def router_is_fresh() -> bool:
     return emit_router(write=False) == _ROUTER_FILE.read_text(encoding="utf-8")
 
 
+# ---- harness bridge: real generated copies under .claude/skills, never symlinks ----------------
+
+def harness_targets(skills=None) -> list[tuple[str, Path, Path]]:
+    """``(skill_id, source, target)`` for every skill that declares a `harness:` slug — the doc's own
+    statement of which `.claude/skills/<slug>/SKILL.md` the agent harness should route to."""
+    out = []
+    for s in (skills if skills is not None else load_skills()):
+        slug = (s.harness or "").strip()
+        if not slug:
+            continue
+        out.append((s.id, ROOT / s.path, HARNESS_ROOT / slug / "SKILL.md"))
+    return out
+
+
+def harness_drift(skills=None) -> list[tuple[str, str, str]]:
+    """``(skill_id, slug, problem)`` for every harness copy that is missing, stale, or a SYMLINK.
+
+    A symlink is a hard failure, not a style note: the Windows client reads it as a one-line file and
+    the skill silently stops existing there (see the module docstring). Bytes are compared exactly —
+    a skill doc that is CRLF at home must be CRLF in the copy."""
+    bad = []
+    for sid, src, tgt in harness_targets(skills):
+        slug = tgt.parent.name
+        try:
+            if tgt.is_symlink():
+                bad.append((sid, slug, "is a symlink — invisible to the Windows client; --sync-harness"))
+            elif not tgt.exists():
+                bad.append((sid, slug, "missing — run --sync-harness"))
+            elif tgt.read_bytes() != src.read_bytes():
+                bad.append((sid, slug, f"stale vs {src.relative_to(ROOT)} — run --sync-harness"))
+        except OSError as e:
+            # WinError 1920 on a WSL-created symlink: Windows cannot stat a Linux reparse point at all.
+            # Unreadable is the WORST case — the client sees no skill — so it must fail, not be skipped.
+            bad.append((sid, slug, f"unreadable ({e.__class__.__name__}: {e}) — run --sync-harness"))
+    return bad
+
+
+def sync_harness(write: bool = True) -> list[tuple[str, str, str]]:
+    """Materialize every declared harness copy as a REAL file with its source's exact bytes.
+    Returns ``(skill_id, slug, action)`` for what changed."""
+    import os
+    done = []
+    for sid, src, tgt in harness_targets():
+        data = src.read_bytes()
+        try:
+            link = tgt.is_symlink()
+            present = link or tgt.exists()
+            fresh = not link and present and tgt.read_bytes() == data
+        except OSError:                           # WinError 1920 — a WSL symlink Windows can't stat
+            link, present, fresh = True, True, False
+        if fresh:
+            continue
+        action = "replaced link" if link else ("wrote" if present else "created")
+        if write:
+            if present:
+                try:
+                    os.unlink(tgt)                # remove the LINK itself, never write through it
+                except OSError as e:
+                    raise RuntimeError(
+                        f"{tgt} exists but cannot be removed ({e}) — a WSL symlink can only be "
+                        f"deleted from a shell that understands it (wsl/git-bash `rm -f`)") from e
+            tgt.parent.mkdir(parents=True, exist_ok=True)
+            tgt.write_bytes(data)
+        done.append((sid, tgt.parent.name, action))
+    return done
+
+
 def _cli() -> int:
     import sys
+    if "--sync-harness" in sys.argv:
+        for sid, slug, action in sync_harness(write=True):
+            print(f"harness: {action:15} .claude/skills/{slug}/SKILL.md  <- {sid}")
     if "--emit-router" in sys.argv:
         emit_router(write=True)
         print(f"router: regenerated {_ROUTER_FILE.relative_to(ROOT)}")

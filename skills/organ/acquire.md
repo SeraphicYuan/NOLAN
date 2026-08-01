@@ -1,5 +1,6 @@
 ---
 id: organ.acquire
+harness: nolan-acquire
 name: Asset acquisition engine
 description: >
   The multi-source asset acquisition organ — beat-driven, over-provisioned, relevance-ranked,

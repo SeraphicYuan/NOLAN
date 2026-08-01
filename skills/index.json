@@ -11,6 +11,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "art",
@@ -34,6 +35,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "flow",
@@ -57,6 +59,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [],
       "uses": [],
       "overrides": [],
@@ -76,6 +79,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [],
       "uses": [],
       "overrides": [],
@@ -95,6 +99,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [],
       "uses": [],
       "overrides": [],
@@ -114,6 +119,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [],
       "uses": [],
       "overrides": [],
@@ -133,6 +139,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "flow",
@@ -158,6 +165,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [],
       "uses": [],
       "overrides": [],
@@ -177,6 +185,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "flow",
@@ -200,6 +209,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [],
       "uses": [],
       "overrides": [],
@@ -219,6 +229,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "flow",
@@ -244,6 +255,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -269,6 +281,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -296,6 +309,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -323,6 +337,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -351,6 +366,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -376,6 +392,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "flow",
@@ -404,6 +421,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "flow",
@@ -431,6 +449,7 @@
       "version": 1,
       "tier": "lab",
       "description": "The inverse Director \u2014 given an ingested library video, RECOVER its editorial plan: beats, the script\u2194asset pairing rationale (in the evocative-b-roll operator vocabulary), the tempo curve (tempo_plan energy/transition/motion_speed terms), and the motion applied to assets (motion registry treatment vocabulary), assembled into a draft `recovered_plan.json` in the SAME scene_plan schema the forward pipeline consumes. A LAB (feeds artifacts via handoff, never writes pipeline artifacts directly). Read before touching deconstruction, the /deconstruct page, or recovering a plan/visual-facts from a reference video.\n",
+      "harness": "nolan-deconstruct",
       "handoffs": [],
       "uses": [
         "common.pairing-craft",
@@ -453,6 +472,7 @@
       "version": 1,
       "tier": "lab",
       "description": "NOLAN's video-craft knowledge base, backed by an Obsidian vault. Markdown-first: the vault .md files (E:\\Nolan_KB) are CANONICAL; SQLite + Chroma are DERIVED indices rebuilt from the files, so a human (in Obsidian) and the agent (via the retrieval API) read the same notes. Pipeline: ingest (url/youtube/file/text \u2192 raw/*.md) \u2192 distill (LLM \u2192 parsed insight notes) \u2192 index (BGE + keyword) \u2192 link (related notes + MOCs). Read before touching KB ingest/distill/index/retrieval, or wiring craft knowledge into authoring.\n",
+      "harness": "nolan-kb",
       "handoffs": [],
       "uses": [],
       "overrides": [],
@@ -472,6 +492,7 @@
       "version": 1,
       "tier": "lab",
       "description": "The library of what other people's videos SAY and SHOW \u2014 YouTube channels and archive.org collections surveyed and transcript-indexed cheaply (no download), then visually captioned per keyframe by the VLM, so a topic search can answer \"which video, and roughly when\". Covers the survey \u2192 curate \u2192 ingest \u2192 caption loop, the THREE-TIER on-demand topic search (ingested / surveyed / global archive.org) with its persisted title-vector index, the LLM re-rank and its memory, and the broadening organ that proposes subjects the library lacks. Read before touching transcript_lib / transcript_vectors / transcript_memory / transcript_broaden / archive_source, the /transcripts page, or anything that grows the footage library by topic.\n",
+      "harness": "nolan-transcript-library",
       "handoffs": [],
       "uses": [],
       "overrides": [],
@@ -491,6 +512,7 @@
       "version": 1,
       "tier": "lab",
       "description": "The library of pictures we do NOT hold \u2014 museum and archive collections harvested as catalog metadata plus a 512px thumbnail, so a search over a corpus far larger than any local library can answer \"this image exists, here, under these terms\", and one promotion edge fetches the bytes when a beat earns it. Covers the collection \u2192 harvest \u2192 (on-demand) caption loop, the THREE knowledge tiers (collection-only / shallow item / captioned item), the ROUTED retrieval (catalog identity for named works, CLIP over thumbnails for look), the promotion edge into the held Picture Library, and the invariants (the tier is opt-in on every read path, identity is catalog-derived never model-asserted, collection rights are sticky, coverage is stated honestly). Read before touching imagelib/harvest.py, the `held` tier in imagelib/catalog.py + store.py, the `/visual-lib` page, or the `nolan images harvest / discover / fetch / collections` commands.\n",
+      "harness": "nolan-visual-library",
       "handoffs": [],
       "uses": [],
       "overrides": [],
@@ -514,6 +536,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -538,6 +561,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -562,6 +586,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -586,6 +611,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -610,6 +636,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -634,6 +661,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -658,6 +686,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -682,6 +711,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -704,6 +734,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -728,6 +759,7 @@
       "version": 1,
       "tier": "organ",
       "description": "The multi-source asset acquisition organ \u2014 beat-driven, over-provisioned, relevance-ranked, fitness-gated. For every authored NEED it fans out to EVERY source (saved library + stock / archival / museum providers), over-fetches, CLIP-scores for relevance, culls junk with a ONE-vision-call VLM usability FLOOR (judge.py), de-dups semantically, keeps the best, and GENERATES originals where stock is thin or off-topic. Read before touching acquisition, source fan-out, the relevance/usability gates, provider tiers, or `AcquireConfig` tuning \u2014 or when the HF pool has junk / is thin / missed a beat. NOTE: `acquire/` is actively being consolidated \u2014 check git before editing the code.\n",
+      "harness": "nolan-acquire",
       "handoffs": [
         {
           "process": "hyperframes",
@@ -755,6 +787,7 @@
       "version": 1,
       "tier": "organ",
       "description": "The ONE per-scene source-resolution ladder shared by all pipelines. For each scene it picks the source that fits the scene TYPE, then escalates until something clears the bar: motion (Python/ Remotion) for text/data/chart, an exact-title museum pass for named archival art (titles beat CLIP for named works), library video for footage, else stills \u2192 external providers \u2192 ComfyUI generation \u2192 none. Every choice is recorded on `scene.resolved_source` (no silent caps). Read before touching per-scene source selection, the escalation ladder, or `EngineConfig` thresholds \u2014 or when a scene resolved to the wrong source tier.\n",
+      "harness": "nolan-asset-engine",
       "handoffs": [],
       "uses": [
         "organ.acquire"
@@ -776,6 +809,7 @@
       "version": 1,
       "tier": "organ",
       "description": "The sound-design stage \u2014 a music bed whose energy arc matches the video, DUCKED under the narration with a real sidechain compressor (not a constant gain), plus transition SFX (whoosh / riser / data-punch hit). ONE integration point, `mix_soundtrack(final_video, plan)`, run AFTER assembly, shared by the Director pipeline, premium mode, and the segment builder. Read before touching music selection, VO ducking, the loudnorm/duck spec, the music library, or transition SFX. (The HF compose-first path ducks via `hyperframes/sfx_mix` + the sound umbrella instead \u2014 see below.)\n",
+      "harness": "nolan-audio-mix",
       "handoffs": [
         {
           "process": "director",
@@ -803,6 +837,7 @@
       "version": 1,
       "tier": "organ",
       "description": "How a layout scene's template params become Remotion flow-block props. `render_layout` tries the curated Remotion blocks library FIRST (the same blocks FLOW's Chapter composition uses), falling back to the legacy Python renderers on any failure or unmapped template (`NOLAN_LEGACY_RENDER=1` forces Python). Per-block ADAPTERS map params \u2192 props and return `(block_name, props)` or None (\"no faithful mapping \u2014 use the Python renderer\", e.g. a non-numeric statistic). Read before touching a layout-block adapter, adding a template\u2192block mapping, or the Remotion/Python render fallback \u2014 or when a layout scene rendered with the wrong/legacy block.\n",
+      "harness": "nolan-layout-blocks",
       "handoffs": [],
       "uses": [
         "common.composition-craft"
@@ -824,6 +859,7 @@
       "version": 1,
       "tier": "organ",
       "description": "How NOLAN puts real mathematics on screen: a `math` scene declares a typed template plus a formula ledger, and the finish DAG compiles it into a Manim clip in the essay's own theme, mounted as that scene's video ground. Read before authoring a math/science beat, before touching `nolan.mathanim` or `vendor/math-animation`, or when the math-provenance gate blocks a render. Covers the nine templates, the ledger contract, the two-interpreter split (Manim and LaTeX live in a separate conda env), and what this source is deliberately NOT for.\n",
+      "harness": "nolan-math-animation",
       "handoffs": [
         {
           "process": "hyperframes",
@@ -854,6 +890,7 @@
       "version": 1,
       "tier": "organ",
       "description": "How ONE scene becomes pixels \u2014 the per-scene render router shared by the segment and orchestrator paths. It picks the renderer by what the scene carries, in a fixed order: motion_spec \u2192 matched_clip (b-roll) \u2192 layout_spec \u2192 comfyui (generated) \u2192 card, and NEVER leaves a black hole \u2014 any failure renders a clean title card. Also the render MODES (premium = one Remotion Chapter per section with baked VO). Read before touching per-scene render routing, the never-black fallback, or premium mode \u2014 or when a scene rendered as the wrong kind / black. (The DOMINANT HF path renders the whole composition via the finish DAG instead \u2014 see below.)\n",
+      "harness": "nolan-render",
       "handoffs": [],
       "uses": [
         "organ.asset-engine"
@@ -875,6 +912,7 @@
       "version": 1,
       "tier": "organ",
       "description": "How each scene lands on the spoken word. `sync-durations` pins only the 7 FRAME boundaries; inside a frame the cuts were author-typed open-loop, so visuals drift ahead of narration (5\u201325s measured). This organ closes that seam: align_voices (whisper aligner \u2192 per-word times in audio_meta.voices[].words, cached by wav mtime) + place_scenes (each scene's start/dur set to the moment its ANCHOR phrase is spoken, monotonic-clamped, per-frame proportional fallback) + the scene-timing GATE (a visual that trails narration \u22656s or is mis-ordered HARD-blocks the render). Read before touching word-sync, anchors, the aligner, or the timing gate \u2014 or when a scene is late.\n",
+      "harness": "nolan-sync",
       "handoffs": [
         {
           "process": "hyperframes",
@@ -902,6 +940,7 @@
       "version": 1,
       "tier": "organ",
       "description": "The shared voiceover core \u2014 one TTS pipeline for the webUI and the pipeline. Per-section synthesis writes the beat-anchor wavs (`assets/voiceover/_work/sec_NNNN.wav`) that the whole render times itself to (narration owns duration), plus voice cloning from the voice library, the GPU lock it shares with ComfyUI, the speak-ready quality gate, and take versioning. Read this before touching voiceover synthesis, the `sec_*.wav` anchor contract, voice cloning, the quality gate, or the `nolan voiceover` CLI \u2014 or when a render's timing/narration looks wrong.\n",
+      "harness": "nolan-voice",
       "handoffs": [
         {
           "process": "hyperframes",
@@ -927,6 +966,7 @@
       "version": 1,
       "tier": "primary",
       "description": "The DOMINANT NOLAN video-essay pipeline: compose-first HyperFrames authoring \u2192 the `nolan hf-finish` DAG (VO-owns-duration timing, word-sync, dataset/document binding, timing + number-provenance gates, sound, assemble, render, QA gates) \u2192 incremental `hf-render` and the /hyperframes edit loop. Read this before touching ANY compose-first HF work (author.py, compose, blocks, sfx, finish, sync, edit) or running/\u200bdebugging `nolan hf-finish` / `nolan hf-render`. This SUPERSEDES the legacy Director/explainer/art flow for making essays. Points into the code + the umbrella craft skills; it does not duplicate them.\n",
+      "harness": "nolan-hf-pipeline",
       "handoffs": [
         {
           "process": "hyperframes",
@@ -960,6 +1000,7 @@
       "version": 1,
       "tier": "",
       "description": "",
+      "harness": "",
       "handoffs": [
         {
           "process": "publish",
@@ -984,6 +1025,7 @@
       "version": 1,
       "tier": "",
       "description": "Rework ONE scene in a NOLAN scene_plan.json from a human note \u2014 route it to the right NOLAN capability (motion python/remotion, ComfyUI gen, library b-roll search, or layout_spec), apply the change, validate, and re-render only that scene. Use when asked to edit / rework / redo / regenerate / \"use Remotion for\" / \"recreate this effect on\" a specific scene. This is the agent (Claude Code) path for the /scenes iteration UI \u2014 for edits a plain LLM can't route correctly.",
+      "harness": "",
       "handoffs": [
         {
           "process": "scene-edit",

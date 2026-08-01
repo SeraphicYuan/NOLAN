@@ -1,5 +1,6 @@
 ---
 id: organ.audio-mix
+harness: nolan-audio-mix
 name: Audio mix / soundtrack organ
 description: >
   The sound-design stage — a music bed whose energy arc matches the video, DUCKED under the

@@ -1,5 +1,6 @@
 ---
 id: organ.voice
+harness: nolan-voice
 name: Voice / voiceover organ
 description: >
   The shared voiceover core — one TTS pipeline for the webUI and the pipeline. Per-section

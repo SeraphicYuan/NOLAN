@@ -1,5 +1,6 @@
 ---
 id: pipeline.hyperframes
+harness: nolan-hf-pipeline
 name: NOLAN HyperFrames pipeline (compose-first)
 description: >
   The DOMINANT NOLAN video-essay pipeline: compose-first HyperFrames authoring →
