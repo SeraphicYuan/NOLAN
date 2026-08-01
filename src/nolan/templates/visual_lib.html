@@ -88,7 +88,7 @@
           <!-- Warming DOWNLOADS and KEEPS thumbnails for the rows on screen, and can retire a row
                whose pixels fail the gate. That is a write, so it is a button, never a default. -->
           <button class="btn ghost mini" id="warmbtn" onclick="warmPage()"
-                  title="Download and keep thumbnails for the results on screen. They persist, so each row is paid for once — and only then can it rank on descriptive queries.">Get thumbnails</button>
+                  title="Download and keep thumbnails for the results on screen (~48ms/row: 32 fetch + 16 gate). They persist, so each row is paid for once. No CLIP vector is computed — that is ~103ms/row and only matters for descriptive ranking; run `nolan images backfill` for that.">Get thumbnails</button>
         </div>
         <!-- Retrieval is ROUTED, so say so: a named query is answered from the catalog's words,
              a look query by CLIP over the thumbnail. Users otherwise read a look-miss as "broken". -->

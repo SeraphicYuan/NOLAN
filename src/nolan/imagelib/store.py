@@ -606,7 +606,8 @@ class ImageLibrary:
             _shrink(dest, _THUMB_PX)
         return dest
 
-    def warm_pixels(self, assets, *, concurrency: int = 8, tier: str = "archival") -> dict:
+    def warm_pixels(self, assets, *, concurrency: int = 8, tier: str = "archival",
+                    embed: bool = True) -> dict:
         """Fetch pixels for a HANDFUL of rows right now — the on-demand path behind search.
 
         Retrieval returns a page of results; the ones a human is about to look at are exactly the
@@ -619,10 +620,15 @@ class ImageLibrary:
         serialises writes through one lock anyway.
 
         So the honest cost model for a page of 24 is: fetch ≈ (24/8) x one round-trip, plus
-        ~90 ms/row of embedding that does not parallelise. The embed is therefore the floor
-        (~2 s for a page of 24), not the network — which is the opposite of what the original
-        1.7 s/row estimate implied, and worth knowing before anyone tries to make this faster by
-        widening the pool.
+        ~103 ms/row of embedding that does not parallelise. The embed is therefore the floor,
+        not the network — which is the opposite of what the original 1.7 s/row estimate implied,
+        and worth knowing before anyone tries to make this faster by widening the pool.
+
+        `embed=False` fetches the thumbnail and runs the gates but SKIPS the CLIP vector.
+        Measured: the download-and-gate is ~48 ms/row concurrent, the CLIP embed ~103 ms/row —
+        so a page that only needs pictures to LOOK AT costs about a third. The row keeps its
+        `thumb_path`, so it displays and is never re-fetched; it simply does not join the look
+        channel until something embeds it. `backfill_pixels` remains the way to do that in bulk.
         """
         from concurrent.futures import ThreadPoolExecutor
 
@@ -656,8 +662,10 @@ class ImageLibrary:
                 continue
             rel = str(dest.relative_to(self.base)).replace("\\", "/")
             self.catalog.update(a.id, thumb_path=rel, path=rel)
-            self._index_discovery(self.catalog.get(a.id), dest, clip=True, ident=False)
+            if embed:
+                self._index_discovery(self.catalog.get(a.id), dest, clip=True, ident=False)
             out["fetched"] += 1
+        out["embedded"] = out["fetched"] if embed else 0
         return out
 
     def _gate_fetched_thumb(self, asset: Asset, dest: Path, *, tier: str) -> Optional[str]:
@@ -900,6 +908,7 @@ class ImageLibrary:
     def search_discovery(self, query: str, *, k: int = 12,
                          collection_id: Optional[int] = None,
                          warm: bool = False, warm_concurrency: int = 8,
+                         warm_embed: bool = True, use_clip: bool = True,
                          **facets) -> List[LibraryHit]:
         """Search the NOT-HELD tier. Three channels, ROUTED by what the query is asking for.
 
@@ -960,10 +969,22 @@ class ImageLibrary:
         ident = {h.asset.id: h for h in self._search_discovery_identity(
             query, k=k_ch, collection_id=collection_id)
             if allowed is None or h.asset.id in allowed}
-        clip = {h.asset.id: h for h in self._search_discovery_clip(
-            query, k=k_ch, collection_id=collection_id)
-            if allowed is None or h.asset.id in allowed}
-        wi, wc, wcov = (0.7, 0.1, 0.4) if named else (0.1, 0.9, 0.0)
+        # `use_clip=False` skips the look channel ENTIRELY — and because `self.embedder` is lazy,
+        # a process that never asks for it never loads the ~150 MB model at all. That is the
+        # point: a facet-and-catalog search page has no use for it.
+        clip = {}
+        if use_clip:
+            clip = {h.asset.id: h for h in self._search_discovery_clip(
+                query, k=k_ch, collection_id=collection_id)
+                if allowed is None or h.asset.id in allowed}
+        if use_clip:
+            wi, wc, wcov = (0.7, 0.1, 0.4) if named else (0.1, 0.9, 0.0)
+        else:
+            # Without CLIP the look weighting would hand 0.9 to a channel that returns nothing
+            # and leave look queries scoring on a 0.1 assist. Identity takes the full weight
+            # instead, which is the identity-only system the eval measures at
+            # look 7.1/25.0/32.1 and named 92.9/100/100 — honest about what it gives up.
+            wi, wc, wcov = (1.0, 0.0, 0.4 if named else 0.0)
         assets = {h.asset.id: h.asset
                   for h in [*cover_hits, *ident.values(), *clip.values()]}
         merged = []
@@ -982,7 +1003,8 @@ class ImageLibrary:
         # every candidate the three channels touched (k*3 of them) to serve a page of k.
         # Re-reading the rows afterwards keeps the returned hits consistent with what was stored.
         if warm and top:
-            fetched = self.warm_pixels([h.asset for h in top], concurrency=warm_concurrency)
+            fetched = self.warm_pixels([h.asset for h in top], concurrency=warm_concurrency,
+                                       embed=warm_embed)
             if fetched.get("fetched") or fetched.get("refused"):
                 fresh = self.catalog.get_many([h.asset.id for h in top])
                 top = [LibraryHit(asset=fresh.get(h.asset.id, h.asset), score=h.score)

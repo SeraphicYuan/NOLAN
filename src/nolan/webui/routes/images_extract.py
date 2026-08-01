@@ -115,7 +115,8 @@ def register(app, ctx):
     @app.get("/api/images/discover")
     async def api_images_discover(q: str = "", scope: str = "global", project: str = None,
                                   k: int = 24, collection_id: int = None,
-                                  warm: bool = False,
+                                  warm: bool = False, warm_embed: bool = False,
+                                  use_clip: bool = False,
                                   image_kind: str = None, department: str = None,
                                   creator: str = None, place: str = None,
                                   classification: str = None,
@@ -136,6 +137,17 @@ def register(app, ctx):
           hiding inside a read is not something to do implicitly on every keystroke.
 
         So it stays available and deliberate — a button, not a default.
+
+        `use_clip` is OFF for this page. The look channel is the only thing that needs the CLIP
+        model, and `self.embedder` is lazy, so a hub whose search page never asks for it never
+        loads the ~150 MB model at all. Search is then catalog identity + lexical title + facets,
+        which the eval measures at named 92.9/100/100 and look 7.1/25.0/32.1 — stated plainly,
+        because turning the look channel off is a real trade, not a free saving.
+
+        `warm_embed` is OFF for the same reason. Warming still downloads the thumbnail and keeps
+        it (so the card has a picture and the row is never re-fetched), but skips the CLIP vector
+        — measured at ~48 ms/row for the fetch against ~103 ms/row for the embed. Rows join the
+        look channel through `backfill_pixels`, in bulk, deliberately.
         """
         import asyncio as _asyncio
 
@@ -149,7 +161,8 @@ def register(app, ctx):
             if q.strip():
                 rows = [(h.asset, h.score) for h in
                         lib.search_discovery(q, k=k, collection_id=collection_id,
-                                             warm=warm, **facets)]
+                                             warm=warm, warm_embed=warm_embed,
+                                             use_clip=use_clip, **facets)]
             else:
                 # An EMPTY query with filters is a legitimate browse — "show me Japanese prints"
                 # needs no search terms at all, and is exactly what facets are for.

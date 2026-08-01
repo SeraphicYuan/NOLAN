@@ -658,6 +658,43 @@ def test_warming_only_ever_touches_the_returned_page(lib, monkeypatch):
     assert len(calls) <= 3, f"warmed {len(calls)} rows to serve a page of 3"
 
 
+def test_warm_without_embed_keeps_the_thumbnail_but_skips_clip(lib, monkeypatch):
+    """The download is ~48 ms/row (32 fetch + 16 gate); the CLIP embed is ~103. A page that only
+    needs pictures to LOOK AT should not pay the larger one."""
+    _fake_thumb_downloader(monkeypatch)
+    a, _ = lib.add_discovery(source_ref="artic:1", thumb_url="https://e/1.jpg", source="artic",
+                             title="A Bridge", license="CC0", pixels=False)
+    res = lib.warm_pixels([a], embed=False)
+    assert res["fetched"] == 1 and res["embedded"] == 0
+    row = lib.catalog.get(a.id)
+    assert row.has_pixels, "the thumbnail must still be kept — the card needs a picture"
+    # ...and it is absent from the look channel until something embeds it
+    assert lib._disc_coll().count() == 0
+
+
+def test_use_clip_false_never_touches_the_model(lib, monkeypatch):
+    """`self.embedder` is lazy, so a search page that never asks for the look channel never
+    loads the ~150 MB CLIP model at all. That is the saving — not a faster query."""
+    lib.add_discovery(source_ref="artic:1", thumb_url="https://e/1.jpg", source="artic",
+                      title="A Stone Bridge", license="CC0", pixels=False)
+
+    def _boom(*a, **k):
+        raise AssertionError("CLIP was loaded despite use_clip=False")
+
+    monkeypatch.setattr(type(lib.embedder), "embed_text", _boom)
+    hits = lib.search_discovery("stone bridge", k=5, use_clip=False)
+    assert hits and hits[0].asset.source_ref == "artic:1"
+
+
+def test_without_clip_identity_takes_the_full_weight(lib):
+    """Otherwise a look query would score on a 0.1 assist while 0.9 went to a channel returning
+    nothing — every result flattened to near-zero."""
+    import inspect
+    src = inspect.getsource(lib.search_discovery)
+    assert "wi, wc, wcov = (1.0, 0.0," in src, (
+        "with the look channel off, identity must carry the full weight")
+
+
 def test_the_api_does_not_warm_by_default():
     """Warming DOWNLOADS, PERSISTS and can RETIRE rows (`status='rejected'` when pixels fail the
     gate). A write inside a read must not be implicit on every keystroke — and it cost 32 s on a
