@@ -185,6 +185,12 @@ def register(app, ctx):
             # collection id -> title, built ONCE per request (4 ms for all 581) so a card can
             # name the set a picture belongs to. Per-row it would be 24 lookups.
             _coll = {c.id: c.title for c in lib.catalog.list_collections()}
+            # THE VISUAL KNOWLEDGE JOIN. What is true of the maker — dates, nationality, movement,
+            # a line of biography — lives once in `artists` and is spent across every work they
+            # made, so a card can say "Utagawa Hiroshige (Japan, 1797–1858)" without any of that
+            # being copied onto 2,437 rows. One query for the whole page, keyed on the fold
+            # `assets.artist_key` already stores.
+            _artists = lib.catalog.get_artists(a.artist_key for a, _ in rows)
             out = []
             for a, score in rows:
                 d = _img_dict(a, score, scope, project)
@@ -202,6 +208,17 @@ def register(app, ctx):
                           "has_pixels": bool(a.thumb_path),
                           "captioned": bool(a.description_source
                                             and a.description_source != "catalog")})
+                art = _artists.get(a.artist_key or "")
+                if art:
+                    d["artist"] = {
+                        "name": art.name, "key": art.name_key, "kind": art.kind,
+                        "lifespan": art.lifespan(), "nationality": art.nationality,
+                        "movement": art.movement, "period": art.period, "style": art.style,
+                        "biography": art.biography, "wikipedia_url": art.wikipedia_url,
+                        "wikidata_qid": art.wikidata_qid,
+                        # WHO SAID SO, per field — a looked-up date and a generated one are not
+                        # the same claim, and the card is where that has to stay visible.
+                        "sources": art.sources}
                 out.append(d)
             # `offset` and `total` ride back so the page can say what it is NOT showing. A grid
             # that renders 24 of 5,480 and offers no way to the 25th reads as "that is all there

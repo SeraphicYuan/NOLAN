@@ -32,7 +32,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS assets (
@@ -189,6 +189,43 @@ _ASSET_MIGRATIONS = {
     # stale when `enrich_artists` learns about a new painter — `backfill_movements` is idempotent
     # and re-runnable, and `enrich_artists` calls it on the way out.
     "movement": "TEXT",
+}
+
+# Columns added to `artists` after its first release. Same ALTER-on-open mechanism.
+#
+# THE VISUAL KNOWLEDGE TABLE. What is true of a PERSON, fetched once and spent across every work
+# they made — the leverage is the corpus's works-per-artist ratio, and it compounds: 29,766
+# distinct artists cover 179,497 rows, and the top 500 alone cover 91,177 (25.5% of the library).
+#
+# WIKIDATA FIRST, LLM LAST, and that ordering is the point. A birth year from Wikidata is a
+# citable fact; a birth year from a language model is a plausible guess. They must not be stored
+# as though they were the same claim, so provenance is PER FIELD (`sources_json`) rather than one
+# `source` column for the whole row — the same rule this catalog already applies to
+# `identity_source` vs `description_source`, where a caption may be generated and an identity may
+# not.
+_ARTIST_MIGRATIONS = {
+    # Life dates. Filterable as a range, unlike the prose `period`, and the thing that actually
+    # answers "an engraver working in the 1640s".
+    "birth_year": "INTEGER",
+    "death_year": "INTEGER",
+    # Where they worked. Distinct from an artwork's `place` (where the OBJECT is from) and from
+    # `culture` (whose tradition it belongs to).
+    "nationality": "TEXT",
+    # A sentence or two, for a credit line and for the caption pass's context — never for
+    # identity, which stays catalog-derived.
+    "biography": "TEXT",
+    "wikipedia_url": "TEXT",
+    # {field: "wikidata" | "wikipedia" | "<model id>"} — see the note above. A field with no
+    # entry here was never filled.
+    "sources_json": "TEXT",
+    # When we last looked, so a re-run can skip what is fresh and retry what failed without
+    # re-paying for 29,766 artists.
+    "checked_at": "TEXT",
+    # "person" | "organization". The five biggest creators in this library are FIRMS — Allen &
+    # Ginter, Goodwin & Company, W. Duke, Sons & Co. and the other tobacco-card publishers cover
+    # ~12,000 rows — so the table cannot be people-only. It also cannot pretend they are people:
+    # a firm's dates are an inception, not a birth, and no caption should call one "he".
+    "kind": "TEXT",
 }
 
 # Columns added to `collections` after its first release, same ALTER-on-open mechanism.
@@ -408,22 +445,74 @@ class Artist:
     source: Optional[str] = None            # the model that asserted it — provenance, always
     added_at: Optional[str] = None
     id: Optional[int] = None
+    # --- the visual knowledge block (see _ARTIST_MIGRATIONS) ---
+    birth_year: Optional[int] = None
+    death_year: Optional[int] = None
+    nationality: Optional[str] = None
+    biography: Optional[str] = None
+    wikipedia_url: Optional[str] = None
+    sources_json: Optional[str] = None      # {field: "wikidata" | "wikipedia" | "<model id>"}
+    checked_at: Optional[str] = None
+    kind: Optional[str] = None              # "person" | "organization"
 
     def to_dict(self) -> dict:
         return asdict(self)
 
+    @property
+    def sources(self) -> Dict[str, str]:
+        """Which authority filled each field. A LOOKED-UP birth year and a GUESSED one are not
+        the same claim, and this is the only thing that can tell them apart."""
+        import json as _json
+        try:
+            return _json.loads(self.sources_json) if self.sources_json else {}
+        except Exception:
+            return {}
+
+    def active_years(self) -> Optional[Tuple[int, int]]:
+        """The window this person plausibly worked in — what a date filter over ARTISTS wants,
+        as opposed to `year_from`/`year_to`, which are the artwork's own dates.
+
+        Deliberately conservative: from age 20 to death, and None unless we actually know when
+        they were born. Inventing a range for an artist whose dates we lack would silently widen
+        every search that used it.
+
+        A FIRM IS ACTIVE FROM DAY ONE. `birth_year` holds an inception for an organization, and
+        a company does not serve a twenty-year apprenticeship — Allen & Ginter was printing cards
+        the year it opened. Adding the human offset would place every tobacco-card publisher two
+        decades after the work we actually hold.
+        """
+        if not self.birth_year:
+            return None
+        if self.kind == "organization":
+            return (self.birth_year, self.death_year or self.birth_year + 50)
+        return (self.birth_year + 20, self.death_year or self.birth_year + 70)
+
+    def lifespan(self) -> str:
+        """"1834–1903", "b. 1912", "" — the form a label uses. `period` is what a model said
+        about when they were active; this is what Wikidata knows about when they lived, and the
+        two are not interchangeable."""
+        if not self.birth_year and not self.death_year:
+            return ""
+        if self.birth_year and self.death_year:
+            return f"{self.birth_year}–{self.death_year}"
+        return f"b. {self.birth_year}" if self.birth_year else f"d. {self.death_year}"
+
     def context_line(self) -> str:
         """One sentence a caption pass can be handed as context. Empty when we know nothing —
         an empty string is honest, a confident-sounding placeholder is not."""
+        span = self.lifespan()
+        head = f"{self.name}"
+        if self.nationality or span:
+            head += f" ({', '.join(b for b in (self.nationality, span) if b)})"
         bits = [b for b in (self.movement, self.period, self.style) if b]
-        line = f"{self.name}"
+        line = head
         if bits:
             line += f" — {'; '.join(bits)}"
         if self.subjects:
             line += f". Typical subjects: {self.subjects}"
         if self.palette:
             line += f". Palette: {self.palette}"
-        return line if (bits or self.subjects or self.palette) else ""
+        return line if (bits or self.subjects or self.palette or span or self.nationality) else ""
 
 
 @dataclass
@@ -526,6 +615,10 @@ class AssetCatalog:
             for col, decl in _COLLECTION_MIGRATIONS.items():
                 if col not in ccols:
                     self._conn.execute(f"ALTER TABLE collections ADD COLUMN {col} {decl}")
+            acols = {r["name"] for r in self._conn.execute("PRAGMA table_info(artists)")}
+            for col, decl in _ARTIST_MIGRATIONS.items():
+                if col not in acols:
+                    self._conn.execute(f"ALTER TABLE artists ADD COLUMN {col} {decl}")
             # A source's own id is UNIQUE where present — re-crawling a collection must UPDATE the
             # row, never duplicate it. Partial index: held=1 rows carry no source_ref and are
             # unaffected (SQLite treats every NULL as distinct anyway; the WHERE is documentation
@@ -1055,17 +1148,23 @@ class AssetCatalog:
             with self._lock:
                 cur = self._conn.execute(
                     """INSERT INTO artists (name_key, name, wikidata_qid, movement, period,
-                                            style, subjects, palette, note, source, added_at)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                                            style, subjects, palette, note, source, added_at,
+                                            birth_year, death_year, nationality, biography,
+                                            wikipedia_url, sources_json, checked_at, kind)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (key, a.name, a.wikidata_qid, a.movement, a.period, a.style,
-                     a.subjects, a.palette, a.note, a.source, a.added_at or now))
+                     a.subjects, a.palette, a.note, a.source, a.added_at or now,
+                     a.birth_year, a.death_year, a.nationality, a.biography,
+                     a.wikipedia_url, a.sources_json, a.checked_at, a.kind))
                 self._commit()
             a.id = cur.lastrowid
             a.added_at = a.added_at or now
             return a
         fields = {k: getattr(a, k) for k in
                   ("name", "wikidata_qid", "movement", "period", "style", "subjects",
-                   "palette", "note", "source")
+                   "palette", "note", "source",
+                   "birth_year", "death_year", "nationality", "biography", "wikipedia_url",
+                   "sources_json", "checked_at", "kind")
                   if getattr(a, k) is not None}
         if fields:
             sets = ", ".join(f"{k}=?" for k in fields)
@@ -1082,9 +1181,20 @@ class AssetCatalog:
         rows become unreachable, the next enrichment re-pays for artists we already know, and two
         entries for one person sit in the table pointing at different keys. Rows that collide
         after re-keying are MERGED — that is the fold, arriving.
+
+        The rewrite reads its columns from the SCHEMA, never a literal list. It deletes every row
+        before re-inserting, so a hardcoded list silently drops whatever was added to the table
+        after the list was written — which is exactly what would have happened to the Wikidata
+        fields the first time anyone re-keyed.
         """
         with self._lock:
+            cols = [r["name"] for r in self._conn.execute("PRAGMA table_info(artists)")
+                    if r["name"] != "id"]
             rows = self._conn.execute("SELECT * FROM artists").fetchall()
+        # Fields that mean "we know something about this person" — the merge tiebreak, and now
+        # including the looked-up ones, so a Wikidata-filled row outranks an empty duplicate.
+        known = ("movement", "period", "style", "subjects", "palette",
+                 "birth_year", "death_year", "nationality", "biography", "wikidata_qid")
         seen: Dict[str, dict] = {}
         merged = rekeyed = 0
         for r in rows:
@@ -1099,21 +1209,16 @@ class AssetCatalog:
             merged += 1
             # Keep whichever entry actually knows something; a "not recognised" miss must never
             # overwrite a real answer just because it sorted first.
-            keeps = sum(1 for f in ("movement", "period", "style", "subjects", "palette")
-                        if prev.get(f))
-            cands = sum(1 for f in ("movement", "period", "style", "subjects", "palette")
-                        if d.get(f))
-            if cands > keeps:
+            if sum(1 for f in known if d.get(f)) > sum(1 for f in known if prev.get(f)):
                 seen[key] = d
+        placeholders = ",".join("?" * len(cols))
         with self._lock:
             self._conn.execute("DELETE FROM artists")
             for key, d in seen.items():
+                d["name_key"] = key
                 self._conn.execute(
-                    """INSERT INTO artists (name_key, name, wikidata_qid, movement, period,
-                                            style, subjects, palette, note, source, added_at)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                    (key, d["name"], d["wikidata_qid"], d["movement"], d["period"], d["style"],
-                     d["subjects"], d["palette"], d["note"], d["source"], d["added_at"]))
+                    f"INSERT INTO artists ({','.join(cols)}) VALUES ({placeholders})",
+                    [d.get(c) for c in cols])
             self._commit()
         return {"examined": len(rows), "rekeyed": rekeyed, "merged": merged,
                 "remaining": len(seen)}
@@ -1125,11 +1230,57 @@ class AssetCatalog:
                 "SELECT * FROM artists WHERE name_key=?", (key,)).fetchone()
         return Artist(**{k: row[k] for k in row.keys()}) if row else None
 
+    def get_artists(self, keys: Iterable[str]) -> Dict[str, Artist]:
+        """Many artists by key, in ONE query — the join behind a page of search results.
+
+        Per-row `get_artist` would be 24 lookups per page and is the shape that made the
+        collections list cost 119 seconds. `assets.artist_key` is already the fold, so this is a
+        direct hit on the primary key rather than a name match.
+        """
+        keys = [k for k in dict.fromkeys(keys) if k]
+        if not keys:
+            return {}
+        out: Dict[str, Artist] = {}
+        with self._lock:
+            for i in range(0, len(keys), 400):   # SQLite's variable limit is 999
+                chunk = keys[i:i + 400]
+                rows = self._conn.execute(
+                    f"SELECT * FROM artists WHERE name_key IN ({','.join('?' * len(chunk))})",
+                    chunk).fetchall()
+                for r in rows:
+                    out[r["name_key"]] = Artist(**{k: r[k] for k in r.keys()})
+        return out
+
     def list_artists(self, limit: int = 1000) -> List[Artist]:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT * FROM artists ORDER BY name LIMIT ?", (limit,)).fetchall()
         return [Artist(**{k: r[k] for k in r.keys()}) for r in rows]
+
+    def artist_work_years(self, *, held: Optional[int] = 0) -> Dict[str, Tuple[float, int]]:
+        """`{artist_key: (mean year of their works, how many are dated)}`.
+
+        THE EVIDENCE THAT CATCHES A WRONG WIKIDATA BINDING. A name search is fuzzy and sometimes
+        confidently wrong in a way no type check catches: "Nasca" — the pre-Columbian culture the
+        Met credits on 389 objects — resolves to NASCAR, an American racing company founded in
+        1948, which is a real business and passes every structural test there is. What it cannot
+        pass is the calendar: those 389 objects are dated -200 to 1532.
+
+        Mean rather than min/max because catalog dates carry outliers (one "Ancient Roman" row is
+        dated 2099); a single bad parse must not widen an artist's window enough to admit anyone.
+        """
+        sql = ["""SELECT artist_key k, AVG(COALESCE(year_from, year_to)) y,
+                         COUNT(COALESCE(year_from, year_to)) n
+                  FROM assets WHERE status='active' AND artist_key IS NOT NULL
+                    AND COALESCE(year_from, year_to) IS NOT NULL"""]
+        args: List[Any] = []
+        if held is not None:
+            sql.append("AND held=?")
+            args.append(int(held))
+        sql.append("GROUP BY artist_key")
+        with self._lock:
+            rows = self._conn.execute(" ".join(sql), args).fetchall()
+        return {r["k"]: (float(r["y"]), int(r["n"])) for r in rows if r["y"] is not None}
 
     def creator_histogram(self, *, held: Optional[int] = 0,
                           collection_id: Optional[int] = None) -> List[Tuple[str, str, int]]:

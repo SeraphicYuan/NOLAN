@@ -331,18 +331,29 @@ def images_fetch(asset_id, scope, project, tier):
 
 
 @images.command('artists')
-@click.option('--limit', '-n', type=int, default=25, help='How many LLM CALLS to spend.')
+@click.option('--limit', '-n', type=int, default=25,
+              help='How many artists to spend on (LLM calls, or lookups with --wikidata).')
 @click.option('--min-works', type=int, default=1, help='Skip creators with fewer works than this.')
 @click.option('--collection', '-c', type=int, default=None)
 @click.option('--show', is_flag=True, help='Just list what we already know, spend nothing.')
+@click.option('--wikidata', is_flag=True,
+              help='Look the facts up instead of generating them. No LLM, no API key.')
+@click.option('--refresh', is_flag=True, help='With --wikidata: re-check artists already checked.')
+@click.option('--workers', type=int, default=4, help='With --wikidata: concurrent lookups.')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
 @click.option('--project', '-p', default=None)
-def images_artists(limit, min_works, collection, show, scope, project):
+def images_artists(limit, min_works, collection, show, wikidata, refresh, workers,
+                   scope, project):
     """Learn movement/period/style per ARTIST — one call each, spent across all their works.
 
     Bounded by CALLS, not rows: that is the whole point. Creators are enriched commonest-first,
     so a small budget covers the most rows. Style and movement are never asked of the vision
     model — they are facts about a person, not about a picture.
+
+    RUN `--wikidata` FIRST. It fills dates, nationality, movement and the Wikipedia link by
+    LOOKING THEM UP — free, citable, and no model involved — leaving the LLM pass to supply only
+    what Wikidata has no column for (style, typical subjects, palette). A field filled by lookup
+    is never overwritten by a model, and `sources_json` records which authority said what.
     """
     import asyncio
 
@@ -358,6 +369,25 @@ def images_artists(limit, min_works, collection, show, scope, project):
             line = a.context_line() or "(not recognised)"
             click.echo(f"  {works:>4} works  {line}")
         click.echo(f"{len(known)} artists known")
+        return
+
+    if wikidata:
+        from nolan.imagelib.artists import fill_artists_wikidata
+        res = fill_artists_wikidata(lib, limit=limit, min_works=min_works,
+                                    collection_id=collection, refresh=refresh, workers=workers)
+        for a in res["artists"][:20]:
+            click.echo(f"  {a['works']:>5} works  {a['name']} — {a['lifespan'] or '?'}"
+                       f"{'  ' + a['movement'] if a['movement'] else ''}  [{a['qid']}]")
+        for r in res["rejections"][:10]:
+            click.echo(f"  REJECTED {r['name']} [{r['qid']}] — {r['why']}")
+        click.echo(f"{res['considered']} looked up "
+                   f"({res['from_met_dump']} with a QID from the Met dump of {res['met_map']}, "
+                   f"{res['searched']} by name search, {res['anonymous']} skipped as anonymous): "
+                   f"{res['found']} found, {res['not_found']} not on Wikidata, "
+                   f"{res['rejected_dates']} rejected on dates, {res['failed']} unreachable")
+        click.echo(f"covering {res['rows_covered']} rows — {res['leverage']} rows per lookup")
+        if res.get("movement_backfill"):
+            click.echo(f"movement backfill: {res['movement_backfill']}")
         return
 
     from nolan.config import load_config

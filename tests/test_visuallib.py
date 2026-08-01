@@ -1474,6 +1474,143 @@ def test_artist_knowledge_never_touches_row_identity(lib):
     assert (after.identity_source, after.identity_text()) == before
 
 
+# --- the visual knowledge table: looked up, not guessed --------------------------------------
+
+def _wd_artist(**kw):
+    from nolan.imagelib.catalog import Artist
+    return Artist(**kw)
+
+
+def test_a_firm_is_active_from_inception_not_twenty_years_later():
+    """The five biggest creators in this library are tobacco-card publishers, not people. Adding
+    the human apprenticeship offset would place every one of them two decades after the work we
+    actually hold."""
+    person = _wd_artist(name="X", birth_year=1840, death_year=1926, kind="person")
+    firm = _wd_artist(name="Allen & Ginter", birth_year=1865, death_year=1890,
+                      kind="organization")
+    assert person.active_years() == (1860, 1926)
+    assert firm.active_years() == (1865, 1890)
+
+
+def test_lifespan_reads_as_a_label_in_every_partial_case():
+    assert _wd_artist(name="X", birth_year=1834, death_year=1903).lifespan() == "1834–1903"
+    assert _wd_artist(name="X", birth_year=1912).lifespan() == "b. 1912"
+    assert _wd_artist(name="X", death_year=1912).lifespan() == "d. 1912"
+    assert _wd_artist(name="X").lifespan() == ""
+
+
+def test_the_date_gate_rejects_a_maker_who_could_not_have_made_the_work():
+    """NASCAR is genuinely a business, so no structural check refuses it for "Nasca" — the 389
+    objects dated -200 to 1532 are what disagree."""
+    from nolan.imagelib.artists import _date_conflict
+
+    nascar = _wd_artist(name="NASCAR", birth_year=1948, kind="organization")
+    assert _date_conflict(nascar, (-55.0, 387)), "a 2,000-year gap must not bind"
+    monet = _wd_artist(name="Claude Monet", birth_year=1840, death_year=1926, kind="person")
+    assert _date_conflict(monet, (1880.0, 59)) is None
+    # A late impression of an old plate is still the same engraver — the slack has to cover it.
+    durer = _wd_artist(name="Albrecht Dürer", birth_year=1471, death_year=1528, kind="person")
+    assert _date_conflict(durer, (1600.0, 40)) is None
+    # One dated work can be a bad parse; the gate must not fire on it.
+    assert _date_conflict(nascar, (-55.0, 1)) is None
+
+
+def test_anonymity_is_never_looked_up():
+    """Measured: "Anonymous" resolves to a talent-management company and would have stamped
+    "b. 1999" onto 810 Met rows whose only claim is that the museum does not know who made them.
+
+    `folded_artist` deliberately KEEPS "Anonymous, British, 19th century" — a school is a real
+    narrowing — so the lookup needs its own, stricter rule."""
+    from nolan.imagelib.artists import _unsearchable
+    from nolan.imagelib.catalog import artist_key
+
+    for name in ("Anonymous", "Unknown", "Artist Unknown", "Unidentified Photographer",
+                 "Anonymous, British, 19th century", "Unknown Italian"):
+        assert _unsearchable(name, artist_key(name)), name
+    for name in ("Claude Monet", "Allen & Ginter", "Utagawa Hiroshige"):
+        assert not _unsearchable(name, artist_key(name)), name
+
+
+def test_a_model_never_overwrites_what_was_looked_up(lib):
+    """Per-field provenance exists for exactly this: a looked-up birth year and a generated one
+    are different claims. The LLM pass fills the gaps Wikidata leaves and touches nothing else."""
+    import asyncio
+    import json as _json
+    from nolan.imagelib.artists import enrich_artists
+    from nolan.imagelib.catalog import Artist
+
+    lib.add_discovery(source_ref="a:1", thumb_url="https://e/x.jpg", source="artic",
+                      title="m", creator="Claude Monet", license="CC0", pixels=False)
+    lib.catalog.upsert_artist(Artist(
+        name="Claude Monet", movement="Impressionism", birth_year=1840, death_year=1926,
+        checked_at="2026-01-01T00:00:00+00:00",
+        sources_json=_json.dumps({"movement": "wikidata", "birth_year": "wikidata"})))
+
+    llm = _FakeLLM('{"recognised": true, "movement": "Cubism", "style": "broken colour", '
+                   '"palette": "lilac and green"}')
+    asyncio.run(enrich_artists(lib, limit=5, llm=llm, model="fake"))
+
+    a = lib.catalog.get_artist("Claude Monet")
+    assert a.movement == "Impressionism", "the model must not overwrite a looked-up movement"
+    assert a.birth_year == 1840
+    assert a.style == "broken colour", "but it MUST fill what Wikidata has no column for"
+    assert a.sources["movement"] == "wikidata"
+    assert a.sources["style"] == "fake"
+
+
+def test_the_llm_pass_still_runs_for_an_artist_wikidata_only_checked(lib):
+    """`fill_artists_wikidata` creates a row for everyone it looks up, INCLUDING its misses. If
+    "already known" still meant "has a row", the model pass would skip every artist Wikidata
+    touched and style/subjects/palette would stay empty forever."""
+    import asyncio
+    from nolan.imagelib.artists import enrich_artists
+    from nolan.imagelib.catalog import Artist
+
+    lib.add_discovery(source_ref="a:1", thumb_url="https://e/x.jpg", source="artic",
+                      title="m", creator="Obscure Etcher", license="CC0", pixels=False)
+    lib.catalog.upsert_artist(Artist(name="Obscure Etcher",
+                                     checked_at="2026-01-01T00:00:00+00:00"))
+    llm = _FakeLLM('{"recognised": true, "style": "dry point"}')
+    res = asyncio.run(enrich_artists(lib, limit=5, llm=llm, model="fake"))
+    assert res["learned"] == 1
+    assert lib.catalog.get_artist("Obscure Etcher").style == "dry point"
+
+
+def test_rekeying_cannot_drop_a_column_added_after_it_was_written(lib):
+    """`rekey_artists` DELETEs every row before re-inserting. A hardcoded column list there
+    silently discards whatever was added to the table later — which is what would have happened
+    to the whole Wikidata block the first time anyone re-keyed."""
+    from nolan.imagelib.catalog import Artist
+
+    cat = lib.catalog
+    cat.upsert_artist(Artist(name="Claude Monet", birth_year=1840, death_year=1926,
+                             nationality="France", biography="French painter",
+                             wikidata_qid="Q296", kind="person",
+                             wikipedia_url="https://en.wikipedia.org/wiki/Claude_Monet",
+                             sources_json='{"birth_year": "wikidata"}',
+                             checked_at="2026-01-01T00:00:00+00:00"))
+    cat.rekey_artists()
+    a = cat.get_artist("Claude Monet")
+    assert (a.birth_year, a.death_year, a.nationality) == (1840, 1926, "France")
+    assert a.wikidata_qid == "Q296" and a.kind == "person"
+    assert a.biography and a.wikipedia_url and a.checked_at
+    assert a.sources["birth_year"] == "wikidata"
+
+
+def test_the_met_dump_hands_over_artist_qids_positionally():
+    """Both columns are pipe-separated and positional, and a slot may be blank when the museum
+    identified one collaborator but not the other. Splitting either column alone shifts every id
+    by one on the rows with more than one maker."""
+    from nolan.imagelib.harvest import _met_csv_path, met_artist_qids
+
+    if not _met_csv_path().exists():
+        import pytest
+        pytest.skip("Met bulk CSV not downloaded on this machine")
+    m = met_artist_qids()
+    assert len(m) > 10_000, f"expected the dump's ~20k artist identifications, got {len(m)}"
+    assert m.get("claude monet") == "Q296"
+
+
 # --- the catalog tier: fields, not prose -----------------------------------------------------
 
 def test_image_kind_is_derived_from_the_sources_own_words():
