@@ -431,6 +431,73 @@ def images_rederive(collection, scope, project):
                f"({mv.get('changed', 0):,} rewritten)")
 
 
+@images.command('quality')
+@click.option('--json', 'as_json', is_flag=True, help='Emit the raw report.')
+@click.option('--category', default='art', help='Which acquisition tier to rank against.')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_quality(as_json, category, scope, project):
+    """Per-source catalog quality — MEASURED, so a new source can be characterised on arrival.
+
+    "Well curated" is not one number: catalog richness, image quality and collection weight do
+    not correlate on the live corpus. This measures the first, reads the second off the adapter
+    registry and takes the third from the shared acquisition tier.
+
+    A partially-crawled source is FLAGGED, because its percentages then describe the rows we
+    happen to have rather than the collection — the Met walks in Object ID order, which
+    correlates with department.
+    """
+    import json as _json
+
+    from nolan.imagelib.quality import source_quality, unranked_sources
+
+    lib = _open_library(scope, project)
+    rep = source_quality(lib)
+    if as_json:
+        click.echo(_json.dumps(rep, indent=2, ensure_ascii=False))
+        return
+    if not rep:
+        click.echo("Nothing harvested yet — try: nolan images harvest artic --limit 500")
+        return
+
+    cols = ["title", "creator", "date_text", "medium", "classification", "department",
+            "culture", "place", "wikidata_qid"]
+    head = f"{'source':<12}{'rows':>9}{'crawled':>9}" + "".join(f"{c[:8]:>9}" for c in cols)
+    click.echo(head)
+    click.echo("-" * len(head))
+    for e in rep:
+        crawled = f"{e['crawled_pct']:.0f}%" if e["crawled_pct"] is not None else "?"
+        line = f"{e['source']:<12}{e['rows']:>9,}{crawled:>9}"
+        line += "".join(f"{e['coverage'][c]:>8.0f}%" for c in cols)
+        click.echo(line + ("   PARTIAL" if e["partial"] else ""))
+
+    click.echo("\nderived by NOLAN (a low number here is our taxonomy, not the museum):")
+    for e in rep:
+        d = e["derived"]
+        click.echo(f"  {e['source']:<11} kind {d['image_kind']:>5.1f}%   dated "
+                   f"{d['year_from']:>5.1f}%   attributed {d['artist_key']:>5.1f}%   "
+                   f"pixel dims {e['pixel_dims_pct']:>5.1f}%   thumbs {e['thumbnails_pct']:>5.1f}%"
+                   f"   title {e['avg_title_chars']:>5.1f} chars")
+
+    click.echo(f"\ndeclared by the adapter, and rank in TIERS[{category!r}]:")
+    for e in rep:
+        dec = e["declared"] or {}
+        rank = e["tier_rank"]
+        click.echo(f"  {e['source']:<11} rank {str(rank) if rank is not None else 'UNRANKED':<9}"
+                   f" {dec.get('enumeration', '?'):<18}"
+                   f" pixel-dims={str(dec.get('publishes_pixel_dims')):<5}"
+                   f" rights={dec.get('rights_model', '?')}"
+                   + ("" if e["registered"] else "   <-- ROWS BUT NO ADAPTER"))
+
+    missing = unranked_sources(category)
+    if missing:
+        click.echo(f"\n[warn] harvest sources absent from TIERS[{category!r}]: "
+                   f"{', '.join(missing)} — they sort last in acquisition.")
+    if any(e["partial"] for e in rep):
+        click.echo("\n[note] PARTIAL sources: coverage describes the rows walked so far, not the "
+                   "collection. Enumeration order is not random.")
+
+
 @images.command('collections')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
 @click.option('--project', '-p', default=None)

@@ -1724,6 +1724,73 @@ def test_phase_b_resolves_the_image_url_it_deferred(lib, monkeypatch):
     assert lib.catalog.get_by_ref("met:12").thumb_url is None
 
 
+# --- 14. source quality, measured -----------------------------------------------------------
+
+def test_every_harvest_source_is_ranked_in_the_shared_tier():
+    """ONE NOLAN opinion about whether the Met outranks the Art Institute. `acquire.engine.TIERS`
+    already ranks these museums; a second list inside the visual library would drift from it, and
+    the one nobody looks at is the one that rots. A new adapter without a tier entry sorts LAST
+    in acquisition — silently — so this fails CI instead."""
+    from nolan.imagelib.quality import unranked_sources
+    missing = unranked_sources("art")
+    assert not missing, (f"harvest sources absent from acquire.engine.TIERS['art']: {missing}. "
+                         f"Add them there — do not start a second tier list.")
+
+
+def test_quality_measures_coverage_per_source(lib):
+    """A hand-maintained quality table is wrong the day a crawl extends and nothing says so."""
+    from nolan.imagelib.quality import source_quality
+
+    for i in range(4):
+        lib.add_discovery(source_ref=f"artic:{i}", thumb_url=f"https://e/{i}.jpg", source="artic",
+                          title=f"Print {i}", creator="Utagawa Hiroshige", date_text="1857",
+                          classification="woodblock print", department="Asian",
+                          place="Japan", license="CC0", width=2000, height=1500, pixels=False)
+    # a source whose catalog is thinner: no creator, no place, no dimensions
+    for i in range(2):
+        lib.add_discovery(source_ref=f"met:{i}", thumb_url=None, url=None, source="met",
+                          title=f"Object {i}", classification="Vases",
+                          license="CC0 (The Metropolitan Museum of Art)", pixels=False)
+
+    rep = {e["source"]: e for e in source_quality(lib)}
+    assert rep["artic"]["rows"] == 4 and rep["met"]["rows"] == 2
+    assert rep["artic"]["coverage"]["creator"] == 100.0
+    assert rep["met"]["coverage"]["creator"] == 0.0
+    assert rep["artic"]["coverage"]["place"] == 100.0 and rep["met"]["coverage"]["place"] == 0.0
+    assert rep["artic"]["pixel_dims_pct"] == 100.0 and rep["met"]["pixel_dims_pct"] == 0.0
+    # DERIVED fields are reported apart from received ones — a low number there is our taxonomy
+    assert rep["artic"]["derived"]["artist_key"] == 100.0
+    # declared capabilities come from the registry, never restated here
+    assert rep["artic"]["declared"]["publishes_pixel_dims"] is True
+    assert rep["met"]["declared"]["publishes_pixel_dims"] is False
+    assert rep["artic"]["tier_rank"] is not None
+
+
+def test_a_walked_out_source_is_not_reported_as_partial(lib):
+    """The distinction the `exhausted` column exists for. artic sits at 91% of upstream with its
+    listing FULLY walked — the rest was refused on rights or by the gate, uniformly — so its
+    percentages describe the collection. A ratio test called that partial and was wrong; a
+    third-finished Met crawl at 16% of an id-ordered list genuinely is."""
+    from nolan.imagelib import Collection
+    from nolan.imagelib.quality import source_quality
+
+    lib.add_discovery(source_ref="artic:1", thumb_url="https://e/1.jpg", source="artic",
+                      title="A Print", license="CC0", pixels=False)
+    lib.add_discovery(source_ref="met:1", thumb_url=None, source="met",
+                      title="An Object", license="CC0", pixels=False)
+    lib.upsert_collection(Collection(slug="artic-pd", source="artic", title="A",
+                                     item_count=91, upstream_count=100, exhausted=True))
+    lib.upsert_collection(Collection(slug="met-pd", source="met", title="M",
+                                     item_count=16, upstream_count=100, exhausted=None))
+
+    rep = {e["source"]: e for e in source_quality(lib)}
+    assert rep["artic"]["exhausted"] is True and rep["artic"]["partial"] is False
+    assert rep["met"]["partial"] is True, "16% of an id-ordered walk is not a representative sample"
+    # sticky, like every other provenance field: a later pass that does not know must not clear it
+    lib.upsert_collection(Collection(slug="artic-pd", source="artic", title="A", item_count=95))
+    assert lib.catalog.get_collection("artic-pd").exhausted is True
+
+
 def test_the_thumbnail_button_does_the_same_thing_for_every_source(lib, monkeypatch):
     """A Met row indexed from the bulk dump has no `thumb_url`, and `warm_pixels` used to filter
     on exactly that — so "Get thumbnails" quietly filled the artic cards and left every Met card

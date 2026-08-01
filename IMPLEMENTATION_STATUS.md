@@ -32,6 +32,47 @@ Two things found in passing and left alone, both noted in the skill: ~60 stock-c
 `channel: null` and so get no tile at all (the tab undercounts by that much), and the shell's
 `.nolan-main a` rule paints every link accent — the new ref line out-specifies it to stay quiet.
 
+## Source quality, measured — and WAL, because a crawl was locking out search (2026-08-01)
+
+Asked for a curation tier over the visual-library sources, like the acquisition engine's. Built
+the measurement harness first, because more sources are coming and each one should be
+characterised on arrival rather than hand-assigned a number that rots.
+
+**The finding that shaped it: "well curated" is not one number, and the axes disagree.**
+
+    catalog richness    can I FIND it?           artic leads   (creator 81%, place 100%)
+    image quality       is the FILE good?        cleveland     (3 derivatives, ~2850px print)
+    collection weight   is the WORK worth it?    unmeasurable — TIERS asserts it
+
+`acquire.engine.TIERS` ranks these museums met → artic → rijksmuseum → harvard → cleveland, which
+is close to the OPPOSITE of measured catalog completeness. Both are right about different things,
+which is exactly why a single scalar would be wrong. So: measure richness, read image capability
+off the adapter registry's typed fields, and take collection weight from the SHARED tier rather
+than starting a second list — `test_every_harvest_source_is_ranked_in_the_shared_tier` fails CI
+when an adapter lands unranked.
+
+**A partial crawl's statistics are an enumeration-order artifact**, and the report says so.
+Measured mid-crawl, the Met's classification read 14% at 13k rows and 71% at 40k — same museum,
+different sample, because the walk is id-ordered and id correlates with department. A ratio test
+got this wrong in the other direction too: artic is at 91% of upstream with its listing FULLY
+walked (the shortfall is rights/gate refusals, spread evenly), so its numbers are representative.
+`collections.exhausted` now records whether a walk reached the end, which is the only thing that
+tells those two apart.
+
+Costs **512 ms over 188k rows** as one grouped-aggregate pass, against 4,320 ms for the
+COUNT-per-column shape it started as. Nothing on a read path calls it.
+
+**WAL.** Adding the `exhausted` column mid-crawl exposed a real defect: under SQLite's default
+rollback journal, a running harvest made every fresh `ImageLibrary(...)` fail with `database is
+locked` — search included — because opening one runs the ALTER TABLE migrations and those need a
+lock no reader yields. Two processes at once is the NORMAL state here (the hub serves search
+while a harvest runs for an hour), so `journal_mode=WAL` plus a 30-second busy timeout. Verified:
+searches now run at 0.8–2.1 s against a 188k corpus *with the crawl writing concurrently*, where
+minutes earlier they were 500s. Batching commits per checkpoint had made the lock windows longer,
+so this is the other half of that change.
+
+Met crawl resumed from its cursor after the restart, as designed.
+
 ## The thumbnail button, and a grid that stopped at 24 (2026-07-31)
 
 Two questions off the back of the Met work, both right, and the first one uncovered a bigger bug

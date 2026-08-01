@@ -202,6 +202,18 @@ _COLLECTION_MIGRATIONS = {
     # the row itself is worth a vision call. Matches how this tier already works: knowledge
     # inherits downward.
     "dialect_json": "TEXT",
+    # Did the last crawl reach the END of the enumeration, rather than stopping on `limit`?
+    #
+    # It distinguishes two things `item_count / upstream_count` cannot tell apart, and the
+    # difference decides whether this collection's statistics mean anything. artic sits at 91% of
+    # upstream with its listing FULLY walked — the shortfall is rows refused on rights or by the
+    # gate, and refusals are spread evenly through the walk, so its coverage percentages describe
+    # the collection. A third-finished Met crawl also looks like "not 100%", but it has walked the
+    # first 16% of an ID-ordered list where id correlates with department — so its percentages
+    # describe Egyptian and Greek antiquities, not the Met. One is a representative sample and one
+    # is not; without this column the quality report has to guess from a ratio and gets artic
+    # wrong.
+    "exhausted": "INTEGER",
 }
 
 
@@ -430,6 +442,7 @@ class Collection:
     cursor: Optional[str] = None
     cursor_at: Optional[str] = None
     dialect_json: Optional[str] = None
+    exhausted: Optional[bool] = None
 
     def dialect(self) -> Optional[dict]:
         if not self.dialect_json:
@@ -465,8 +478,28 @@ class AssetCatalog:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         # check_same_thread=False + a lock: the library is used from worker-thread
         # pools (e.g. match-broll). All access is serialized through self._lock.
-        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        # BUSY TIMEOUT, not the 5-second default. A crawl now holds one write transaction per
+        # cursor checkpoint (see `batched_writes`) instead of committing per row, so the windows
+        # in which another process finds the database locked are longer — and a second process is
+        # normal here: the hub serves search while a harvest runs for an hour. Caught live, as
+        # `sqlite3.OperationalError: database is locked` when a schema migration ran against a
+        # database a background Met crawl was writing to. 30s waits through any checkpoint;
+        # failing at 5 was never the honest outcome, it was just the default.
+        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False, timeout=30.0)
         self._conn.row_factory = sqlite3.Row
+        # WAL, because TWO PROCESSES AT ONCE IS THE NORMAL STATE HERE: the hub serves search for
+        # an hour while a harvest writes. Under the default rollback journal a writer blocks
+        # readers and readers block a writer, and that is not theoretical — a background Met
+        # crawl made every fresh `ImageLibrary(...)` fail outright with "database is locked",
+        # search included, because opening one runs the ALTER TABLE migrations and those need a
+        # lock no reader would yield. In WAL, readers never block the writer and the writer never
+        # blocks readers. Best-effort: it needs brief exclusive access to switch, so a database
+        # busy right now keeps its current mode and tries again next open rather than failing to
+        # open at all.
+        try:
+            self._conn.execute("PRAGMA journal_mode=WAL")
+        except sqlite3.OperationalError:
+            pass
         self._lock = threading.Lock()
         self._batching = False              # see batched_writes()
         with self._lock:
@@ -1062,12 +1095,13 @@ class AssetCatalog:
                     """INSERT INTO collections
                        (slug, source, title, description, rights, copyright_free, era, topics,
                         url, item_count, added_at, last_crawled,
-                        upstream_count, cursor, cursor_at, dialect_json)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        upstream_count, cursor, cursor_at, dialect_json, exhausted)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (c.slug, c.source, c.title, c.description, c.rights,
                      None if c.copyright_free is None else int(c.copyright_free),
                      c.era, c.topics, c.url, c.item_count, c.added_at, c.last_crawled,
-                     c.upstream_count, c.cursor, c.cursor_at, c.dialect_json))
+                     c.upstream_count, c.cursor, c.cursor_at, c.dialect_json,
+                     None if c.exhausted is None else int(c.exhausted)))
                 self._commit()
             c.id = cur.lastrowid
             return c
@@ -1080,6 +1114,8 @@ class AssetCatalog:
                 fields[k] = v
         if c.copyright_free is not None:
             fields["copyright_free"] = int(c.copyright_free)
+        if c.exhausted is not None:
+            fields["exhausted"] = int(c.exhausted)
         if fields:
             sets = ", ".join(f"{k}=?" for k in fields)
             with self._lock:
@@ -1089,9 +1125,13 @@ class AssetCatalog:
         return self.get_collection(c.slug)
 
     def _collection_row(self, row: sqlite3.Row) -> Collection:
+        # SQLite has no boolean type, so the INTEGER columns are coerced back on the way out —
+        # `exhausted is True` must mean what it says to callers that branch on it, and `1 is True`
+        # is False in Python.
         d = {k: row[k] for k in row.keys()}
-        if d.get("copyright_free") is not None:
-            d["copyright_free"] = bool(d["copyright_free"])
+        for b in ("copyright_free", "exhausted"):
+            if d.get(b) is not None:
+                d[b] = bool(d[b])
         return Collection(**d)
 
     def get_collection(self, slug: str) -> Optional[Collection]:

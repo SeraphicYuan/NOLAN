@@ -1177,6 +1177,11 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
         upstream_count=upstream,
         cursor=(_json.dumps(report.cursor) if report.cursor and adapter.resumable else None),
         cursor_at=(time.strftime("%Y-%m-%dT%H:%M:%S") if report.cursor else None),
+        # Did we reach the END of the enumeration? It is what separates "walked it all, some rows
+        # were refused" from "walked the first sixth of an id-ordered list" — see the column's
+        # note. Only recorded when the adapter actually says so; an adapter that never reports
+        # exhaustion leaves it unknown rather than claiming False.
+        exhausted=(True if report.exhausted else None),
         last_crawled=time.strftime("%Y-%m-%dT%H:%M:%S")))
     return report
 

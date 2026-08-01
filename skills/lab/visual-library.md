@@ -243,6 +243,53 @@ Shipped:
   occasionally re-sees an indexed row (1 of 4 on a resumed run) — dedup makes that a refresh,
   which is exactly why the cursor may re-walk but never skip.
 
+### Source quality is MEASURED (`imagelib/quality.py`, `nolan images quality`)
+
+"Well curated" is at least three orthogonal things, and the live corpus shows they do not
+correlate — so a single 1–5 tier would throw away what we already know:
+
+| | catalog richness | image quality | collection weight |
+|---|---|---|---|
+| **what it answers** | can I FIND it? | is the FILE good? | is the WORK worth using? |
+| **where it comes from** | measured here | the adapter registry | `acquire.engine.TIERS` |
+| **leader** | artic (creator 81%, place 100%) | cleveland (3 derivatives, ~2850px print) | asserted, not measurable |
+
+Two rules:
+
+- **ONE tier list, not two.** `acquire.engine.TIERS` already ranks these museums (art order: met
+  → artic → rijksmuseum → harvard → cleveland). A second ranking inside this tier would drift,
+  and the one nobody looks at is the one that rots.
+  `test_every_harvest_source_is_ranked_in_the_shared_tier` fails CI when an adapter lands without
+  a tier entry — otherwise it silently sorts last in acquisition.
+- **A partially-crawled source is FLAGGED**, because its percentages then describe the rows
+  walked rather than the collection. `collections.exhausted` is what makes that exact rather than
+  a ratio guess: artic sits at 91% of upstream with its listing *fully* walked (the shortfall is
+  rights/gate refusals, spread evenly), while a third-finished Met crawl has walked the first 16%
+  of an **id-ordered** list where id correlates with department. Measured mid-crawl, the Met's
+  classification read 14% at 13k rows and 71% at 40k — same museum, different sample.
+
+**NOT ON THE READ PATH.** It is a report (`nolan images quality`), one grouped-aggregate pass:
+**512 ms over 188k rows**, against 4,320 ms for the naive COUNT-per-column shape. Nothing in
+search, ranking or acquisition calls it — putting it behind a search would be a full scan per
+keystroke, which is the defect that made `discovery_stats` cost 90-second searches.
+
+Spend the tier on **promotion first** (the museums overlap; when several hold the same print, a
+tier says which copy to Fetch — decided by image quality, no retrieval risk) before search
+ranking, where named recall is 92.9/100/100 and a source prior can only move it down.
+
+### WAL, because two processes at once is normal here
+
+The hub serves search for an hour while a harvest writes. Under SQLite's default rollback journal
+a writer blocks readers and readers block a writer, and that is not theoretical — a background Met
+crawl made **every fresh `ImageLibrary(...)` fail outright** with `database is locked`, search
+included, because opening one runs the ALTER TABLE migrations and those need a lock no reader
+would yield. `journal_mode=WAL` plus a 30-second busy timeout (not the 5-second default). Switching
+mode needs brief exclusive access, so it is best-effort at open: a busy database keeps its current
+mode and tries next time rather than failing to open.
+
+**A schema migration still cannot land mid-crawl.** The crawl is resumable by design — stop it,
+open the library once, restart it; it continues from the cursor.
+
 ### One commit per checkpoint (`AssetCatalog.batched_writes`)
 
 A crawl's durability boundary is the **cursor checkpoint**, not the row. `catalog.add` used to
