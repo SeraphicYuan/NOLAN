@@ -213,8 +213,17 @@ def main(argv=None) -> int:
         return 2
 
     cid = args.collection
+    # THE FIRST ROW IS WHAT SHIPS. `search_discovery` defaults to `use_clip=True`, but
+    # `/api/images/discover` passes False — the search page deliberately never loads the CLIP
+    # model — so measuring the default was measuring a configuration no user ever gets. It
+    # understated the shipped system by 3.6 points of named recall@1 (89.3 against 92.9), which
+    # is the same class of error as the `limit=100_000` sampling bug: an instrument quietly
+    # describing something other than the thing.
     systems = {
-        "visual-lib (routed)": lambda q: lib.search_discovery(q, k=20, collection_id=cid),
+        "visual-lib AS SHIPPED": lambda q: lib.search_discovery(q, k=20, collection_id=cid,
+                                                                use_clip=False),
+        "visual-lib + CLIP":     lambda q: lib.search_discovery(q, k=20, collection_id=cid,
+                                                                use_clip=True),
         "identity only":       lambda q: lib._search_discovery_identity(q, k=20, collection_id=cid),
         "clip only":           lambda q: lib._search_discovery_clip(q, k=20, collection_id=cid),
     }

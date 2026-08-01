@@ -37,6 +37,46 @@ _THUMB_PX = 512
 # tokens in "Two Sisters (On the Terrace)" and was mis-routed to the identity channel. Measured
 # through the real search path (scripts/eval_visuallib_recall.py, 19 needs): see search_discovery.
 _NAMED_MIN_COVER = 0.75
+# How much the lexical title-cover score adds on a NAMED query. A module constant rather than a
+# literal inside the scorer so it can be SWEPT against the golden set — which is the only way it
+# is ever allowed to change (see `search_discovery`: "re-run the eval after touching any of
+# them").
+#
+# 0.4 → 0.05, because the CORPUS moved instead of the weights. Tuned at 97,610 rows, 0.4 survived
+# to 357,027 and cost 10.8 points of named recall@1 — enough to put the ROUTED system below
+# identity-only, which inverts the entire point of routing. The cause is the Met: 248,472 rows of
+# short generic titles ("Bowl", "Fragment", "Statuette") share tokens with almost any query, so
+# a bonus that was a tiebreak at 97k became a promoter of near-misses at 357k.
+#
+# Swept over the 28 named golden needs at 357,027 rows:
+#
+#     w_cover   0.00    0.05    0.10    0.20    0.30    0.40
+#     named@1   89.3    92.9    89.3    82.1    82.1    82.1
+#
+# So it still EARNS its place — 0.05 beats 0.0 — but only as a tiebreak, which is what the
+# original docstring said it was for. Read the middle of that table, not its decimals: 28 needs
+# means one need is 3.6 points, so 0.05-vs-0.0 is a single need and not significant, while
+# 0.05-vs-0.4 is three and is. The finding is "anything at or below 0.1"; 0.05 is where it peaked.
+_W_COVER_NAMED = 0.05
+
+
+def _route_weights(*, named: bool, use_clip: bool) -> Tuple[float, float, float]:
+    """`(identity, clip, title-cover)` for one query. See `search_discovery` for the shape.
+
+    A FUNCTION, not three literals inside the scorer, because the tests that guard this shape
+    used to `inspect.getsource` it and regex the assignment — so retuning one number broke two
+    tests that had no opinion about that number. A guard that fires on rephrasing rather than on
+    the property it guards is noise, and noise is what gets a real failure waved through.
+    """
+    if use_clip:
+        wi, wc = (0.7, 0.1) if named else (0.1, 0.9)
+    else:
+        # Without CLIP the look weighting would hand 0.9 to a channel that returns nothing and
+        # leave look queries scoring on a 0.1 assist. Identity takes the full weight instead —
+        # the configuration the search page actually ships, measured at named 92.9/96.4/96.4 and
+        # look 3.6/14.3/17.9 over 357,027 rows.
+        wi, wc = 1.0, 0.0
+    return wi, wc, (_W_COVER_NAMED if named else 0.0)
 _UA = "NOLAN-PictureLibrary/1.0"
 _LOG = logging.getLogger("nolan.imagelib")
 _REPO = Path(__file__).resolve().parents[3]   # src/nolan/imagelib/store.py -> repo root
@@ -1336,14 +1376,7 @@ class ImageLibrary:
             clip = {h.asset.id: h for h in self._search_discovery_clip(
                 query, k=k_ch, collection_id=collection_id)
                 if allowed is None or h.asset.id in allowed}
-        if use_clip:
-            wi, wc, wcov = (0.7, 0.1, 0.4) if named else (0.1, 0.9, 0.0)
-        else:
-            # Without CLIP the look weighting would hand 0.9 to a channel that returns nothing
-            # and leave look queries scoring on a 0.1 assist. Identity takes the full weight
-            # instead, which is the identity-only system the eval measures at
-            # look 7.1/25.0/32.1 and named 92.9/100/100 — honest about what it gives up.
-            wi, wc, wcov = (1.0, 0.0, 0.4 if named else 0.0)
+        wi, wc, wcov = _route_weights(named=named, use_clip=use_clip)
         assets = {h.asset.id: h.asset
                   for h in [*cover_hits, *ident.values(), *clip.values()]}
         merged = []

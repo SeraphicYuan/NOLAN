@@ -246,14 +246,33 @@ def test_routing_keeps_one_channel_dominant(lib):
     channels near-equally scored WORSE than either pure channel on its own kind of query — the
     wrong channel demotes the right answer. look@1 went 31.6 → 73.7 and named@1 84.2 → 94.7 when
     the routing switched to dominant-plus-assist. This fails if someone re-flattens the weights."""
-    import inspect
-    src = inspect.getsource(lib.search_discovery)
-    m = re.search(r"wi, wc, wcov = \(([\d.]+), ([\d.]+), ([\d.]+)\) if named "
-                  r"else \(([\d.]+), ([\d.]+), ([\d.]+)\)", src)
-    assert m, "the routing weights moved — re-run the eval and update this test"
-    n_i, n_c, _n_cov, l_i, l_c, _l_cov = (float(x) for x in m.groups())
+    from nolan.imagelib.store import _route_weights
+
+    n_i, n_c, _ = _route_weights(named=True, use_clip=True)
+    l_i, l_c, _ = _route_weights(named=False, use_clip=True)
     assert n_i >= 0.6 and n_i - n_c >= 0.4, "a NAMED query must be identity-dominant"
     assert l_c >= 0.6 and l_c - l_i >= 0.4, "a LOOK query must be CLIP-dominant"
+
+
+def test_the_title_cover_bonus_stays_a_TIEBREAK(lib):
+    """It is a bonus, not a channel. Tuned at 97,610 rows it was 0.4; the corpus reached 357,027
+    and that same number cost 10.8 points of named recall@1 — enough to put the routed system
+    BELOW identity-only, inverting the point of routing. The Met is why: 248,472 rows of short
+    generic titles ("Bowl", "Fragment") share tokens with almost any query, so a tiebreak became
+    a promoter of near-misses.
+
+    Swept over 28 named golden needs at 357,027 rows: 0.0 → 89.3, 0.05 → 92.9, 0.1 → 89.3,
+    0.2/0.3/0.4 → 82.1. This guards the SHAPE — a cover bonus that can outweigh the dominant
+    channel is not a tiebreak — not the specific decimal, which is the eval's business.
+    """
+    from nolan.imagelib.store import _route_weights
+
+    n_i, _, n_cov = _route_weights(named=True, use_clip=True)
+    assert 0 < n_cov <= 0.1, "the cover bonus must stay a tiebreak — re-run the eval if you move it"
+    assert n_cov < n_i / 2, "a tiebreak cannot rival the dominant channel"
+    # ...and it applies ONLY to named queries; a look query has no title to cover
+    assert _route_weights(named=False, use_clip=True)[2] == 0.0
+    assert _route_weights(named=False, use_clip=False)[2] == 0.0
 
 
 def test_exact_titles_are_a_bonus_not_a_hard_prefix(lib):
@@ -744,10 +763,12 @@ def test_use_clip_false_never_touches_the_model(lib, monkeypatch):
 def test_without_clip_identity_takes_the_full_weight(lib):
     """Otherwise a look query would score on a 0.1 assist while 0.9 went to a channel returning
     nothing — every result flattened to near-zero."""
-    import inspect
-    src = inspect.getsource(lib.search_discovery)
-    assert "wi, wc, wcov = (1.0, 0.0," in src, (
-        "with the look channel off, identity must carry the full weight")
+    from nolan.imagelib.store import _route_weights
+
+    for named in (True, False):
+        wi, wc, _ = _route_weights(named=named, use_clip=False)
+        assert (wi, wc) == (1.0, 0.0), (
+            "with the look channel off, identity must carry the full weight")
 
 
 def test_the_api_does_not_warm_by_default():
