@@ -1153,6 +1153,10 @@ _PDIA_UNDERLYING = {
     # "We know of no restrictions" is an absence of evidence, not an assertion of freedom.
     "no-known-restrictions": ("No known copyright restrictions — not an assertion of "
                               "public domain", False),
+    # Public domain BECAUSE it is a government work. That is a jurisdictional argument — US
+    # federal works are uncontested at home and treated inconsistently abroad — so it does not
+    # clear the "publishable anywhere with no obligation" bar this flag exists to answer.
+    "pd-gov": ("Public domain as a government work — jurisdiction-dependent abroad", False),
 }
 # PDIA's claim over its OWN file, which is a separate question from the work's status.
 _PDIA_DIGITAL = {
@@ -1166,6 +1170,11 @@ _PDIA_DIGITAL = {
     # `no-additional-rights` and must not be read as CC0.
     "no-known-copyright": ("no KNOWN copyright — not an assertion that rights were waived",
                            False),
+    # An OBLIGATION, like share-alike: usable, and it follows the picture into whatever it is
+    # used in. Found only on the rights RE-CHECK, which is the argument for having refused to
+    # guess: the first pass met a code it did not know and left the row alone rather than
+    # rounding it to CC0.
+    "attribution": ("attribution required on the digital copy", False),
 }
 
 

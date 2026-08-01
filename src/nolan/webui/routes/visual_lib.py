@@ -53,15 +53,52 @@ def register(app, ctx):
         return "<h1>visual_lib.html not found</h1>"
 
     @app.get("/api/visuallib/sources")
-    async def visuallib_sources():
-        """The harvest registry, as the UI's menu. Derived, so a new adapter appears in the form
-        the moment it is registered and a removed one cannot linger as a dead button."""
+    async def visuallib_sources(scope: str = "global", project: str = None):
+        """The harvest registry, as the UI's menu — PLUS what each source has actually delivered.
+
+        ONE ROW PER SOURCE. The Sources tab used to render the collections table, which was the
+        same thing while every source produced exactly one collection and became 581 lines the
+        moment the Public Domain Image Archive contributed 577. A source is an institution we
+        crawl; how many collections it yielded is a FACT ABOUT IT, not a reason to list it 577
+        times.
+
+        Derived from the registry, so a new adapter appears in the form the moment it is
+        registered and a removed one cannot linger as a dead button. Each entry names the
+        `enumeration` its crawler uses, because that is what decides whether the generic form can
+        drive it: `curated-collection` (pdia) walks a JSON API and files rows under per-item
+        collections, `bulk-dump` (met) reads a 300 MB CSV, `bulk-listing` (artic, cleveland)
+        pages an endpoint. `harvest()` dispatches on `SOURCES[name].items`, so selecting a source
+        in the form runs THAT source's crawler — there is no generic walker.
+        """
         from nolan.imagelib.harvest import ENUMERATION, MET_DEPARTMENTS, SOURCES
+        lib = _open(scope, project)
+        counts = lib.catalog.collection_counts(held=0)
+        per_source: dict = {}
+        for c in lib.catalog.list_collections():
+            agg = per_source.setdefault(c.source, {"rows": 0, "collections": 0,
+                                                   "upstream": None, "last_crawled": None,
+                                                   "rights": None})
+            agg["rows"] += counts.get(c.id or -1, {}).get("indexed", 0)
+            agg["collections"] += 1
+            if c.upstream_count:
+                agg["upstream"] = (agg["upstream"] or 0) + c.upstream_count
+            if c.rights and not agg["rights"]:
+                agg["rights"] = c.rights
+            if c.last_crawled and (agg["last_crawled"] or "") < c.last_crawled:
+                agg["last_crawled"] = c.last_crawled
+
         out = []
         for name, adapter in sorted(SOURCES.items()):
             col = adapter.collection()
-            out.append({"id": name, "title": col.title, "rights": col.rights,
+            got = per_source.get(name, {})
+            out.append({"id": name, "title": col.title, "rights": got.get("rights") or col.rights,
                         "description": col.description,
+                        # what this source has ACTUALLY delivered, not what it could
+                        "indexed": got.get("rows", 0),
+                        "collections": got.get("collections", 0),
+                        "upstream": got.get("upstream"),
+                        "last_crawled": got.get("last_crawled"),
+                        "gate_tier": adapter.gate_tier,
                         # How this source can be walked, and what that costs, straight from the
                         # registry — a crawl measured in hours should say up front whether it can
                         # resume and whether it is capped.

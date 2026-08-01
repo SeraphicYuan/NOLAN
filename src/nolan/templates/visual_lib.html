@@ -174,12 +174,18 @@
              it is the collection — not the source — that carries rights. Today each source has
              produced exactly one collection, which is precisely why the distinction was invisible
              and the tab was misread. -->
-        <div class="dim" style="margin:4px 0 8px">A <b>source</b> is an institution's API. A <b>collection</b> is one
-          harvest from it — today one each, but a source can yield many (the Library of Congress asserts rights
-          per named collection). Rights live on the collection and are sticky: a later pass that knows nothing
-          about them cannot overwrite them.</div>
+        <!-- ONE ROW PER SOURCE. This table used to render the collections list, which was the
+             same thing while every source produced exactly one collection — and became 581
+             lines the moment PDIA contributed 577. How many collections a source yielded is a
+             FACT ABOUT IT, shown in its own column; the sets themselves live in the Collections
+             tab. `crawler` names the enumeration the adapter actually uses, because harvesting
+             dispatches on `SOURCES[name].items` — each source has its own walker, there is no
+             generic one. -->
+        <div class="dim" style="margin:4px 0 8px">A <b>source</b> is an institution's API; a <b>collection</b> is one
+          harvest from it. A source can yield many — PDIA yields 577 curated sets, the museums one each. Rights
+          live on the collection and are sticky: a later pass that knows nothing about them cannot overwrite them.</div>
         <table id="ctable"><thead><tr>
-          <th>Source</th><th>Collection</th><th>Indexed</th><th>Captioned</th><th>Rights</th><th>Last crawled</th>
+          <th>Source</th><th>Indexed</th><th>Collections</th><th>Crawler</th><th>Rights</th><th>Last crawled</th>
         </tr></thead><tbody></tbody></table>
       </div>
     </div>
@@ -480,6 +486,28 @@
         onSourceChange();
       });
     }
+    // The Sources table is built from SOURCES (4), not collections (581). `crawler` names the
+    // enumeration each adapter uses — harvesting dispatches on `SOURCES[name].items`, so picking
+    // a source in the form above runs that source's own walker; there is no generic one.
+    function renderSourcesTable(){
+      var body = $("#ctable").querySelector("tbody");
+      if (!SOURCES.length){ body.innerHTML = "<tr><td colspan='6' class='dim'>No sources registered.</td></tr>"; return; }
+      body.innerHTML = SOURCES.map(function(s){
+        var pct = (s.upstream && s.indexed) ? Math.round(100*s.indexed/s.upstream) : null;
+        return "<tr><td><b>"+esc(s.id)+"</b><div class='dim'>"+esc(String(s.title).slice(0,44))+"</div></td>"
+          // The DENOMINATOR beside the numerator: "56,707" reads as complete, "56,707 of 62,035
+          // (91%)" does not. A source that cannot be asked how big it is shows the count alone
+          // rather than a guess.
+          + "<td>"+(s.indexed||0).toLocaleString()
+          +   (s.upstream ? "<div class='dim'>of "+s.upstream.toLocaleString()+" ("+pct+"%)</div>" : "")+"</td>"
+          + "<td>"+(s.collections||0).toLocaleString()+"</td>"
+          + "<td class='dim'>"+esc(s.enumeration||"?")
+          +   (s.resumable ? "" : "<div class='warn'>not resumable</div>")+"</td>"
+          + "<td class='dim'>"+esc(String(s.rights||"?").slice(0,44))+"</td>"
+          + "<td class='dim'>"+esc(String(s.last_crawled||"never").replace("T"," ").slice(0,16))+"</td></tr>";
+      }).join("");
+    }
+
     function onSourceChange(){
       var s = SOURCES.filter(function(x){ return x.id === $("#hsource").value; })[0];
       if (!s) return;
@@ -495,20 +523,7 @@
     function loadCollections(){
       fetch("/api/visuallib/collections").then(function(r){ return r.json(); }).then(function(d){
         var cols = d.collections || [];
-        $("#ctable").querySelector("tbody").innerHTML = cols.length ? cols.map(function(c){
-          var pct = (c.upstream_count ? Math.round(100*c.indexed/c.upstream_count) : null);
-          return "<tr><td><b>"+esc(c.source||"?")+"</b></td>"
-            + "<td>"+esc(c.title)+"<div class='dim'>"+esc(c.slug)+"</div></td>"
-            // The DENOMINATOR beside the numerator: "56,724" reads as complete, "56,724 of
-            // 62,035 (91%)" does not. A collection whose source cannot be asked how big it is
-            // shows the count alone rather than a guess.
-            + "<td>"+c.indexed.toLocaleString()
-            +   (c.upstream_count ? "<div class='dim'>of "+c.upstream_count.toLocaleString()
-                                    +" ("+pct+"%)</div>" : "")+"</td>"
-            + "<td>"+c.described+" <span class='dim'>("+c.described_pct+"%)</span></td>"
-            + "<td class='dim'>"+esc(c.rights||"?")+"</td>"
-            + "<td class='dim'>"+esc((c.last_crawled||"never").replace("T"," ").slice(0,16))+"</td></tr>";
-        }).join("") : "<tr><td colspan='6' class='dim'>Nothing harvested yet.</td></tr>";
+        renderSourcesTable();
 
         // WHOLE-SOURCE collections only. 577 curated sets with a median size of 12 would make
         // this dropdown a wall of names nobody can scan; the Collections tab is how you reach

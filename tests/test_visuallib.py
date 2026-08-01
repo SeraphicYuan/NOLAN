@@ -1851,6 +1851,60 @@ def test_the_curated_tier_waives_the_floor_but_never_the_rights(lib):
                           width=455, height=761, pixels=False, tier="curated")
 
 
+def test_each_source_harvests_with_its_OWN_crawler(lib, monkeypatch):
+    """There is no generic walker, and a generic one could not work: the four sources enumerate
+    in four incompatible ways — artic and Cleveland page a listing, the Met reads a 300 MB CSV,
+    and PDIA walks a JSON API and files rows under per-item curated collections.
+
+    `harvest()` dispatches on `SOURCES[name].items`, so selecting a source in the form runs THAT
+    source's crawler. Asserted by CALLING harvest and recording which walker ran, not by reading
+    the registry — the registry could be right while the dispatch ignored it.
+    """
+    from nolan.imagelib import harvest as H
+
+    ran = []
+    for name in sorted(H.SOURCES):
+        def _spy(*a, _n=name, **kw):
+            ran.append((_n, kw.get("pixels"), "cursor" in kw))
+            return iter(())
+        monkeypatch.setitem(H.SOURCES, name,
+                            dataclasses_replace(H.SOURCES[name], items=_spy))
+
+    for name in sorted(H.SOURCES):
+        H.harvest(name, limit=1, library=lib, pixels=False)
+
+    assert [r[0] for r in ran] == sorted(H.SOURCES) == ["artic", "cleveland", "met", "pdia"]
+    # the PHASE reaches every adapter (the Met changes enumeration on it), and every one of
+    # these sources is resumable so every one is handed a cursor
+    assert all(r[1] is False for r in ran), ran
+    assert all(r[2] for r in ran), "a resumable adapter must be given its cursor"
+
+
+def dataclasses_replace(obj, **kw):
+    import dataclasses
+    return dataclasses.replace(obj, **kw)
+
+
+def test_the_sources_view_is_per_source_not_per_collection(lib):
+    """The Sources tab rendered the collections list, which was the same thing while every source
+    produced one collection — and became 581 lines when PDIA contributed 577. How many
+    collections a source yielded is a fact ABOUT it, not a reason to list it 577 times."""
+    from nolan.imagelib import Collection
+
+    lib.upsert_collection(Collection(slug="artic-pd", source="artic", title="artic",
+                                     upstream_count=62035))
+    for i in range(6):
+        lib.upsert_collection(Collection(slug=f"pdia-set-{i}", source="pdia", title=f"Set {i}"))
+
+    per_source = {}
+    for c in lib.catalog.list_collections():
+        per_source.setdefault(c.source, 0)
+        per_source[c.source] += 1
+    assert per_source == {"artic": 1, "pdia": 6}
+    assert len(lib.catalog.list_collections()) == 7, "seven collections..."
+    assert len(per_source) == 2, "...but only two SOURCES"
+
+
 def test_collection_counts_are_one_query_not_one_per_collection(lib):
     """Invisible at four collections, catastrophic at 581. Measured on the live catalog, counting
     per collection took 118,858 ms against 248 ms for one grouped pass — and the Sources tab was
