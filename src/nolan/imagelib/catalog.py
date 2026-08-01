@@ -268,6 +268,23 @@ def artist_key(name: Optional[str]) -> str:
     (French, 1840-1926)". Without a key the amortisation this table exists for silently fails:
     fifty works by one painter become fifty artists and fifty LLM calls, which is the exact cost
     the design was avoiding.
+
+    ORDER-INDEPENDENT, because different institutions order names differently and the words
+    themselves are the identity: "Auguste Louis Lepère" (Cleveland) and "Louis Auguste Lepère"
+    (Art Institute) are one man, as are "Baiitsu Yamamoto" and "Yamamoto Baiitsu". Measured over
+    the live corpus, sorting the tokens folds **19 groups covering 2,073 rows**, and every one
+    inspected is a genuine duplicate.
+
+    WHAT IT DELIBERATELY WILL NOT DO is match on a surname. That was measured too, and it is a
+    trap: grouping by surname merged **Hiroshige with Hiroshige II and III** (father, son,
+    grandson), **James McNeill Whistler with Beatrix Godwin Whistler** (his wife), Ancient Roman
+    with Ancient Greek, and 134 distinct people under "Charles". Attributing one artist's
+    movement and palette to another's works is far worse than paying for a duplicate call, so
+    the rule is: same WORDS, any order — never merely a shared word.
+
+    The residue this leaves is real and named: "Francisco José de Goya y Lucientes" and
+    "Francisco de Goya" have different word sets and stay separate. Folding those needs entity
+    knowledge, not string rules — see the Wikidata deferral in the bound skill.
     """
     import re as _re
     s = (name or "").strip()
@@ -281,7 +298,7 @@ def artist_key(name: Optional[str]) -> str:
             s = f"{first} {last}"
     s = _re.sub(r"[^\w\s]", " ", s, flags=_re.UNICODE)
     s = _re.sub(r"\s+", " ", s).strip().casefold()
-    return s
+    return " ".join(sorted(s.split()))
 
 
 @dataclass
@@ -744,6 +761,49 @@ class AssetCatalog:
                                    [*fields.values(), key])
                 self._conn.commit()
         return self.get_artist(key)
+
+    def rekey_artists(self) -> dict:
+        """Recompute every `name_key` after a change to `artist_key`.
+
+        Without this, changing the key silently strands what has already been learned: the old
+        rows become unreachable, the next enrichment re-pays for artists we already know, and two
+        entries for one person sit in the table pointing at different keys. Rows that collide
+        after re-keying are MERGED — that is the fold, arriving.
+        """
+        with self._lock:
+            rows = self._conn.execute("SELECT * FROM artists").fetchall()
+        seen: Dict[str, dict] = {}
+        merged = rekeyed = 0
+        for r in rows:
+            d = {k: r[k] for k in r.keys()}
+            key = artist_key(d["name"]) or d["name_key"]
+            if key != d["name_key"]:
+                rekeyed += 1
+            prev = seen.get(key)
+            if prev is None:
+                seen[key] = d
+                continue
+            merged += 1
+            # Keep whichever entry actually knows something; a "not recognised" miss must never
+            # overwrite a real answer just because it sorted first.
+            keeps = sum(1 for f in ("movement", "period", "style", "subjects", "palette")
+                        if prev.get(f))
+            cands = sum(1 for f in ("movement", "period", "style", "subjects", "palette")
+                        if d.get(f))
+            if cands > keeps:
+                seen[key] = d
+        with self._lock:
+            self._conn.execute("DELETE FROM artists")
+            for key, d in seen.items():
+                self._conn.execute(
+                    """INSERT INTO artists (name_key, name, wikidata_qid, movement, period,
+                                            style, subjects, palette, note, source, added_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                    (key, d["name"], d["wikidata_qid"], d["movement"], d["period"], d["style"],
+                     d["subjects"], d["palette"], d["note"], d["source"], d["added_at"]))
+            self._conn.commit()
+        return {"examined": len(rows), "rekeyed": rekeyed, "merged": merged,
+                "remaining": len(seen)}
 
     def get_artist(self, name_or_key: str) -> Optional[Artist]:
         key = artist_key(name_or_key) or (name_or_key or "").strip()

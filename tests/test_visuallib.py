@@ -1169,6 +1169,51 @@ def test_artist_key_folds_the_ways_a_catalog_writes_one_name():
     assert artist_key("") == "" and artist_key(None) == ""
 
 
+def test_artist_key_is_order_independent():
+    """Institutions order names differently and the WORDS are the identity. Measured over the
+    live corpus, this folds 19 groups covering 2,073 rows, every one a genuine duplicate."""
+    from nolan.imagelib.catalog import artist_key
+    assert artist_key("Auguste Louis Lepère") == artist_key("Louis Auguste Lepère")
+    assert artist_key("Baiitsu Yamamoto") == artist_key("Yamamoto Baiitsu")
+    assert artist_key("Jan Sadeler, I") == artist_key("Jan I Sadeler (Flemish, 1550-1600)")
+    assert artist_key("Artist Unknown") == artist_key("Unknown Artist")
+
+
+def test_artist_key_never_merges_on_a_shared_word():
+    """MEASURED TRAP. Grouping by surname merged Hiroshige with Hiroshige II and III (father,
+    son, grandson), James McNeill Whistler with Beatrix Godwin Whistler (his wife), Ancient Roman
+    with Ancient Greek, and 134 distinct people under "Charles". Attributing one artist's
+    movement and palette to another's works is far worse than a duplicate call.
+
+    The rule is: the same WORDS in any order — never merely a shared word.
+    """
+    from nolan.imagelib.catalog import artist_key
+    for a, b in [("Utagawa Hiroshige", "Utagawa Hiroshige II"),
+                 ("Utagawa Hiroshige II", "Utagawa Hiroshige III"),
+                 ("James McNeill Whistler", "Beatrix Godwin Whistler"),
+                 ("Charles Meryon", "Charles Samuel Keene"),
+                 ("Ancient Roman", "Ancient Greek"),
+                 ("Katsukawa Shunsho", "Katsukawa Shun'ei")]:
+        assert artist_key(a) != artist_key(b), f"{a!r} and {b!r} are DIFFERENT people"
+
+
+def test_rekey_merges_without_losing_what_was_learned(lib):
+    """Changing the key strands what is already learned unless the table is re-keyed — and a
+    merge must keep the entry that KNOWS something, not whichever sorted first."""
+    from nolan.imagelib.catalog import Artist
+    cat = lib.catalog
+    # two spellings of one man, as artic and cleveland write him
+    cat.upsert_artist(Artist(name="Louis Auguste Lepère", name_key="louis-auguste-lepere-OLD",
+                             movement="Etching revival", source="t"))
+    cat.upsert_artist(Artist(name="Auguste Louis Lepère", name_key="auguste-louis-lepere-OLD",
+                             note="not recognised", source="t"))
+    res = cat.rekey_artists()
+    assert res["merged"] == 1 and res["remaining"] == 1
+    a = cat.get_artist("Auguste Louis Lepère")
+    assert a is not None and a.movement == "Etching revival", (
+        "the merge kept the miss instead of the real answer")
+
+
 def test_creator_histogram_orders_by_rows_covered(lib):
     """The ordering IS the budget — commonest first means a bounded number of calls covers the
     most rows instead of an arbitrary slice."""

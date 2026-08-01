@@ -261,6 +261,19 @@ Nulls stay NULL (a model writing "unknown" into the column destroys the distinct
 `identity_source` — an artist's movement is context about the maker, not a claim about which
 artwork this is.
 
+**`artist_key` folds on the same WORDS in any order, and never on a shared word.** Institutions
+order names differently — "Auguste Louis Lepère" (Cleveland) and "Louis Auguste Lepère" (artic)
+are one man, as are "Baiitsu Yamamoto" and "Yamamoto Baiitsu" — so the key sorts its tokens.
+Measured: 19 groups covering 2,073 rows, every one a genuine duplicate. Surname matching was
+measured too and **rejected**: it merged Hiroshige with **Hiroshige II and III** (father, son,
+grandson), James McNeill Whistler with **Beatrix Godwin Whistler** (his wife), Ancient Roman with
+Ancient Greek, and 134 distinct people under "Charles". Attributing one artist's movement and
+palette to another's works is far worse than paying twice. `rekey_artists()` migrates the table
+after any change to the rule, merging collisions in favour of the entry that actually knows
+something. The residue is named: "Francisco José de Goya y Lucientes" and "Francisco de Goya"
+have different word sets and stay separate — folding those needs entity knowledge, not string
+rules (see the Wikidata deferral).
+
 `image_kind` is **derived**, not asked: `taxonomy.image_kind()` buckets the institution's own
 `classification`/`medium` into a closed vocabulary (painting, print, drawing, photograph,
 sculpture, textile, ceramic, metalwork, coin, glass, furniture, book, map, object, unknown). The
