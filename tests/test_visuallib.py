@@ -1724,6 +1724,121 @@ def test_phase_b_resolves_the_image_url_it_deferred(lib, monkeypatch):
     assert lib.catalog.get_by_ref("met:12").thumb_url is None
 
 
+def test_the_thumbnail_button_does_the_same_thing_for_every_source(lib, monkeypatch):
+    """A Met row indexed from the bulk dump has no `thumb_url`, and `warm_pixels` used to filter
+    on exactly that — so "Get thumbnails" quietly filled the artic cards and left every Met card
+    blank with nothing said. The button must not behave differently per museum."""
+    import dataclasses
+
+    from nolan.imagelib import harvest as H
+
+    # NOT pre-placed on disk: warming skips a thumbnail it already has, which would hide the
+    # very comparison this test is making.
+    lib.add_discovery(source_ref="artic:1", thumb_url="https://e/1.jpg", source="artic",
+                      title="A Print", license="CC0", pixels=False)
+    lib.add_discovery(source_ref="met:11", thumb_url=None, url=None, source="met",
+                      title="A Krater", license="CC0 (The Metropolitan Museum of Art)",
+                      pixels=False)
+    lib.add_discovery(source_ref="met:12", thumb_url=None, url=None, source="met",
+                      title="Never photographed",
+                      license="CC0 (The Metropolitan Museum of Art)", pixels=False)
+
+    def _resolve(refs, **kw):
+        return {"met:11": {"thumb_url": "https://e/11s.jpg", "url": "https://e/11.jpg"},
+                "met:12": {"thumb_url": None, "url": None}}
+
+    monkeypatch.setitem(H.SOURCES, "met",
+                        dataclasses.replace(H.SOURCES["met"], resolve_image_urls=_resolve))
+    fetched = []
+
+    def _dl(url, dest, **kw):
+        fetched.append(url)
+        _fake_thumb(Path(dest))
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _dl)
+
+    res = lib.warm_pixels(lib.catalog.list(held=0, limit=99), embed=False)
+    # the Met row was resolved and then fetched, exactly like the artic one
+    assert set(fetched) == {"https://e/1.jpg", "https://e/11s.jpg"}, fetched
+    assert res["attempted"] == 2
+    # and the one with no image upstream is COUNTED, not dropped on the floor
+    assert res["no_image_upstream"] == 1, res
+
+
+def test_get_thumbnails_works_when_the_query_box_is_empty(lib, monkeypatch, tmp_path):
+    """`warm` lived only inside `search_discovery`, so browsing a filtered slice — the normal
+    way to use the facets — dropped it silently and the button did NOTHING. An authored control
+    with no consumer on one of its two paths, invisible because the failure was silence.
+
+    Exercised through the ROUTE, because the defect was in the route's branch, not in the store.
+    """
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from nolan.imagelib import store as _store
+    from nolan.webui.routes import images_extract
+
+    for i in range(3):
+        lib.add_discovery(source_ref=f"artic:{i}", thumb_url=f"https://e/{i}.jpg",
+                          source="artic", title=f"Print {i}", license="CC0", pixels=False)
+
+    monkeypatch.setattr(_store, "shared_library", lambda **kw: lib)
+    monkeypatch.setattr("nolan.imagelib.shared_library", lambda **kw: lib, raising=False)
+    fetched = []
+    monkeypatch.setattr("nolan.http_client.download_file_sync",
+                        lambda url, dest, **kw: (fetched.append(url), _fake_thumb(Path(dest))))
+
+    app = FastAPI()
+    images_extract.register(app, type("Ctx", (), {"templates_dir": tmp_path,
+                                                  "job_manager": None})())
+    client = TestClient(app)
+
+    # no `q` at all — a pure filtered browse
+    r = client.get("/api/images/discover", params={"scope": "global", "warm": "1", "k": "5"})
+    assert r.status_code == 200, r.text
+    assert len(fetched) == 3, f"warm was dropped on the browse path: {fetched}"
+    assert all(row["has_pixels"] for row in r.json()["results"])
+
+
+def test_a_page_says_how_much_it_is_not_showing(lib):
+    """24 of 5,480 with no way to the 25th reads as "that is all there is" — the same silent-cap
+    failure this tier exists to avoid, one layer up."""
+    for i in range(30):
+        lib.add_discovery(source_ref=f"a:{i}", thumb_url=f"https://e/{i}.jpg", source="artic",
+                          title=f"Print {i}", license="CC0", pixels=False)
+
+    first = lib.catalog.list(held=0, limit=24)
+    second = lib.catalog.list(held=0, limit=24, offset=24)
+    assert len(first) == 24 and len(second) == 6
+    # no overlap and no gap — `ORDER BY id DESC` is what makes paging stable
+    assert not ({a.id for a in first} & {a.id for a in second})
+    assert len({a.id for a in first} | {a.id for a in second}) == 30
+    assert lib.catalog.count("active", held=0) == 30
+
+    # an offset with no limit is a caller error, not a silently ignored argument
+    with pytest.raises(ValueError, match="offset requires a limit"):
+        lib.catalog.list(held=0, offset=10)
+
+
+def test_paging_a_ranked_search_continues_the_same_ranking(lib):
+    """Page 2 of a search must come from the ranking that produced page 1, or the two disagree
+    and rows are repeated or lost between them."""
+    for i in range(20):
+        lib.add_discovery(source_ref=f"a:{i}", thumb_url=f"https://e/{i}.jpg", source="artic",
+                          title=f"Woodblock print of a wave number {i}", license="CC0",
+                          pixels=False)
+
+    page1 = lib.search_discovery("woodblock wave", k=5, use_clip=False)
+    page2 = lib.search_discovery("woodblock wave", k=5, offset=5, use_clip=False)
+    assert len(page1) == 5 and len(page2) == 5
+    ids1 = [h.asset.id for h in page1]
+    ids2 = [h.asset.id for h in page2]
+    assert not (set(ids1) & set(ids2)), "a second page must not repeat the first"
+    # and it is a CONTINUATION: the whole 10 in order equals a single k=10 query
+    both = [h.asset.id for h in lib.search_discovery("woodblock wave", k=10, use_clip=False)]
+    assert ids1 + ids2 == both
+
+
 def test_batched_writes_defers_the_commit_but_not_the_data(tmp_path):
     """One fsync per checkpoint instead of one per row. Profiled on the Met dump, `add()` cost
     5.48 ms/row against ~0.01 for the insert itself — 23 minutes of pure fsync over 248,472

@@ -4,6 +4,41 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## The thumbnail button, and a grid that stopped at 24 (2026-07-31)
+
+Two questions off the back of the Met work, both right, and the first one uncovered a bigger bug
+than it was asking about.
+
+**"Will Met's url-less rows make the Get thumbnails button behave differently per source?"** Yes
+— `warm_pixels` filtered on `a.thumb_url`, so it would have filled the artic and Cleveland cards
+and left every Met card blank with nothing said. Fixed by resolving urls there (as
+`backfill_pixels` already did) and counting what could not be resolved (`no_image_upstream`)
+rather than dropping it.
+
+**But warming was broken on a path nobody had noticed at all.** `/api/images/discover` branches
+on the query, and `warm` only ever reached `search_discovery`:
+
+    if q.strip():  rows = lib.search_discovery(q, ..., warm=warm, ...)
+    else:          rows = lib.catalog.list(...)          <- warm silently dropped
+
+So with an **empty query box — the normal way to browse a filtered slice — the button did
+nothing, for every source**. An authored control with no consumer on one of its two paths
+(WIRING_CHECKLIST pitfall #1), invisible because the failure was silence rather than an error.
+Verified live after the fix: a 12-row warm of CSV-indexed Met rows resolved 12 urls and wrote 12
+thumbnails in 2.5 s, where before it resolved 0 and wrote 0.
+
+**"Does search only ever return 20-30 rows with no scroll?"** Correct: `k=24`, no offset. A
+filtered browse of 5,480 ukiyo-e prints showed 24 and there was no way to the 25th — the same
+silent-cap failure this tier exists to avoid, one layer up. `offset` now runs through
+`catalog.list` (LIMIT/OFFSET, with `ORDER BY id DESC` making paging stable, and a raise if
+offset is passed without a limit — SQLite ignores it) and through `search_discovery`, where
+paging a RANKED list means ranking deeper and slicing rather than re-querying, so page 2
+continues page 1's ranking instead of a fresh one. The channels now fetch `k + offset`.
+
+The UI gets a Load-more that appends and **states what is unseen**: "Load 24 more (102,182
+left)". Verified live: 24 → 72 with no repeats and the first page preserved; a 53-row slice
+pages to 53 of 53 and the button hides.
+
 ## ...and then Phase A was spending its time on fsync (2026-07-31)
 
 Follow-up to the same question: if the CSV is local, why is reading it 2.5 hours? Profiled the

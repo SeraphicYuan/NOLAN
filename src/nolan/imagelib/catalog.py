@@ -704,7 +704,7 @@ class AssetCatalog:
     def list(self, *, status: Optional[str] = "active", source: Optional[str] = None,
              license_contains: Optional[str] = None, limit: Optional[int] = None,
              held: Optional[int] = 1, collection_id: Optional[int] = None,
-             **facets) -> List[Asset]:
+             offset: int = 0, **facets) -> List[Asset]:
         """List assets. ``held`` defaults to 1 — the DISCOVERY TIER IS OPT-IN.
 
         `**facets` narrows on the catalog's own vocabularies — `image_kind`, `classification`,
@@ -726,6 +726,13 @@ class AssetCatalog:
         sql = f"SELECT * FROM assets WHERE {where} ORDER BY id DESC"
         if limit:
             sql += " LIMIT ?"; params.append(limit)
+            # SQLite only honours OFFSET after a LIMIT, so paging without one is a caller error
+            # rather than a silently ignored argument. `ORDER BY id DESC` above is what makes
+            # paging stable: without a total order, page 2 can repeat or skip rows from page 1.
+            if offset:
+                sql += " OFFSET ?"; params.append(int(offset))
+        elif offset:
+            raise ValueError("offset requires a limit — an unbounded OFFSET is ignored by SQLite")
         with self._lock:
             rows = self._conn.execute(sql, params).fetchall()
         return [self._row(r) for r in rows]

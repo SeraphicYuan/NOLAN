@@ -707,8 +707,20 @@ class ImageLibrary:
         """
         from concurrent.futures import ThreadPoolExecutor
 
-        todo = [a for a in assets if a is not None and not a.thumb_path and a.thumb_url]
+        # RESOLVE FIRST, so the button does the same thing whichever museum a row came from.
+        # Met rows indexed from the bulk dump carry no `thumb_url` (the CSV has no image column),
+        # and filtering on it here meant "Get thumbnails" quietly filled in the artic and
+        # Cleveland cards and left every Met card blank with nothing said. A page of 24 costs ~3
+        # round trips 8-wide, which is the right price for an explicit click.
+        candidates = [a for a in assets if a is not None and not a.thumb_path]
+        self._resolve_missing_thumb_urls(candidates)
+        todo = [a for a in candidates if a.thumb_url]
         out = {"attempted": len(todo), "fetched": 0, "refused": 0, "errors": 0, "reasons": []}
+        # NOT SILENT: a row the source has no image for is a real outcome and is counted, not
+        # dropped on the floor.
+        unresolvable = len(candidates) - len(todo)
+        if unresolvable:
+            out["no_image_upstream"] = unresolvable
         if not todo:
             return out
 
@@ -1021,7 +1033,7 @@ class ImageLibrary:
         """Value → count for one facet, under the active filters. See `AssetCatalog.facets`."""
         return self.catalog.facets(field, **filters)
 
-    def search_discovery(self, query: str, *, k: int = 12,
+    def search_discovery(self, query: str, *, k: int = 12, offset: int = 0,
                          collection_id: Optional[int] = None,
                          warm: bool = False, warm_concurrency: int = 8,
                          warm_embed: bool = True, use_clip: bool = True,
@@ -1065,6 +1077,10 @@ class ImageLibrary:
         # rows are eligible" — the same `_filter_sql` that `facets()` counts — instead of a
         # filter per channel that could drift apart.
         allowed = None
+        # Every channel must reach PAST the requested page, or "load more" returns nothing: a
+        # channel asked for k candidates cannot supply rows k..2k. `depth` is what the ranking
+        # needs to see; `k` is only how much of it the caller keeps.
+        depth = k + max(0, int(offset))
         if facets:
             allowed = {a.id for a in self.catalog.list(
                 status="active", held=0, collection_id=collection_id,
@@ -1073,12 +1089,12 @@ class ImageLibrary:
                 return []
             # A narrowed corpus needs a wider net from each channel, or the filter throws away
             # everything the channels returned and the page comes back empty.
-            k_ch = max(k * 3, min(300, len(allowed)))
+            k_ch = max(depth * 3, min(300, len(allowed)))
         else:
-            k_ch = k * 3
+            k_ch = depth * 3
 
         cover_hits = [h for h in self.search_by_title(
-            query, k=k * 2, held=0, collection_id=collection_id)
+            query, k=depth * 2, held=0, collection_id=collection_id)
             if allowed is None or h.asset.id in allowed]
         cover = {h.asset.id: h.score for h in cover_hits}
         named = any(s >= _NAMED_MIN_COVER for s in cover.values())
@@ -1109,7 +1125,11 @@ class ImageLibrary:
             c = clip[aid].score if aid in clip else 0.0
             merged.append(LibraryHit(asset=asset,
                                      score=round(wi * i + wc * c + wcov * cover.get(aid, 0.0), 4)))
-        top = sorted(merged, key=lambda h: h.score, reverse=True)[:k]
+        # PAGING A RANKED LIST means ranking deeper and slicing, not re-querying from an offset:
+        # the score ordering is only meaningful over one merged candidate set, so page 2 has to
+        # come from the same ranking that produced page 1 or the two can disagree. The channels
+        # were asked for `k + offset` candidates above for exactly this reason.
+        top = sorted(merged, key=lambda h: h.score, reverse=True)[offset:offset + k]
 
         # ON-DEMAND PIXELS. The phase-split crawl leaves most rows record-only, and the rows a
         # human is about to LOOK at are exactly the ones worth spending a fetch on. Opt-in

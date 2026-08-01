@@ -128,7 +128,17 @@ cutout/reject acted on the other. `/images` keeps a query-carrying bridge link i
 dropdown, and the page's own Fetch is the promotion edge back.
 
 - **Search** — the routed query over not-held rows, each card carrying its score, institution,
-  sticky rights, a QID badge where the source handed one over, and `Fetch`.
+  sticky rights, a QID badge where the source handed one over, and `Fetch`. **Paged** (`k` +
+  `offset`, 24 at a time): a grid that showed 24 of 5,480 with no way to the 25th read as "that
+  is all there is", so Load-more states what is unseen ("Load 24 more (102,182 left)") and hides
+  when exhausted. Paging a RANKED search ranks deeper and slices — page 2 must continue page 1's
+  ranking, not a fresh one — so the channels fetch `k + offset`. `catalog.list` raises if given
+  an offset with no limit, because SQLite ignores that combination.
+
+  **`warm` applies to BOTH branches.** The route splits on whether there is a query, and warming
+  used to live only inside `search_discovery` — so with an empty query box (the normal way to
+  browse a filtered slice) "Get thumbnails" silently did nothing, for every source. Pitfall #1
+  with a silent failure mode; it now has a route-level test.
 - **Sources** — harvest form (source + optional Met department/theme + limit) and the harvested
   table with per-collection coverage. Long by nature, so it is a background job with progress,
   never a request. Named **Sources**, not Collections: all three collections are currently

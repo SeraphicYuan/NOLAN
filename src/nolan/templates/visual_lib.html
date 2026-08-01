@@ -114,6 +114,12 @@
           just <b>browse</b> a filtered slice.</div>
         <div id="meta" class="dim" style="margin-top:8px"></div>
         <div id="grid" class="grid"></div>
+        <!-- A grid that shows 24 of 5,480 and offers no way to the 25th reads as "that is all
+             there is". The button carries the REMAINING count so the size of what is unseen is
+             on screen, not implied. -->
+        <div class="row" style="margin-top:14px;justify-content:center">
+          <button class="btn ghost" id="morebtn" style="display:none" onclick="loadMore()"></button>
+        </div>
       </div>
     </div>
 
@@ -301,7 +307,10 @@
     function warmPage(){
       var b = $("#warmbtn"); b.disabled = true; b.textContent = "Getting…";
       var q = $("#q").value.trim(), cid = $("#collection").value;
-      fetch("/api/images/discover?scope=global&warm=1&k=24&q="+encodeURIComponent(q)
+      // EVERYTHING ON SCREEN, not the first page — after "load more" the grid holds more than
+      // one page, and warming only the top of it would leave visible cards blank.
+      fetch("/api/images/discover?scope=global&warm=1&k="+Math.max(PAGE, shown)
+            +"&q="+encodeURIComponent(q)
             +(cid?("&collection_id="+cid):"")+facetParams())
         .then(function(r){ return r.json(); })
         .then(function(){ b.textContent = "Get thumbnails"; b.disabled = false; doSearch(); })
@@ -309,29 +318,61 @@
                             $("#meta").textContent = "Error: "+e.message; });
     }
 
-    function doSearch(){
+    var PAGE = 24, shown = 0, lastTotal = 0;
+
+    // `append` is what separates "load more" from "search again": a new query REPLACES the grid
+    // and resets the offset, another page ADDS to it. Facets and the meta line are only
+    // recomputed on a fresh search — they describe the whole matching set, not the page.
+    function doSearch(append){
       var q = $("#q").value.trim();
       var cid = $("#collection").value;
-      $("#meta").textContent = "Loading…";
+      var off = append ? shown : 0;
+      if (!append) { $("#meta").textContent = "Loading…"; $("#morebtn").style.display = "none"; }
       // ONE owner for row-level search: `/api/images/discover` acts on catalog rows, so it lives
       // with the other row endpoints rather than being duplicated under this page's namespace.
-      fetch("/api/images/discover?scope=global&q="+encodeURIComponent(q)
+      return fetch("/api/images/discover?scope=global&k="+PAGE+"&offset="+off
+            +"&q="+encodeURIComponent(q)
             +(cid?("&collection_id="+cid):"")+facetParams())
         .then(function(r){ return r.json(); })
         .then(function(d){
           var res = d.results || [];
-          $("#grid").innerHTML = res.map(tile).join("")
-            || '<div class="dim">No rows match. Widen a filter, or harvest a collection first.</div>';
+          if (append){
+            $("#grid").insertAdjacentHTML("beforeend", res.map(tile).join(""));
+            shown += res.length;
+          } else {
+            $("#grid").innerHTML = res.map(tile).join("")
+              || '<div class="dim">No rows match. Widen a filter, or harvest a collection first.</div>';
+            shown = res.length;
+          }
+          lastTotal = (d.total != null) ? d.total : lastTotal;
+          renderMore(res.length);
+          if (append) { updateMeta(q, d.stats || {}); return; }
           var st = d.stats || {};
-          return loadFacets().then(function(total){
-            $("#meta").innerHTML = res.length + (q ? " result(s) for “"+esc(q)+"”" : " shown")
-              + (total !== null ? ' of <b>'+total.toLocaleString()+"</b> matching" : "")
-              + ' · <span class="dim">'+(st.discovery||0)+" indexed, "
-              + (st.pixels_pct||0)+"% with pixels, "+(st.described_pct||0)
-              + "% captioned, "+(st.held||0)+" held</span>";
-          });
+          return loadFacets().then(function(){ updateMeta(q, st); });
         })
         .catch(function(e){ $("#meta").textContent = "Error: "+e.message; });
+    }
+
+    function updateMeta(q, st){
+      $("#meta").innerHTML = shown + (q ? " result(s) for “"+esc(q)+"”" : " shown")
+        + (lastTotal ? ' of <b>'+lastTotal.toLocaleString()+"</b> matching" : "")
+        + ' · <span class="dim">'+(st.discovery||0)+" indexed, "
+        + (st.pixels_pct||0)+"% with pixels, "+(st.described_pct||0)
+        + "% captioned, "+(st.held||0)+" held</span>";
+    }
+
+    // The button hides when there is nothing left, and SAYS how much is left when there is.
+    // A page that stops at 24 without saying 5,456 more exist reads as "that is all there is".
+    function renderMore(gotThisPage){
+      var b = $("#morebtn"), left = Math.max(0, lastTotal - shown);
+      if (!gotThisPage || !left){ b.style.display = "none"; return; }
+      b.style.display = ""; b.disabled = false;
+      b.textContent = "Load " + Math.min(PAGE, left) + " more (" + left.toLocaleString() + " left)";
+    }
+
+    function loadMore(){
+      var b = $("#morebtn"); b.disabled = true; b.textContent = "Loading…";
+      doSearch(true);
     }
 
     // Fetch = promote_to_held. The row leaves this tier, so re-run the search after.

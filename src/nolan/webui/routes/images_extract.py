@@ -114,7 +114,7 @@ def register(app, ctx):
 
     @app.get("/api/images/discover")
     async def api_images_discover(q: str = "", scope: str = "global", project: str = None,
-                                  k: int = 24, collection_id: int = None,
+                                  k: int = 24, offset: int = 0, collection_id: int = None,
                                   warm: bool = False, warm_embed: bool = False,
                                   use_clip: bool = False,
                                   image_kind: str = None, department: str = None,
@@ -162,15 +162,26 @@ def register(app, ctx):
             lib = _open_imagelib(scope, project)
             if q.strip():
                 rows = [(h.asset, h.score) for h in
-                        lib.search_discovery(q, k=k, collection_id=collection_id,
+                        lib.search_discovery(q, k=k, offset=offset, collection_id=collection_id,
                                              warm=warm, warm_embed=warm_embed,
                                              use_clip=use_clip, **facets)]
             else:
                 # An EMPTY query with filters is a legitimate browse — "show me Japanese prints"
                 # needs no search terms at all, and is exactly what facets are for.
-                rows = [(a, None) for a in lib.catalog.list(status="active", held=0, limit=k,
-                                                            collection_id=collection_id,
-                                                            **facets)]
+                browsed = lib.catalog.list(status="active", held=0, limit=k, offset=offset,
+                                           collection_id=collection_id, **facets)
+                # ...and it must honour `warm` too. It did not: warming lived only inside
+                # `search_discovery`, so the "Get thumbnails" button silently did NOTHING
+                # whenever the query box was empty — which is the normal way to browse a
+                # filtered slice. An authored control with no consumer on one of its two paths
+                # (WIRING_CHECKLIST pitfall #1), and invisible because the failure was silence.
+                if warm and browsed:
+                    got = lib.warm_pixels(browsed, embed=warm_embed)
+                    if got.get("fetched") or got.get("refused"):
+                        fresh = lib.catalog.get_many([a.id for a in browsed])
+                        browsed = [fresh.get(a.id, a) for a in browsed
+                                   if fresh.get(a.id, a).status == "active"]
+                rows = [(a, None) for a in browsed]
             out = []
             for a, score in rows:
                 d = _img_dict(a, score, scope, project)
@@ -185,7 +196,13 @@ def register(app, ctx):
                           "captioned": bool(a.description_source
                                             and a.description_source != "catalog")})
                 out.append(d)
-            return {"results": out, "stats": lib.discovery_stats(collection_id=collection_id),
+            # `offset` and `total` ride back so the page can say what it is NOT showing. A grid
+            # that renders 24 of 5,480 and offers no way to the 25th reads as "that is all there
+            # is" — the same silent-cap failure this tier exists to avoid, one layer up.
+            return {"results": out, "offset": offset, "k": k,
+                    "total": lib.catalog.count("active", held=0,
+                                               collection_id=collection_id, **facets),
+                    "stats": lib.discovery_stats(collection_id=collection_id),
                     "collections": [c.to_dict() for c in lib.catalog.list_collections()]}
 
         return await _asyncio.to_thread(_do)
