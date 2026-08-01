@@ -527,6 +527,40 @@ class AssetCatalog:
             # re-count.
             self._conn.execute("CREATE INDEX IF NOT EXISTS idx_assets_artist_key "
                                "ON assets(artist_key) WHERE artist_key IS NOT NULL")
+            # COVERING, for the artist picker. `artist_facets` groups by (artist_key, creator)
+            # over 179,497 attributed rows to fold the institutional spellings of one person, and
+            # with only the single-column index above it was 710 ms — the largest remaining piece
+            # of the facets request after the others dropped to ~45 ms each. Carrying `creator`
+            # in the index lets the whole group-by run off it and never touch the table.
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_assets_artist_group "
+                "ON assets(status, held, artist_key, creator) WHERE artist_key IS NOT NULL")
+            # THE FACET INDEXES. `facets()` is a GROUP BY per column, and the page asks for five
+            # of them plus the artist picker and a count on every search — seven scans of 357,027
+            # rows, measured at 2,537 ms with no index on any of these columns (image_kind 455,
+            # department 398, classification 351, place 306, movement 337, artists 479, count
+            # 211).
+            #
+            # Leading with (status, held) matches how every one of those queries is written:
+            # `_filter_sql` always pins both, so the index can seek to the discovery tier and
+            # then group, instead of walking the whole table. Partial on held=0 because the held
+            # tier is 46 rows and does not need one.
+            # `collection_counts` groups by this over the whole tier, and BOTH the Sources tab
+            # and the Collections tab call it — 478 ms unindexed at 581 collections.
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_assets_collection "
+                "ON assets(status, held, collection_id) WHERE held=0")
+            # `discovery_stats` counts these two over the whole tier on every request, for the
+            # footer line. Partial indexes because both are sparse: 1.7% have pixels, ~0% a
+            # caption, so the index holds a few thousand rows rather than 357,027.
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_assets_haspixels ON assets(held, thumb_path) "
+                "WHERE thumb_path IS NOT NULL AND held=0")
+            for col in ("image_kind", "department", "classification", "place", "movement",
+                        "culture"):
+                self._conn.execute(
+                    f"CREATE INDEX IF NOT EXISTS idx_assets_facet_{col} "
+                    f"ON assets(status, held, {col}) WHERE held=0")
             self._conn.commit()
 
     def close(self) -> None:

@@ -521,7 +521,10 @@
     }
 
     function loadCollections(){
-      fetch("/api/visuallib/collections").then(function(r){ return r.json(); }).then(function(d){
+      // BOUNDED. This fed a dropdown that shows only the four whole-source collections and a
+      // coverage list nobody reads 581 rows of, but fetched all 581 WITH their descriptions —
+      // 274 KB, on every page load. The Collections tab has its own paged request.
+      fetch("/api/visuallib/collections?limit=50").then(function(r){ return r.json(); }).then(function(d){
         var cols = d.collections || [];
         renderSourcesTable();
 
@@ -598,7 +601,13 @@
     // A query carried over from the Picture Library's bridge link lands pre-filled and run.
     var _q = new URLSearchParams(location.search).get("q");
     if (_q) $("#q").value = _q;
-    loadSources().then(loadCollections).then(doSearch);
+    // IN PARALLEL. These were chained — `loadSources().then(loadCollections).then(doSearch)` —
+    // so their latencies ADDED (277 + 871 + 785 + facets) even though none of them needs the
+    // one before it: the grid does not wait on the source registry, and the collections
+    // dropdown does not wait on either. Now first paint is the SLOWEST call, not their sum.
+    loadSources();
+    loadCollections();
+    doSearch();
   </script>
 </body>
 </html>

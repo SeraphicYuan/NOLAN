@@ -199,11 +199,14 @@ def register(app, ctx):
             # `offset` and `total` ride back so the page can say what it is NOT showing. A grid
             # that renders 24 of 5,480 and offers no way to the 25th reads as "that is all there
             # is" — the same silent-cap failure this tier exists to avoid, one layer up.
+            # NO COLLECTIONS LIST. This returned every collection on EVERY search — 274 KB of a
+            # 402 KB response once PDIA brought the count to 581, re-sent on every keystroke, to
+            # populate a dropdown the page already fills from `/api/visuallib/collections`. It
+            # was invisible at four collections and is two thirds of the payload at 581.
             return {"results": out, "offset": offset, "k": k,
                     "total": lib.catalog.count("active", held=0,
                                                collection_id=collection_id, **facets),
-                    "stats": lib.discovery_stats(collection_id=collection_id),
-                    "collections": [c.to_dict() for c in lib.catalog.list_collections()]}
+                    "stats": lib.discovery_stats(collection_id=collection_id)}
 
         return await _asyncio.to_thread(_do)
 

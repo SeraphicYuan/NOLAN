@@ -1477,12 +1477,29 @@ class ImageLibrary:
         than it could fetch their thumbnails. Reporting only the row count would make a
         records-only collection look fully indexed while its `look` channel was empty.
         """
-        n = self.catalog.count("active", held=0, collection_id=collection_id)
-        described = self.catalog.described_count(held=0, collection_id=collection_id)
-        # COUNT in SQL, never a Python scan. The first version of this materialised every
-        # discovery row as an Asset object just to test `thumb_path` — 2.1 s at 97,610 rows, paid
-        # on EVERY search, because the hub calls discovery_stats to render the result footer.
-        with_pixels = self.catalog.count_with_pixels(held=0, collection_id=collection_id)
+        # ONE SCAN FOR ALL THREE NUMBERS. They used to be three separate counts, which was fine
+        # when the fix was "COUNT in SQL, never a Python scan" (that version materialised every
+        # row as an Asset just to test `thumb_path` — 2.1 s at 97,610 rows). Three SQL scans is
+        # better than one Python scan and still three scans: at 357,027 rows this cost **878 ms**,
+        # and BOTH `/api/images/discover` and `/api/visuallib/collections` call it on every
+        # request, so it was the largest single item on the page for a footer line.
+        #
+        # Same shape as `collection_counts`: conditional aggregation, one pass.
+        sql = """SELECT COUNT(*) AS n,
+                        SUM(CASE WHEN description_source IS NOT NULL
+                                  AND description_source <> 'catalog' THEN 1 ELSE 0 END) AS described,
+                        SUM(CASE WHEN thumb_path IS NOT NULL AND TRIM(thumb_path) <> ''
+                                 THEN 1 ELSE 0 END) AS with_pixels
+                 FROM assets WHERE status='active' AND held=0"""
+        params: List[Any] = []
+        if collection_id is not None:
+            sql += " AND collection_id=?"
+            params.append(int(collection_id))
+        with self.catalog._lock:
+            r = self.catalog._conn.execute(sql, params).fetchone()
+        n = int(r["n"] or 0)
+        described = int(r["described"] or 0)
+        with_pixels = int(r["with_pixels"] or 0)
         return {"discovery": n, "held": self.catalog.count("active", held=1),
                 "described": described,
                 "described_pct": round(100.0 * described / n, 1) if n else 0.0,
