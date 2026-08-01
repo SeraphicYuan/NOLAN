@@ -85,6 +85,10 @@
           <input type="number" id="f-year_to" placeholder="to year" style="width:88px"
                  onkeydown="if(event.key==='Enter')doSearch()">
           <button class="btn ghost mini" onclick="clearFacets()">Clear</button>
+          <!-- Warming DOWNLOADS and KEEPS thumbnails for the rows on screen, and can retire a row
+               whose pixels fail the gate. That is a write, so it is a button, never a default. -->
+          <button class="btn ghost mini" id="warmbtn" onclick="warmPage()"
+                  title="Download and keep thumbnails for the results on screen. They persist, so each row is paid for once — and only then can it rank on descriptive queries.">Get thumbnails</button>
         </div>
         <!-- Retrieval is ROUTED, so say so: a named query is answered from the catalog's words,
              a look query by CLIP over the thumbnail. Users otherwise read a look-miss as "broken". -->
@@ -229,6 +233,20 @@
           return d.total;
         })
         .catch(function(){ return null; });
+    }
+
+    // Explicit warm: re-run THIS search with warm=1, which fetches and PERSISTS the thumbnails
+    // for the rows on screen. Deliberate because it writes — new files on disk, thumb_path on
+    // the row, a CLIP vector — and because a row whose pixels fail the gate is retired.
+    function warmPage(){
+      var b = $("#warmbtn"); b.disabled = true; b.textContent = "Getting…";
+      var q = $("#q").value.trim(), cid = $("#collection").value;
+      fetch("/api/images/discover?scope=global&warm=1&k=24&q="+encodeURIComponent(q)
+            +(cid?("&collection_id="+cid):"")+facetParams())
+        .then(function(r){ return r.json(); })
+        .then(function(){ b.textContent = "Get thumbnails"; b.disabled = false; doSearch(); })
+        .catch(function(e){ b.textContent = "Failed"; b.disabled = false;
+                            $("#meta").textContent = "Error: "+e.message; });
     }
 
     function doSearch(){

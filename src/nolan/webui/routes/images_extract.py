@@ -115,7 +115,7 @@ def register(app, ctx):
     @app.get("/api/images/discover")
     async def api_images_discover(q: str = "", scope: str = "global", project: str = None,
                                   k: int = 24, collection_id: int = None,
-                                  warm: bool = True,
+                                  warm: bool = False,
                                   image_kind: str = None, department: str = None,
                                   creator: str = None, place: str = None,
                                   classification: str = None,
@@ -123,10 +123,19 @@ def register(app, ctx):
         """Search the NOT-HELD tier (Visual Lib). A hit is a POINTER, not a file — its `raw`
         serves the 512px thumbnail we do hold, and `fetch` is what pulls the real image.
 
-        `warm` (default ON for the UI, off in the library API) fetches pixels for the rows on
-        THIS page — the phase-split crawl leaves most rows record-only, and a card with no
-        thumbnail is not much of a search result. The fetch is concurrent; the CLIP embed that
-        follows is the real floor at ~90 ms/row.
+        `warm` fetches pixels for the rows on THIS page and PERSISTS them — file on disk,
+        `thumb_path` on the row, CLIP vector in the look channel. It is **off by default**, and
+        that default was corrected after measuring it:
+
+        * On a LOOK query it acquires NOTHING. Look ranking is CLIP-dominant (0.9), and CLIP only
+          knows rows that already have pixels — so a row without them cannot rank high enough to
+          be warmed. The rows that need pixels can never earn them. Search-driven warming cannot
+          escape that loop; `backfill_pixels` is what grows coverage.
+        * On a NAMED query it fired 21 fetches and took **32 seconds**, against 0.5 s without.
+        * It can also RETIRE rows: pixels that fail the gate set `status='rejected'`. A write
+          hiding inside a read is not something to do implicitly on every keystroke.
+
+        So it stays available and deliberate — a button, not a default.
         """
         import asyncio as _asyncio
 

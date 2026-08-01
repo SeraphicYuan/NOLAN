@@ -637,6 +637,37 @@ def test_warm_pixels_runs_the_same_gate_as_the_batch_path(lib, monkeypatch):
     assert lib.catalog.get(a.id).status == "rejected"
 
 
+def test_warming_only_ever_touches_the_returned_page(lib, monkeypatch):
+    """Warming is bounded by the page, never by the candidate pool. It runs AFTER ranking, so it
+    can only ever fetch what was actually returned.
+
+    NOT asserted here, because it is a property of SCALE rather than an invariant: on the live
+    97,610-row library a look query with warm=True acquired **0** thumbnails, because look
+    ranking is CLIP-dominant (0.9) and CLIP only knows rows that already have pixels — so the
+    rows that need them cannot rank high enough to earn them. That loop is real and is why
+    `warm` is no longer a default, but it depends on the corpus dwarfing the candidate pool. A
+    six-row fixture reproduces the opposite, and a test contrived to show it would be testing the
+    narrative rather than the code.
+    """
+    calls = _fake_thumb_downloader(monkeypatch)
+    for i in range(12):
+        lib.add_discovery(source_ref=f"artic:{i}", thumb_url=f"https://e/{i}.jpg",
+                          source="artic", title=f"Riverbank Study {i}", license="CC0",
+                          pixels=False)
+    lib.search_discovery("riverbank", k=3, warm=True)
+    assert len(calls) <= 3, f"warmed {len(calls)} rows to serve a page of 3"
+
+
+def test_the_api_does_not_warm_by_default():
+    """Warming DOWNLOADS, PERSISTS and can RETIRE rows (`status='rejected'` when pixels fail the
+    gate). A write inside a read must not be implicit on every keystroke — and it cost 32 s on a
+    named query against 0.5 s without."""
+    from pathlib import Path as _P
+    src = (_P(__file__).resolve().parents[1] / "src" / "nolan" / "webui" / "routes"
+           / "images_extract.py").read_text(encoding="utf-8")
+    assert "warm: bool = False" in src, "the discover route must not warm by default"
+
+
 def test_search_does_no_network_io_unless_asked(lib, monkeypatch):
     """A plain programmatic search must stay free of fetches — warming is opt-in."""
     calls = _fake_thumb_downloader(monkeypatch)

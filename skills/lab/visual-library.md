@@ -76,6 +76,15 @@ region at any size on demand — the image is a view, not a file).
   case v0 missed entirely) with its inscribed Latin correctly `text_in_image: depicted` rather
   than a watermark, and Van Gogh's *Bedroom* was described without being named.
 
+**Warming (`warm=True`) is a BUTTON, never a default.** It downloads and PERSISTS — file on
+disk, `thumb_path` on the row, CLIP vector — and it can RETIRE a row whose pixels fail the gate
+(`status='rejected'`). A write hiding inside a read must not fire on every keystroke. Measured on
+the live library: a NAMED query with warming took **32 s** and acquired 21 thumbnails, against
+**0.5 s** without. And on a LOOK query it acquired **nothing** — look ranking is CLIP-dominant
+(0.9), CLIP only knows rows that already have pixels, so the rows that need them cannot rank high
+enough to earn them. **Search-driven warming cannot bootstrap look coverage; only
+`backfill_pixels` can.**
+
 Knowledge inherits DOWNWARD: an item with no caption still carries its collection's rights, era
 and topic, and that inherited context is what makes a T1 row retrievable at all.
 
