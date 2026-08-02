@@ -4,6 +4,33 @@
 **Status:** Complete
 **Last Updated:** 2026-08-01
 
+## Visual Lib: a pipe-joined credit is several people, and the Artists tab (2026-08-01)
+
+32,146 rows — 30% of the Met's attributed rows, zero from any other source — stored a multi-maker
+credit as one name. "Jacques Callot|Israël Henriet" folded to a key that is neither man, so 611
+Callot etchings could never join the 751 already under him. `Artist Role` is pipe-separated and
+positional alongside the names, and the first slot holds "Artist" only 47,286 times out of 97,567
+— so `harvest.primary_maker` ranks by ROLE: the name the museum called THE ARTIST, else a hand
+that made it, else whoever produced it, and **never a sitter** (6,051 role slots are the person
+depicted; 693 rows credited only to someone in the picture are now honestly unattributed).
+31,452 rows re-pointed, keys 29,766 → 22,099, Rowlandson 552 → 2,010 works, Callot 751 → 1,853.
+
+**The same stale-consumer bug, at three sites.** `assets.artist_key` is the authority, and both
+`backfill_movements` and `creator_histogram` re-folded the raw `creator` at read time, silently
+rebuilding the pre-repair buckets. The first reported `changed: 0` after 31,452 rows moved (fixing
+it added 9,670 rows of movement, 29.7% → 35.1%); the second made the new Artists tab display
+counts that disagreed with the grid it links to.
+
+**The Artists tab** (`/api/visuallib/artists`) gives the knowledge table a surface — 4,115 rows of
+dates, nationality, movement and biography were reachable only from a card that happened to show
+one of that maker's pictures. Sortable by work count, filterable by name/nationality/movement,
+people vs firms, "only the blanks"; clicking a name narrows the grid by exact `artist_key`;
+Wikidata-sourced dates carry a ✓. Two cleanups it made visible by being LOOKED at rather than
+curled: 323 nationalities like "United Kingdom of Great Britain and Ireland, Kingdom of Great
+Britain" (62 characters saying "British") shortened to one country, and 819 orphan artist rows —
+815 of them pipe-joined names holding zero facts — pruned, keeping every orphan that had learned
+something.
+
 ## Visual Lib: the visual knowledge table, looked up before it is guessed (2026-08-01)
 
 `artists` held 222 rows, zero Wikidata ids, and everything in it came from a language model. That

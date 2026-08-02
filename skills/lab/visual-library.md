@@ -405,6 +405,22 @@ description as an artist biography.
   leaves an auditable note (which is how both classes were found); a false acceptance publishes a
   wrong date on everything that maker signed.
 
+**A pipe-joined credit is several people.** 30% of the Met's attributed rows — 32,146 here, and
+zero from any other source — name more than one maker, pipe-separated. Stored whole, "Jacques
+Callot|Israël Henriet" folds to a key that is neither man. `harvest.primary_maker` picks by ROLE,
+because `Artist Role` is pipe-separated and positional alongside and the first slot holds "Artist"
+only 47,286 times out of 97,567: the name the museum called THE ARTIST, else a hand that made it
+(engraver, decorator), else whoever produced it, and **never a sitter** — 6,051 role slots are the
+person depicted, and filing a portrait under its subject hands that person's biography to every
+row. `creator` is never rewritten; only the derived `artist_key` moves. Result: 31,452 rows
+re-pointed, keys 29,766 → 22,099, Rowlandson 552 → 2,010 works, Callot 751 → 1,853.
+
+**THE STALE-CONSUMER TRAP, THREE TIMES.** `assets.artist_key` is the authority; anything that
+re-folds `creator` at read time silently rebuilds the pre-repair buckets. It bit
+`backfill_movements` (reported `changed: 0` after 31,452 rows moved; fixing it added 9,670 rows of
+movement, 29.7% → 35.1%) and `creator_histogram` (the Artists tab showed pre-repair counts). If
+you write a third consumer, read the column.
+
 **It joins at read time, it is not copied down.** `catalog.get_artists` resolves a whole page of
 results in one query keyed on `assets.artist_key`, so a card shows "Japan, 1797–1858" on all
 2,437 Hiroshige rows without a byte on any of them. `context_line()` carries nationality and
@@ -501,6 +517,15 @@ path can forget it. Two rules earned by measurement:
   **no parenthetical** over a more common one: Cleveland writes "Winslow Homer (American,
   1836-1910)" and holds more of him than artic, so plain frequency put the biography on the chip
   for three of the top twenty.
+
+**The Artists TAB is a different surface from the artist STRIP** (`/api/visuallib/artists`). The
+strip answers "who is in these results" in 24 chips; the tab is the knowledge table itself —
+sortable by work count, filterable by name/nationality/movement, people vs firms, and "only the
+blanks" to see what is still unknown. Clicking a name narrows the grid by the exact `artist_key`,
+so the count in the table is the count you get. Wikidata-sourced dates carry a **✓**: per-field
+provenance is only worth storing if it is visible. `prune_orphan_artists` drops rows nothing
+points at that hold no facts (a re-key strands them by design) and KEEPS any that learned
+something.
 
 `movement` is denormalised DOWN from `artists.movement` (`backfill_movements`) because
 `_filter_sql` is one shared WHERE-builder and teaching it a join would change every caller. It is
