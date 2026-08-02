@@ -43,7 +43,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional
 
-from nolan.imagelib.catalog import Collection, folded_artist
+from nolan.imagelib.catalog import Artist, Collection, folded_artist
 
 _UA = "NOLAN-VisualLib/1.0"
 
@@ -87,9 +87,16 @@ class HarvestItem:
     # "Operation Doorstep (1953)" — and 26% of its rows belong to none, which is why this is
     # optional and the harvest's own collection remains the fallback.
     collection: Optional[Collection] = None
+    # Additional overlapping memberships. `collection` remains the primary
+    # compatibility FK; these are persisted through asset_collections.
+    collections: List[Collection] = field(default_factory=list)
     # WHICH of several credited names actually MADE this. `creator` stays exactly as the source
     # wrote it (provenance); this is the one the join key is built from. See `primary_maker`.
     primary_maker: Optional[str] = None
+    # Optional source-authored artist facts.  Most museum adapters leave artist
+    # enrichment to Wikidata; an artist-page source such as Artvee hands these
+    # facts over for free with the collection and should not throw them away.
+    artist_record: Optional[Artist] = None
 
 
 @dataclass
@@ -115,6 +122,28 @@ class HarvestReport:
 
     def note(self, reason: str) -> None:
         if len(self.reasons) < 12:
+            self.reasons.append(reason)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {k: v for k, v in self.__dict__.items()}
+
+
+@dataclass
+class ArtveeSiteReport:
+    artists_total: int = 0
+    artists_completed: int = 0
+    artists_skipped_complete: int = 0
+    artists_failed: int = 0
+    artworks_advertised: int = 0
+    artworks_indexed: int = 0
+    artworks_added: int = 0
+    artworks_refreshed: int = 0
+    thumbnail_errors: int = 0
+    current_artist: Optional[str] = None
+    reasons: List[str] = field(default_factory=list)
+
+    def note(self, reason: str) -> None:
+        if len(self.reasons) < 20:
             self.reasons.append(reason)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -205,6 +234,17 @@ class SourceAdapter:
     # deliberate inclusion. Never relaxes rights — `curated` keeps archival-strength licence
     # checking (see `asset_gate.STRICT_RIGHTS_TIERS`).
     gate_tier: str = "archival"
+    # Fetch source-ready thumbnails as a separate modestly parallel phase, without decoding,
+    # resizing, dimension checks or CLIP. Identity text remains indexed in Phase A.
+    fast_thumbnails: bool = False
+    thumbnail_concurrency: int = 6
+    # This source cannot be walked whole — `collection()` NEEDS a query and raises without one.
+    # DECLARED here rather than discovered by calling it, because the menu has to list the source
+    # without running the crawl's preconditions: `/api/visuallib/sources` built its menu by calling
+    # `collection()` on every adapter, so rawpixel's guard 500'd the route and erased all SEVEN
+    # sources from the tab — artvee's 69,117 rows included. Same principle as `enumeration`: state
+    # the constraint in the registry instead of letting it survive as a thrown exception.
+    requires_query: bool = False
     notes: str = ""
 
     def __post_init__(self):
@@ -212,6 +252,30 @@ class SourceAdapter:
             raise ValueError(
                 f"{self.id}: unknown enumeration {self.enumeration!r} "
                 f"(known: {sorted(ENUMERATION)})")
+
+    def describe(self) -> Dict[str, Any]:
+        """Menu-safe descriptor: `{title, rights, description, requires, error}`.
+
+        A MENU MUST NEVER RUN A CRAWL'S PRECONDITIONS. Sources that declare `requires_query` are
+        described from the registry; anything else that raises is reported as `error` on ITS OWN
+        row rather than propagating, so one broken adapter costs one row instead of the tab.
+        """
+        # Identity and rights are answerable WITHOUT a crawl — `source_registry` is the canonical
+        # catalog of what a source is, shared with /sources and the acquisition tiers. Falling back
+        # to it keeps the "every source states its rights" invariant true for a source whose
+        # Collection cannot be built without a query, instead of restating those rights here.
+        from nolan.source_registry import source_spec
+        spec = source_spec(self.id)
+        if self.requires_query:
+            return {"title": spec.title, "rights": spec.rights, "description": spec.description,
+                    "requires": "a --query (this source cannot be mirrored whole)", "error": ""}
+        try:
+            col = self.collection()
+            return {"title": col.title, "rights": col.rights or spec.rights,
+                    "description": col.description or spec.description, "requires": "", "error": ""}
+        except Exception as e:                       # noqa: BLE001 - degrade the ROW, never the menu
+            return {"title": spec.title, "rights": spec.rights, "description": spec.description,
+                    "requires": "", "error": f"{type(e).__name__}: {e}"}
 
 
 # ---------------------------------------------------------------- Art Institute of Chicago
@@ -1580,6 +1644,240 @@ def pdia_items(limit: int = 200, *, report: Optional[HarvestReport] = None,
             time.sleep(0.1)                          # be a good citizen on a donation-funded site
 
 
+# ---------------------------------------------------------------- Artvee artist collections
+
+def artvee_collection(artist: Optional[str] = None, **_ignored) -> Collection:
+    """One Artvee artist page is one Visual Lab collection.
+
+    Unlike PDIA, where the source's editorial topic is the collection, Artvee's
+    natural curatorial boundary is the artist.  The page biography is therefore
+    collection context, while artwork category remains a per-item field.
+    """
+    if not artist:
+        return Collection(
+            slug="artvee-artists", source="artvee", title="Artvee artists",
+            description="Public-domain artworks grouped by artist on Artvee.",
+            rights="Public Domain (Artvee)", copyright_free=True,
+            url="https://artvee.com/artists/")
+
+    from nolan.artvee import ArtveeClient, slugify_artist
+
+    slug = artist if re.fullmatch(r"[a-z0-9-]+", artist) else slugify_artist(artist)
+    profile = None
+    with ArtveeClient() as client:
+        profile = client.artist_profile(artist)
+    if profile:
+        slug = profile.slug
+    title = profile.name if profile else slug.replace("-", " ").title()
+    lifespan = None
+    if profile and profile.birth_year and profile.death_year:
+        lifespan = f"{profile.birth_year}-{profile.death_year}"
+    return Collection(
+        slug=f"artvee-artist-{slug}", source="artvee", title=title,
+        description=(profile.biography if profile else None),
+        rights="Public Domain (Artvee)", copyright_free=True,
+        era=lifespan,
+        topics="art, poster, illustration, painting, drawing, print",
+        url=(profile.url if profile else f"https://artvee.com/artist/{slug}/"),
+        upstream_count=(profile.item_count if profile else None))
+
+
+def artvee_upstream_count(artist: Optional[str] = None, **_ignored) -> Optional[int]:
+    if not artist:
+        return None
+    from nolan.artvee import ArtveeClient
+    with ArtveeClient() as client:
+        profile = client.artist_profile(artist)
+    return profile.item_count if profile else None
+
+
+def artvee_items(limit: int = 200, *, artist: Optional[str] = None,
+                  report: Optional[HarvestReport] = None,
+                  cursor: Optional[Dict[str, Any]] = None,
+                  page_size: int = 70, **_ignored) -> Iterator[HarvestItem]:
+    """Walk one Artvee artist page in title order, 70 records per request.
+
+    The listing gives stable ids, title/date, artist, category, SD dimensions and
+    the CDN key.  The basic download is the durable unsigned SDL path derived
+    from that key; the premium HDL path is deliberately never requested.
+    """
+    if not artist:
+        raise ValueError("artvee harvest requires --artist NAME_OR_SLUG")
+
+    from nolan.artvee import ArtveeClient, BASE as ARTVEE_BASE, parse_listing, slugify_artist
+
+    slug = artist if re.fullmatch(r"[a-z0-9-]+", artist) else slugify_artist(artist)
+    page = int((cursor or {}).get("page") or 1)
+    skip_in_page = int((cursor or {}).get("offset") or 0)
+    yielded = 0
+    with ArtveeClient() as client:
+        # The first page supplies the source-authored artist facts used both by
+        # the collection and by Visual Lab's existing Artist join.
+        profile = client.artist_profile(artist)
+        if profile:
+            slug = profile.slug
+            if report is not None:
+                report.upstream_count = profile.item_count
+        artist_record = Artist(
+            name=(profile.name if profile else artist),
+            birth_year=(profile.birth_year if profile else None),
+            death_year=(profile.death_year if profile else None),
+            nationality=(profile.nationality if profile else None),
+            biography=(profile.biography if profile else None),
+            source="artvee",
+            sources_json=json.dumps({
+                k: "artvee" for k, v in {
+                    "birth_year": profile.birth_year if profile else None,
+                    "death_year": profile.death_year if profile else None,
+                    "nationality": profile.nationality if profile else None,
+                    "biography": profile.biography if profile else None,
+                }.items() if v is not None}),
+            kind="person")
+
+        while yielded < limit:
+            page_url = (f"{ARTVEE_BASE}/artist/{slug}/" if page == 1 else
+                        f"{ARTVEE_BASE}/artist/{slug}/page/{page}/")
+            page_html = client._get(
+                page_url, params={"orderby": "title_asc", "per_page": page_size})
+            if not page_html:
+                if report is not None:
+                    report.errors += 1
+                    report.note(f"artvee artist page {page} returned no HTML")
+                return
+            rows = parse_listing(page_html)
+            if not rows:
+                if report is not None:
+                    report.exhausted = True
+                return
+            for idx, row in enumerate(rows):
+                if idx < skip_in_page:
+                    continue
+                if yielded >= limit:
+                    return
+                yield HarvestItem(
+                    source_ref=f"artvee:{row.artvee_id or row.sk}",
+                    thumb_url=row.thumbnail_url,
+                    url=row.standard_download_url,
+                    source_url=row.detail_url,
+                    title=row.title,
+                    creator=row.artist or artist_record.name,
+                    date_text=row.date_text,
+                    institution="Artvee",
+                    license="Public Domain (Artvee)",
+                    width=row.sd_width, height=row.sd_height,
+                    tags=row.category,
+                    classification=row.category,
+                    primary_maker=row.artist or artist_record.name,
+                    artist_record=artist_record)
+                yielded += 1
+                if report is not None:
+                    report.cursor = {"page": page, "offset": idx + 1}
+            if not _has_artvee_next(page_html):
+                if report is not None:
+                    report.exhausted = True
+                return
+            page += 1
+            skip_in_page = 0
+            time.sleep(0.4)
+
+
+def _has_artvee_next(page_html: str) -> bool:
+    return bool(re.search(r'class="next page-numbers"', page_html))
+
+
+# ---------------------------------------------------------------- Rawpixel search collections
+
+def rawpixel_collection(query: Optional[str] = None, **_ignored) -> Collection:
+    """A bounded Rawpixel research query is the fallback/primary collection.
+
+    Source-authored boards discovered on its result records become additional
+    memberships; the query collection guarantees every row still has a useful
+    primary context when Rawpixel publishes no board membership.
+    """
+    from nolan.rawpixel import TOP_ROUTES
+    q = (query or "").strip()
+    if not q:
+        raise ValueError("rawpixel harvest requires --query (full-site mirroring needs permission)")
+    slug = re.sub(r"[^a-z0-9]+", "-", q.casefold()).strip("-")[:80] or "search"
+    route = TOP_ROUTES["images"]
+    return Collection(
+        slug=f"rawpixel-search-{slug}", source="rawpixel",
+        title=f"Rawpixel: {q}",
+        description=("Rawpixel Free + Public Domain search collection for " + q + ". "
+                     "Source collection memberships are retained separately."),
+        rights="Mixed: Rawpixel Free License and CC0/Public Domain",
+        copyright_free=None, topics=q, url=route.url,
+        dialect_json=json.dumps({"provider": "rawpixel", "query": q,
+                                 "path_tokens": list(route.path_tokens),
+                                 "tiers": ["free", "public_domain"],
+                                 "sort": "curated"}))
+
+
+def rawpixel_items(limit: int = 200, *, query: Optional[str] = None,
+                   report: Optional[HarvestReport] = None,
+                   cursor: Optional[Dict[str, Any]] = None,
+                   **_ignored) -> Iterator[HarvestItem]:
+    """Walk a Rawpixel Free+PD query through the documented structured API."""
+    if not (query or "").strip():
+        raise ValueError("rawpixel harvest requires --query")
+    from nolan.config import load_config
+    from nolan.rawpixel import RawpixelClient, TOP_ROUTES
+
+    page = int((cursor or {}).get("page") or 1)
+    offset = int((cursor or {}).get("offset") or 0)
+    yielded = 0
+    source_config = load_config().image_sources
+    client = RawpixelClient(cookie=source_config.rawpixel_cookie,
+                            user_agent=source_config.rawpixel_user_agent,
+                            cdp_url=source_config.rawpixel_cdp_url)
+    route = TOP_ROUTES["images"]
+    while yielded < limit:
+        rows, total = client.search_route(query, route=route, page=page, sort="curated")
+        if report is not None and total is not None:
+            report.upstream_count = total
+        if not rows:
+            if report is not None:
+                report.exhausted = True
+            return
+        for idx, row in enumerate(rows):
+            if idx < offset:
+                continue
+            if yielded >= limit:
+                return
+            member_cols = [Collection(
+                slug=(s if s.startswith("rawpixel-") else f"rawpixel-{s}"),
+                source="rawpixel", title=s.removeprefix("rawpixel-").replace("-", " ").title(),
+                description="Rawpixel editorial collection.", rights=None,
+                copyright_free=None, url="https://www.rawpixel.com/explore-collections")
+                for s in row.collection_slugs]
+            yield HarvestItem(
+                source_ref=f"rawpixel:{row.id}", thumb_url=row.thumbnail_url,
+                url=row.download_url or row.preview_url, source_url=row.detail_url,
+                title=row.title, creator=row.creator, institution="Rawpixel",
+                description=row.description, license=row.license,
+                width=row.width, height=row.height, tags=", ".join(row.tags),
+                subject=", ".join(row.tags),
+                classification=row.image_type,
+                collection=(member_cols[0] if member_cols else None),
+                collections=member_cols[1:])
+            yielded += 1
+            if report is not None:
+                report.cursor = {"page": page, "offset": idx + 1}
+        page += 1
+        offset = 0
+        time.sleep(0.35)
+
+
+# Imported HERE, not at the top: `loc` needs `HarvestItem`/`HarvestReport` from this module, so a
+# top-of-file import would be circular. By this line both are defined, and the adapter's own file
+# stays out of the way of a module that is already 1,800 lines.
+from nolan.imagelib import loc as _loc  # noqa: E402
+
+# Imported only after HarvestItem/HarvestReport are defined: loc imports those shared types, so a
+# module-top import would create a circular-import failure.
+from nolan.imagelib import loc as _loc
+
+
 SOURCES: Dict[str, SourceAdapter] = {
     "artic": SourceAdapter(
         id="artic",
@@ -1648,6 +1946,42 @@ SOURCES: Dict[str, SourceAdapter] = {
               "metadata, not new pictures. Full-original pixel dims on every record. Carries "
               "`openRanking`, its own per-image curation score.",
     ),
+    "artvee": SourceAdapter(
+        id="artvee",
+        collection=artvee_collection,
+        items=artvee_items,
+        enumeration="bulk-listing",
+        upstream_count=artvee_upstream_count,
+        resumable=True,
+        publishes_pixel_dims=True,
+        rights_model="per-collection",
+        gate_tier="curated",
+        fast_thumbnails=True,
+        thumbnail_concurrency=6,
+        notes="Artist-scoped HTML listing. One artist is one Visual Lab collection; the "
+              "artist-page biography is collection context and category/type stays per item. "
+              "Uses title_asc with 70 rows/page and a page+offset cursor. Stores only the "
+              "durable public SDL/basic download; never requests the membership-only HDL tier. "
+              "Source CDN thumbnails fetch 6-wide, raw/no-decode and no-CLIP by default.",
+    ),
+    "rawpixel": SourceAdapter(
+        id="rawpixel",
+        collection=rawpixel_collection,
+        items=rawpixel_items,
+        enumeration="search-ranked",
+        resumable=True,
+        publishes_pixel_dims=True,
+        rights_model="per-item",
+        gate_tier="indexed",
+        fast_thumbnails=True,
+        thumbnail_concurrency=4,
+        requires_query=True,          # full-site mirroring needs written permission
+        notes="Collection-aware Rawpixel API search, merging explicit current-UI $free and "
+              "$publicdomain requests. AI-generated and editorial-only rows are retained. "
+              "Query collection is primary fallback; all source board memberships use the "
+              "asset_collections join. Metadata and raw thumbnails only: no decode, dimension "
+              "admission check or CLIP. Comprehensive mirroring requires written permission.",
+    ),
     "cleveland": SourceAdapter(
         id="cleveland",
         collection=cleveland_collection,
@@ -1663,6 +1997,29 @@ SOURCES: Dict[str, SourceAdapter] = {
               "runs at index time. Three fixed derivatives — web (~750px, thumbnailed), print "
               "(~2850px, promoted) and a multi-megabyte full TIFF we deliberately ignore. "
               "Denominator probed live: 42,255 CC0 of 68,770.",
+    ),
+    "loc": SourceAdapter(
+        id="loc",
+        collection=_loc.loc_collection,
+        items=_loc.loc_items,
+        enumeration="curated-collection",
+        upstream_count=_loc.loc_upstream_count,
+        resumable=True,
+        publishes_pixel_dims=False,
+        rights_model="per-item",
+        notes="Library of Congress Prints & Photographs — 1,220,221 images, and the only "
+              "DOCUMENTARY source here: FSA/OWI Depression negatives (171,055), Highsmith "
+              "(70,431), stereographs (55,779), HABS/HAER (45,863), WPA and wartime posters. "
+              "The museums cover art; this covers photojournalism, and there is little overlap. "
+              "Keyless. The whole record is in the LISTING — rights, medium, genre, subjects, "
+              "dates and both image URLs — so 947 items cost 2 requests, not 947, and there is "
+              "no per-item pass (c=500 is the ceiling; c=1000 truncates the response). Crawled "
+              "one named collection at a time (`--dept <slug>`), which is how LoC is organised "
+              "and what keeps a 1.19M source from arriving as one undifferentiated blob. "
+              "robots.txt Crawl-Delay: 5 is honoured, and costs seconds because it is per PAGE. "
+              "RIGHTS ARE PER ITEM: `rights_advisory` is a statement about what the Library "
+              "KNOWS, not a licence — only 'no known restrictions' is admitted, an absent "
+              "advisory is refused, and the archival gate tier is kept.",
     ),
 }
 
@@ -1696,8 +2053,26 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
 
     adapter = SOURCES[source]
     lib = library or ImageLibrary(scope=scope, project=project)
-    col_kwargs = {k: v for k, v in source_kwargs.items() if k in ("dept", "query")}
+    col_kwargs = {k: v for k, v in source_kwargs.items()
+                  if k in ("dept", "query", "artist")}
     collection = lib.upsert_collection(adapter.collection(**col_kwargs))
+    if source == "rawpixel":
+        # Maintain every verified path-dependent choice as a first-class,
+        # described collection row. The live provider ranks these same records,
+        # so the table is operational routing knowledge rather than display-only
+        # metadata.
+        from nolan.rawpixel import FACET_ROUTES
+        for route in FACET_ROUTES.values():
+            lib.upsert_collection(Collection(
+                slug=route.slug, source="rawpixel", title=route.title,
+                description=route.description,
+                rights="Mixed: Rawpixel Free License and CC0/Public Domain",
+                copyright_free=None, topics=", ".join(route.topics), url=route.url,
+                dialect_json=_json.dumps({
+                    "provider": "rawpixel", "parent": route.parent_slug,
+                    "path_tokens": list(route.path_tokens),
+                    "media_type": route.media_type,
+                    "tiers": ["free", "public_domain"]})))
     report = HarvestReport(collection=collection.slug)
 
     # RESUME. Without this every run restarts at page 1 / id 0 and leans on source_ref dedup to
@@ -1736,6 +2111,7 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
     # indexed field but no image url, so a records-only pass can read the CSV and spend nothing,
     # while a pixels pass must ask the API per object. Adapters that do not care ignore it.
     items_kwargs["pixels"] = pixels
+    inline_pixels = pixels and not adapter.fast_thumbnails
 
     # ONE TRANSACTION PER CHECKPOINT, not one per row. `catalog.add` committing on every insert
     # cost 5.48 ms/row against ~0.01 for the insert itself — 23 minutes of pure fsync over the
@@ -1748,6 +2124,7 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
     # collection would be 300 identical upserts. Keyed by slug because that is what
     # `upsert_collection` is keyed by, so the cache and the table agree by construction.
     col_cache: Dict[str, int] = {collection.slug: collection.id}
+    artist_cache: set[str] = set()
 
     def _collection_id_for(item) -> Optional[int]:
         if item.collection is None or not item.collection.slug:
@@ -1757,10 +2134,38 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
             col_cache[slug] = lib.upsert_collection(item.collection).id
         return col_cache[slug]
 
+    def _additional_collection_ids(item) -> List[int]:
+        # When a source board is primary, retain the harvest/query collection as
+        # a contextual membership too. It is how "wave research" remains a
+        # navigable slice without flattening the source's editorial structure.
+        ids = ([collection.id] if item.collection is not None and collection.id is not None else [])
+        for member in item.collections:
+            if not member.slug:
+                continue
+            if member.slug not in col_cache:
+                col_cache[member.slug] = lib.upsert_collection(member).id
+            ids.append(col_cache[member.slug])
+        return ids
+
     with lib.catalog.batched_writes():
         for item in adapter.items(limit=limit, report=report, **items_kwargs):
             report.scanned += 1
             try:
+                if item.artist_record is not None:
+                    key = item.artist_record.name_key or folded_artist(item.artist_record.name)
+                    if key and key not in artist_cache:
+                        # Per-field provenance is additive. Artvee supplies the bio/lifespan,
+                        # but an existing Wikidata movement or QID must keep its attribution.
+                        from nolan.imagelib.wikidata import merge_sources
+                        previous = lib.catalog.get_artist(key)
+                        try:
+                            new_sources = json.loads(item.artist_record.sources_json or "{}")
+                        except Exception:
+                            new_sources = {}
+                        item.artist_record.sources_json = merge_sources(
+                            previous.sources_json if previous else None, new_sources)
+                        lib.catalog.upsert_artist(item.artist_record)
+                        artist_cache.add(key)
                 # RETRY transient CDN failures. Measured on a 899-record crawl: 44 items (~5%)
                 # were lost to 502/504 from the IIIF host under our own request rate — noise, not
                 # a property of the item, and a harvest that drops 5% of a collection for noise
@@ -1775,11 +2180,18 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
                             institution=item.institution, description=item.description,
                             license=item.license, width=item.width, height=item.height,
                             wikidata_qid=item.wikidata_qid, tags=item.tags,
+                            subject=item.subject,
                             collection_id=_collection_id_for(item), identity_source="catalog",
-                            pixels=pixels, tier=adapter.gate_tier,
+                            pixels=inline_pixels, tier=adapter.gate_tier,
                             medium=item.medium, classification=item.classification,
                             department=item.department, culture=item.culture,
                             place=item.place, primary_maker=item.primary_maker)
+                        if asset.id is not None:
+                            # `add()` writes the primary membership. Add every
+                            # overlapping board without changing that primary.
+                            for pos, cid in enumerate(_additional_collection_ids(item), start=1):
+                                lib.catalog.link_asset_collection(
+                                    asset.id, cid, position=pos, source=source)
                         break
                     except ValueError:
                         raise
@@ -1802,6 +2214,19 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
             # SQLite batch above, which is why the two must stay together.
             if report.scanned % 50 == 0:
                 _persist_cursor()
+
+    # Artvee's CDN already supplies a display thumbnail. Fetch it separately, modestly parallel,
+    # and keep it byte-for-byte: no PIL decode/resize, no dimension/content check and no CLIP.
+    # The catalog/identity phase above remains checkpointed independently, so an interrupted
+    # thumbnail batch is safely resumable by fetching only rows whose `thumb_path` is absent.
+    if pixels and adapter.fast_thumbnails:
+        thumbs = lib.backfill_pixels(
+            limit=limit, collection_id=collection.id, source=source,
+            tier=adapter.gate_tier, embed=False,
+            concurrency=adapter.thumbnail_concurrency, raw=True)
+        report.note(
+            f"thumbnails: {thumbs['fetched']} fetched {adapter.thumbnail_concurrency}-wide, "
+            f"{thumbs['errors']} errors, {thumbs['refused']} refused; raw/no-CLIP")
 
     # THE DENOMINATOR. Ask the source how much exists, so coverage can be stated as a share
     # rather than as a bare count — "841 indexed" reads as complete, "841 of 62,035 (1.4%)"
@@ -1845,6 +2270,95 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
     return report
 
 
+def harvest_artvee_site(*, scope: str = "global", project: Optional[str] = None,
+                        library=None, pixels: bool = True,
+                        max_artists: Optional[int] = None, progress=None) -> ArtveeSiteReport:
+    """Crawl every artist collection advertised by Artvee, safely resumable per artist.
+
+    The directory is cheap to re-enumerate (16 pages). Durable state lives in the existing
+    collection rows: a completed artist has ``exhausted=True`` and an indexed count; an
+    interrupted one retains its page/offset cursor. Therefore a killed whole-site run needs no
+    fragile second ledger—it simply re-lists the directory and resumes the first incomplete
+    artist.
+    """
+    from nolan.artvee import ArtveeClient
+    from nolan.imagelib import ImageLibrary
+
+    lib = library or ImageLibrary(scope=scope, project=project)
+    with ArtveeClient(page_delay=0.15) as client:
+        artists = client.list_artists()
+    if max_artists is not None:
+        artists = artists[:max(0, int(max_artists))]
+    site = ArtveeSiteReport(
+        artists_total=len(artists),
+        artworks_advertised=sum(a.item_count or 0 for a in artists))
+
+    for pos, entry in enumerate(artists, 1):
+        site.current_artist = entry.slug
+        slug = f"artvee-artist-{entry.slug}"
+        existing = lib.catalog.get_collection(slug)
+        existing_n = (lib.catalog.count("active", held=0, collection_id=existing.id)
+                      if existing and existing.id else 0)
+        # Exhaustion is authoritative: Artvee's directory count is a useful coverage denominator,
+        # but can lag the live grid (withdrawn/duplicate tiles). Requiring exact equality here
+        # would make a completely-walked artist retry forever.
+        complete = bool(existing and existing.exhausted)
+        if complete:
+            site.artists_completed += 1
+            site.artists_skipped_complete += 1
+            site.artworks_indexed += existing_n
+            if progress:
+                progress(site, pos, entry, None)
+            continue
+        try:
+            # The Visual Lab and a crawl normally share this WAL database. If their write
+            # checkpoints overlap, SQLite can still return BUSY after its timeout. Roll back the
+            # connection state and retry the same resumable artist; otherwise one transient lock
+            # poisons every later artist on this long-lived ImageLibrary instance.
+            import sqlite3
+            rep = None
+            for attempt in range(4):
+                try:
+                    rep = harvest(
+                        "artvee", artist=entry.slug,
+                        limit=entry.item_count or 100_000,
+                        scope=scope, project=project, library=lib,
+                        resume=True, pixels=pixels)
+                    break
+                except sqlite3.OperationalError as exc:
+                    lib.catalog.rollback()
+                    if "locked" not in str(exc).lower() or attempt == 3:
+                        raise
+                    time.sleep(1.5 * (2 ** attempt))
+            assert rep is not None
+            site.artworks_added += rep.added
+            site.artworks_refreshed += rep.refreshed
+            site.thumbnail_errors += sum(
+                int(m.group(1)) for reason in rep.reasons
+                if (m := re.search(r'thumbnails: .*?, (\d+) errors', reason)))
+            col = lib.catalog.get_collection(slug)
+            indexed = (lib.catalog.count("active", held=0, collection_id=col.id)
+                       if col and col.id else 0)
+            site.artworks_indexed += indexed
+            if col and col.exhausted:
+                site.artists_completed += 1
+                if entry.item_count and indexed != entry.item_count:
+                    site.note(f"{entry.slug}: directory advertises {entry.item_count}, "
+                              f"exhausted grid yielded {indexed}")
+            else:
+                site.artists_failed += 1
+                site.note(f"{entry.slug}: incomplete ({indexed}/{entry.item_count or '?'})")
+        except Exception as exc:
+            site.artists_failed += 1
+            site.note(f"{entry.slug}: {type(exc).__name__}: {exc}")
+            rep = None
+        if progress:
+            progress(site, pos, entry, rep)
+
+    site.current_artist = None
+    return site
+
+
 def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int] = None,
                        describer=None, model: str = "vlm", progress=None,
                        only_ids=None) -> int:
@@ -1863,29 +2377,6 @@ def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int]
     from nolan.imagelib.caption import (CAPTION_SCHEMA, PROMPT, build_context,
                                         caption_text, parse_caption)
 
-    "loc": SourceAdapter(
-        id="loc",
-        collection=_loc.loc_collection,
-        items=_loc.loc_items,
-        enumeration="curated-collection",
-        upstream_count=_loc.loc_upstream_count,
-        resumable=True,
-        publishes_pixel_dims=False,
-        rights_model="per-item",
-        notes="Library of Congress Prints & Photographs — 1,220,221 images, and the only "
-              "DOCUMENTARY source here: FSA/OWI Depression negatives (171,055), Highsmith "
-              "(70,431), stereographs (55,779), HABS/HAER (45,863), WPA and wartime posters. "
-              "The museums cover art; this covers photojournalism, and there is little overlap. "
-              "Keyless. The whole record is in the LISTING — rights, medium, genre, subjects, "
-              "dates and both image URLs — so 947 items cost 2 requests, not 947, and there is "
-              "no per-item pass (c=500 is the ceiling; c=1000 truncates the response). Crawled "
-              "one named collection at a time (`--dept <slug>`), which is how LoC is organised "
-              "and what keeps a 1.19M source from arriving as one undifferentiated blob. "
-              "robots.txt Crawl-Delay: 5 is honoured, and costs seconds because it is per PAGE. "
-              "RIGHTS ARE PER ITEM: `rights_advisory` is a statement about what the Library "
-              "KNOWS, not a licence — only 'no known restrictions' is admitted, an absent "
-              "advisory is refused, and the archival gate tier is kept.",
-    ),
     describer = describer or library.describer
     if describer is None:
         raise ValueError("no describer provided")
@@ -2015,7 +2506,6 @@ def _main(argv=None) -> int:
     print(json.dumps(rep.to_dict(), indent=2, ensure_ascii=False))
     return 0 if rep.added or rep.refreshed else 1
 
-                            subject=item.subject,
 
 if __name__ == "__main__":
     raise SystemExit(_main())

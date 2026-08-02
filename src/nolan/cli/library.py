@@ -153,6 +153,8 @@ def images_stats(scope, project):
 @click.option('--limit', '-n', type=int, default=200, help='How many ROWS to index.')
 @click.option('--query', default=None, help='Bias the harvest toward a theme.')
 @click.option('--dept', default=None, help='Filter to one department.')
+@click.option('--artist', default=None,
+              help='Artist name or slug (required by artist-scoped sources such as Artvee).')
 @click.option('--restart', is_flag=True,
               help='Ignore the saved cursor and re-walk from the beginning (refresh, not extend).')
 @click.option('--no-pixels', is_flag=True,
@@ -160,7 +162,7 @@ def images_stats(scope, project):
                    '87ms/row vs 470ms). Fill them in later with `nolan images backfill`.')
 @click.option('--scope', type=click.Choice(['global', 'project']), default='global')
 @click.option('--project', '-p', default=None)
-def images_harvest(source, limit, query, dept, restart, no_pixels, scope, project):
+def images_harvest(source, limit, query, dept, artist, restart, no_pixels, scope, project):
     """Harvest a collection into the discovery tier (metadata + thumbnail, no bytes).
 
     Resumes from the last run's cursor by default, so repeated calls EXTEND coverage instead of
@@ -172,7 +174,7 @@ def images_harvest(source, limit, query, dept, restart, no_pixels, scope, projec
     if source not in SOURCES:
         click.echo(f"unknown source {source!r} (known: {', '.join(sorted(SOURCES))})")
         raise SystemExit(2)
-    kw = {k: v for k, v in (('query', query), ('dept', dept)) if v}
+    kw = {k: v for k, v in (('query', query), ('dept', dept), ('artist', artist)) if v}
     rep = harvest(source, limit=limit, scope=scope, project=project,
                   resume=not restart, pixels=not no_pixels, **kw)
     click.echo(json.dumps(rep.to_dict(), indent=2, ensure_ascii=False))
@@ -181,6 +183,29 @@ def images_harvest(source, limit, query, dept, restart, no_pixels, scope, projec
     if no_pixels:
         click.echo("Phase A only — these rows are searchable by IDENTITY but carry no pixels, "
                    "so they cannot rank on LOOK yet. Run: nolan images backfill")
+
+
+@images.command('harvest-artvee-all')
+@click.option('--max-artists', type=int, default=None,
+              help='Bounded smoke run; omit to crawl all artists.')
+@click.option('--no-pixels', is_flag=True, help='Metadata/identity only; skip thumbnails.')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_harvest_artvee_all(max_artists, no_pixels, scope, project):
+    """Resume the complete Artvee artist directory into Visual Lab."""
+    import json
+    from nolan.imagelib.harvest import harvest_artvee_site
+
+    def progress(site, pos, entry, _rep):
+        click.echo(
+            f"[{pos}/{site.artists_total}] {entry.slug}: "
+            f"artists {site.artists_completed} complete, {site.artworks_indexed} works indexed",
+            err=True)
+
+    rep = harvest_artvee_site(
+        scope=scope, project=project, pixels=not no_pixels,
+        max_artists=max_artists, progress=progress)
+    click.echo(json.dumps(rep.to_dict(), indent=2, ensure_ascii=False))
 
 
 @images.command('backfill')

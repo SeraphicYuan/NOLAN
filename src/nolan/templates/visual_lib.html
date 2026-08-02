@@ -208,6 +208,7 @@
         <div class="row">
           <select id="hsource" onchange="onSourceChange()"></select>
           <select id="hdept" style="display:none"></select>
+          <input type="text" id="hartist" placeholder="artist name or slug" style="display:none;width:200px">
           <input type="text" id="hquery" placeholder="theme (optional)" style="width:200px">
           <input type="number" id="hlimit" value="200" min="1" step="50" style="width:100px" title="rows to INDEX">
           <button class="btn" id="hbtn" onclick="startHarvest()">Harvest</button>
@@ -481,12 +482,12 @@
     // The facet fields, in the order they narrow most usefully. `image_kind` and `department`
     // are 100% populated with tiny vocabularies; `classification` and `place` are longer-tailed.
     var FACETS = [
-      {id:"image_kind",     label:"Any kind"},
       // SOURCE FIRST — it is the outermost question, not the innermost. One institution can
       // outweigh every other (the Met is already 70% of rows; the Library of Congress has 1.19M
       // images available), and "which library am I even looking at" has to be answerable before
       // any narrowing inside it means anything.
       {id:"source",         label:"All sources"},
+      {id:"image_kind",     label:"Any kind"},
       {id:"department",     label:"Any department"},
       {id:"classification", label:"Any classification"},
       {id:"place",          label:"Anywhere"},
@@ -763,6 +764,9 @@
         dep.innerHTML = '<option value="">All departments</option>'
           + s.departments.map(function(x){ return '<option value="'+esc(x)+'">'+esc(x)+"</option>"; }).join("");
       } else { dep.style.display = "none"; dep.innerHTML = ""; }
+      var artist = $("#hartist");
+      artist.style.display = s.id === "artvee" ? "" : "none";
+      $("#hquery").style.display = s.id === "artvee" ? "none" : "";
     }
 
     function loadCollections(){
@@ -820,6 +824,7 @@
       var b = $("#hbtn"); b.disabled = true; b.textContent = "Harvesting…";
       fetch("/api/visuallib/harvest", {method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({source: $("#hsource").value, dept: $("#hdept").value || null,
+                              artist: $("#hartist").value.trim() || null,
                               query: $("#hquery").value.trim() || null,
                               limit: parseInt($("#hlimit").value || "200", 10)})})
         .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })

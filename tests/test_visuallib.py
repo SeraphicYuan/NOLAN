@@ -292,7 +292,9 @@ def test_every_adapter_yields_a_namespaced_source_ref():
     from nolan.imagelib.harvest import SOURCES
     for name, adapter in SOURCES.items():
         assert callable(adapter.items) and callable(adapter.collection)
-        col = adapter.collection()
+        # `requires_query` sources cannot be mirrored whole and say so in the registry; give them
+        # the query their contract demands rather than tripping over the guard.
+        col = adapter.collection(query="probe") if adapter.requires_query else adapter.collection()
         assert col.slug and col.source == name and col.rights, f"{name}: collection needs rights"
 
 
@@ -426,10 +428,24 @@ def test_collection_carries_a_denominator_and_reports_unknown_honestly():
 
 
 def test_every_adapter_that_can_be_asked_declares_an_upstream_count(tmp_path):
-    from nolan.imagelib.harvest import SOURCES
+    """"...that CAN be asked" is the whole point, and the body used to assert it of every adapter.
+
+    A `search-ranked` source cannot be asked: the registry's own constraint says it is DEPTH-CAPPED
+    and must never be used for full enumeration, so "how much exists upstream" has no answer a
+    crawl could ever reach. Requiring a number there would force a GUESSED denominator, which is
+    exactly what `Collection.coverage` exists to avoid — an unknown denominator must read as
+    unknown, never as full."""
+    from nolan.imagelib.harvest import ENUMERATION, SOURCES
     for name, a in SOURCES.items():
-        assert a.upstream_count is not None and callable(a.upstream_count), (
-            f"{name}: no way to ask how much exists — coverage would be unmeasurable")
+        askable = a.enumeration != "search-ranked"
+        if askable:
+            assert a.upstream_count is not None and callable(a.upstream_count), (
+                f"{name}: fully enumerable but no way to ask how much exists — "
+                f"coverage would be unmeasurable")
+        else:
+            assert a.upstream_count is None, (
+                f"{name}: {a.enumeration} is depth-capped ({ENUMERATION[a.enumeration]['constraint'][:40]}…) "
+                f"so any upstream count it reported would be a guess")
 
 
 def test_collection_migrations_are_applied_to_an_existing_db(tmp_path):
@@ -2521,7 +2537,10 @@ def test_each_source_harvests_with_its_OWN_crawler(lib, monkeypatch):
                             dataclasses_replace(H.SOURCES[name], items=_spy))
 
     for name in sorted(H.SOURCES):
-        H.harvest(name, limit=1, library=lib, pixels=False)
+        # honour a declared precondition: a `requires_query` source refuses a whole-site walk,
+        # which is a contract, not a failure — see SourceAdapter.requires_query
+        kw = {"query": "probe"} if H.SOURCES[name].requires_query else {}
+        H.harvest(name, limit=1, library=lib, pixels=False, **kw)
 
     assert [r[0] for r in ran] == sorted(H.SOURCES), "every source must run its OWN walker"
     # The ones this test was written against must still be there — a source going MISSING is as

@@ -13,6 +13,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
+from nolan.source_registry import ACQUISITION_TIERS as TIERS
+from nolan.source_registry import CURATED_SOURCES as _CURATED
+
 from .config import AcquireConfig
 
 
@@ -123,31 +126,10 @@ def fitness_score(fit: Dict) -> float:
 # per-clip metadata; it ranks just below the saved image library (both are curated + local) and above
 # remote stock, so real library footage leads a beat when it genuinely matches (the min-similarity floor
 # in the source keeps weak clips out of the running entirely).
-TIERS = {
-    # `pdia` (Public Domain Image Archive) sits with artvee, ABOVE the museum catalogues, because
-    # it is EDITORIALLY curated rather than institutionally complete: a museum publishes
-    # everything it holds and leaves the choosing to us, while PDIA's 11,197 images were each
-    # picked and grouped into themed sets with written essays. That is precisely the signal an
-    # evocative beat wants and the one CLIP relevance cannot supply. Note it is an AGGREGATOR —
-    # its images are re-hosted from the same museums further down this list — so ranking it above
-    # them is a statement about curation, not about holdings.
-    # `visuallib` ranks just under the local library and above every live provider: it is the same
-    # museums as `met`/`artic`/`cleveland` further down this list, but already CRAWLED, gated and
-    # facet-filterable, so it answers without a request and can be narrowed by era or movement
-    # first. The live provider entries stay as the fallback for what the crawl has not reached.
-    "art": ["library", "clips_library", "transcript_lib", "transcript_frames", "visuallib", "artvee", "pdia", "wikimedia", "met", "artic", "rijksmuseum", "harvard",
-            "cleveland", "wellcome", "europeana", "dpla", "smithsonian", "loc", "openverse", "ddgs"],
-    "archival": ["library", "clips_library", "transcript_lib", "transcript_frames", "visuallib", "archive", "archive_image", "pdia", "loc", "smithsonian", "europeana",
-                 "dpla", "nasa", "nasa_video", "wikimedia", "flickr", "pexels_video", "pixabay_video", "coverr_video", "ddgs"],
-    "general": ["library", "clips_library", "transcript_lib", "transcript_frames", "pexels", "pixabay", "unsplash", "ddgs", "openverse", "pexels_video",
-                "pixabay_video", "coverr_video", "flickr", "wikimedia", "nasa"],
-}
 
 
 # Curated institutional/art providers — exempt from the generic-stock relevance floor, because for
 # evocative beats their VALUE is precisely the non-literal match a low CLIP score would otherwise cull.
-_CURATED = {"visuallib", "artvee", "pdia", "artic", "met", "wellcome", "rijksmuseum", "harvard",
-            "cleveland", "europeana", "dpla", "smithsonian", "loc", "nasa", "wikimedia"}
 
 
 def _provider_of(source: str) -> str:

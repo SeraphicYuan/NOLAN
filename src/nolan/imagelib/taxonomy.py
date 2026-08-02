@@ -33,7 +33,7 @@ from typing import Dict, Iterable, Optional, Tuple
 # The canonical set. Coarse on purpose: every bucket has to be one a human would actually filter
 # on, and one the source's own words support without interpretation.
 IMAGE_KINDS: Tuple[str, ...] = (
-    "painting", "print", "drawing", "photograph", "sculpture", "textile",
+    "painting", "poster", "print", "drawing", "photograph", "sculpture", "textile",
     "ceramic", "metalwork", "coin", "glass", "furniture", "book", "map",
     "object", "unknown",
 )
@@ -51,6 +51,10 @@ _RULES: Tuple[Tuple[str, str], ...] = (
     # Photographs before books/ephemera: "Photographs|Ephemera" is a photograph.
     ("photograph", r"\bphotograph|daguerreotype|ambrotype|tintype|albumen|"
                    r"gelatin silver|calotype|negative|cyanotype|autochrome"),
+    # Artvee publishes Posters as a first-class category. Keep it distinct from
+    # generic prints: Visual Lab already accepts `poster` on hand-ingested Mucha
+    # works, and collapsing a source-authored type to unknown loses information.
+    ("poster", r"\bposters?\b|\baffiche\b"),
     ("print", r"\bprints?\b|etching|engraving|lithograph|woodcut|woodblock|drypoint|"
               r"mezzotint|aquatint|intaglio|screenprint|serigraph|linocut|"
               r"\bimpression\b|monotype"),

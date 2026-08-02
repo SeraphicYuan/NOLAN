@@ -79,6 +79,7 @@ class ArtveeResult:
     sd_filesize_mb: Optional[float] = None
     hd_filesize_mb: Optional[float] = None
     resolved_sdl_url: Optional[str] = None    # presigned low-res download URL
+    date_text: Optional[str] = None           # exact catalog date, e.g. "circa 1897-1898"
 
     # -- derived ---------------------------------------------------------- #
     @property
@@ -104,6 +105,44 @@ class ArtveeResult:
         if self.orientation:
             d["orientation"] = self.orientation
         return d
+
+    @property
+    def standard_download_url(self) -> str:
+        """Durable basic-download URL (SDL), never the membership-only HDL tier.
+
+        Detail pages expose this same path with a 24-hour AWS signature.  The
+        underlying SDL object is public at the unsigned path, so storing that
+        canonical URL keeps a Visual Lab record promotable after the signature
+        has expired.
+        """
+        return f"{CDN}/sdl/{self.sk}sdl.jpg"
+
+
+@dataclass
+class ArtveeArtistProfile:
+    """Artist-level fields published in the header of an Artvee artist page."""
+    slug: str
+    name: str
+    nationality: Optional[str] = None
+    birth_year: Optional[int] = None
+    death_year: Optional[int] = None
+    biography: Optional[str] = None
+    item_count: Optional[int] = None
+    portrait_url: Optional[str] = None
+    url: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {k: v for k, v in asdict(self).items() if v is not None}
+
+
+@dataclass
+class ArtveeArtistIndexEntry:
+    """One card from Artvee's complete artist directory."""
+    slug: str
+    name: str
+    nationality: Optional[str] = None
+    item_count: Optional[int] = None
+    url: Optional[str] = None
 
 
 @dataclass
@@ -231,6 +270,76 @@ def _split_year(raw_title: str) -> tuple[str, Optional[int]]:
     return (clean or t), year
 
 
+def _split_date(raw_title: str) -> tuple[str, Optional[str], Optional[int]]:
+    """Return clean title, the exact trailing date text, and its first year."""
+    clean, year = _split_year(raw_title)
+    if year is None:
+        return clean, None, None
+    m = _RE_TRAIL_PAREN.search(raw_title.strip())
+    return clean, (html.unescape(m.group(1)).strip() if m else str(year)), year
+
+
+def _plain_html(fragment: str) -> str:
+    text = re.sub(r"<[^>]+>", " ", fragment or "")
+    return re.sub(r"\s+", " ", html.unescape(text)).strip()
+
+
+def parse_artist_profile(page_html: str, slug: str) -> ArtveeArtistProfile:
+    """Parse artist identity, lifespan, bio and count from one artist page."""
+    name_m = re.search(r'<h1[^>]*class="entry-title"[^>]*>(.*?)</h1>', page_html, re.S)
+    name = _plain_html(name_m.group(1)) if name_m else slug.replace("-", " ").title()
+
+    nation = None
+    birth = death = None
+    life_m = re.search(r'<div[^>]*class="abdate"[^>]*>(.*?)</div>', page_html, re.S)
+    if life_m:
+        life = _plain_html(life_m.group(1))
+        years = re.search(r'(-?\d{3,4})\s*[-\u2013\u2014]\s*(-?\d{3,4})', life)
+        if years:
+            birth, death = int(years.group(1)), int(years.group(2))
+            nation = life[:years.start()].strip(" ,") or None
+        else:
+            nation = life or None
+
+    bio_m = re.search(
+        r'<div[^>]*class="[^"]*term-description[^"]*"[^>]*>(.*?)</div>',
+        page_html, re.S)
+    biography = _plain_html(bio_m.group(1)) if bio_m else None
+    count_m = re.search(r'\b([\d,]+)\s+items\b', page_html, re.I)
+    portrait_m = re.search(
+        r'<img[^>]*class="[^"]*imspanc[^"]*"[^>]*src="([^"]+)"', page_html, re.S)
+    return ArtveeArtistProfile(
+        slug=slug, name=name, nationality=nation,
+        birth_year=birth, death_year=death, biography=biography,
+        item_count=(int(count_m.group(1).replace(",", "")) if count_m else None),
+        portrait_url=(html.unescape(portrait_m.group(1)) if portrait_m else None),
+        url=f"{BASE}/artist/{slug}/")
+
+
+def parse_artist_index(page_html: str) -> List[ArtveeArtistIndexEntry]:
+    """Parse one `/artists/` page (30 stable artist cards)."""
+    out: List[ArtveeArtistIndexEntry] = []
+    seen: set[str] = set()
+    card_re = re.compile(
+        r'<a href="https://artvee\.com/artist/(?P<slug>[^/"]+)/"[^>]*>\s*'
+        r'<h3[^>]*>\s*<span>(?P<name>.*?)</span>\s*'
+        r'<mark[^>]*>(?P<meta>.*?)</mark>', re.S | re.I)
+    for m in card_re.finditer(page_html):
+        slug = m.group("slug").strip()
+        if not slug or slug in seen:
+            continue
+        seen.add(slug)
+        name = _plain_html(m.group("name")) or slug.replace("-", " ").title()
+        meta = _plain_html(m.group("meta"))
+        count_m = re.search(r'([\d,]+)\s+Items\b', meta, re.I)
+        nationality = re.sub(r',?\s*[\d,]+\s+Items\b.*$', '', meta, flags=re.I).strip(" ,")
+        out.append(ArtveeArtistIndexEntry(
+            slug=slug, name=name, nationality=nationality or None,
+            item_count=(int(count_m.group(1).replace(",", "")) if count_m else None),
+            url=f"{BASE}/artist/{slug}/"))
+    return out
+
+
 def parse_listing(page_html: str) -> List[ArtveeResult]:
     """Parse one search/artist results page into ArtveeResult objects.
 
@@ -265,7 +374,7 @@ def parse_listing(page_html: str) -> List[ArtveeResult]:
         if not raw_title:
             am = _RE_IMG_ALT.search(block)
             raw_title = html.unescape(am.group("alt").strip()) if am else sk
-        title, year = _split_year(raw_title)
+        title, date_text, year = _split_date(raw_title)
 
         art = _RE_ARTIST.search(block)
         cat = _RE_CAT.search(block)
@@ -277,6 +386,7 @@ def parse_listing(page_html: str) -> List[ArtveeResult]:
             detail_url=detail_url,
             title=title,
             raw_title=raw_title,
+            date_text=date_text,
             year=year,
             artist=html.unescape(art.group("name").strip()) if art else None,
             artist_slug=art.group("slug") if art else None,
@@ -464,6 +574,42 @@ class ArtveeClient:
         if not counts:
             return None
         return max(counts, key=counts.get)
+
+    def artist_profile(self, artist_or_slug: str) -> Optional[ArtveeArtistProfile]:
+        """Fetch the artist page and return its collection-level metadata."""
+        slug = artist_or_slug if re.fullmatch(r"[a-z0-9-]+", artist_or_slug) \
+            else slugify_artist(artist_or_slug)
+        page = self._get(f"{BASE}/artist/{slug}/")
+        if page is None:
+            found = self.find_artist_slug(artist_or_slug)
+            if not found:
+                return None
+            slug = found
+            page = self._get(f"{BASE}/artist/{slug}/")
+        return parse_artist_profile(page, slug) if page else None
+
+    def list_artists(self, *, max_pages: Optional[int] = None) -> List[ArtveeArtistIndexEntry]:
+        """Enumerate the full artist directory in its stable page order."""
+        out: List[ArtveeArtistIndexEntry] = []
+        seen: set[str] = set()
+        page = 1
+        while max_pages is None or page <= max_pages:
+            url = f"{BASE}/artists/" if page == 1 else f"{BASE}/artists//page/{page}"
+            body = self._get(url)
+            if not body:
+                break
+            rows = parse_artist_index(body)
+            new = [r for r in rows if r.slug not in seen]
+            if not new:
+                break
+            out.extend(new)
+            seen.update(r.slug for r in new)
+            if not _has_next_page(body):
+                break
+            page += 1
+            if self.page_delay:
+                time.sleep(self.page_delay)
+        return out
 
     def advanced_search(self, query: Optional[str] = None, *,
                         artist: Optional[str] = None,

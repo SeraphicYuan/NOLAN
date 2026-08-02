@@ -16,6 +16,7 @@ from typing import List, Optional
 
 from ..acquire.shared import build_search_client, downscale_for_vision, parse_vision_json
 from ..acquire.shared import valid_image as _valid_image
+from ..source_registry import KEY_ASSET_SOURCE_PREFERENCES as _SOURCE_PREF
 from .schema import DesiredAsset, KeyEntity
 
 # A short qualifier appended to the entity name per asset type (recall aid for provider search).
@@ -32,15 +33,6 @@ _MAX_VERIFY_ATTEMPTS = 3          # candidates tried per need before giving up (
 
 # Sources to BOOST for a named-entity asset (precision) — institutional/encyclopedic first. Names must
 # match ImageSearchClient provider names. Unlisted → the client's own ranking.
-_SOURCE_PREF = {
-    "logo": ["wikimedia", "openverse"],
-    "portrait": ["wikimedia", "loc", "smithsonian"],
-    "artwork": ["wikimedia", "met", "artvee", "artic", "rijksmuseum"],
-    "document": ["wikimedia", "archive_image", "loc"],
-    "photo": ["wikimedia", "archive_image", "loc", "smithsonian"],
-    "map": ["wikimedia", "loc"],
-    "footage": ["archive", "nasa_video"],
-}
 
 
 def build_client(cfg):

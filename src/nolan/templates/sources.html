@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Sources · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg-primary); color:var(--text-primary); font-size:14px; line-height:1.45; }
+    .wrap { max-width:1280px; margin:24px auto; padding:0 20px 48px; }
+    h1 { margin:0 0 3px; font-size:26px; letter-spacing:-.025em; }
+    .sub { color:var(--text-secondary); margin-bottom:18px; max-width:850px; }
+    .summary { display:grid; grid-template-columns:repeat(4,minmax(130px,1fr)); gap:10px; margin-bottom:14px; }
+    .metric,.panel { background:var(--bg-secondary); border:1px solid var(--border); border-radius:11px; }
+    .metric { padding:13px 15px; } .metric b { display:block; font-size:23px; } .metric span { color:var(--text-secondary); font-size:12px; }
+    .panel { padding:15px; margin-bottom:14px; }
+    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    input,select { background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:7px; padding:8px 10px; }
+    #query { min-width:260px; flex:1; }
+    table { width:100%; border-collapse:collapse; } th,td { padding:9px 8px; border-bottom:1px solid var(--border); vertical-align:top; text-align:left; }
+    th { font-size:11px; text-transform:uppercase; letter-spacing:.055em; color:var(--text-secondary); }
+    .source { font-weight:650; } .source-id,.muted { color:var(--text-secondary); font-size:11.5px; }
+    .badges { display:flex; gap:4px; flex-wrap:wrap; }
+    .badge { border:1px solid var(--border); border-radius:999px; padding:2px 7px; font-size:10.5px; white-space:nowrap; }
+    .badge.ready,.badge.connected { color:#4cc267; border-color:#3fb95066; }
+    .badge.missing,.badge.unavailable { color:#ee6b6e; border-color:#ee6b6e66; }
+    .badge.attention { color:#e0a83a; border-color:#e0a83a66; }
+    .tier { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:10px; }
+    .btn { border:0; background:var(--accent,#4f7cff); color:#fff; border-radius:7px; padding:7px 10px; font-weight:650; cursor:pointer; font-size:12px; }
+    .btn:disabled { opacity:.45; cursor:not-allowed; } .btn.ghost { background:transparent; border:1px solid var(--border); color:var(--text-primary); }
+    .notice { margin-top:9px; min-height:18px; color:var(--text-secondary); font-size:12px; }
+    .notice.ok { color:#4cc267; } .notice.err { color:#ee6b6e; }
+    .section-title { display:flex; justify-content:space-between; align-items:end; gap:10px; margin-bottom:10px; }
+    .section-title h2 { margin:0; font-size:17px; } .section-title span { color:var(--text-secondary); font-size:12px; }
+    .pipeline-tabs { display:flex; gap:5px; margin-bottom:12px; }
+    .pipeline-tabs button.on { background:var(--accent,#4f7cff); color:white; border-color:transparent; }
+    .matrix { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:10px; }
+    .intent { background:var(--bg-primary); border:1px solid var(--border); border-radius:9px; padding:11px; }
+    .intent h3 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary); margin:0 0 8px; }
+    .ordered { display:flex; flex-wrap:wrap; gap:5px; counter-reset:source; }
+    .ordered span { counter-increment:source; border:1px solid var(--border); border-radius:5px; padding:3px 6px; font-size:11px; }
+    .ordered span:before { content:counter(source) ". "; color:var(--text-secondary); }
+    a { color:var(--accent,#6f91ff); text-decoration:none; }
+    @media(max-width:850px){ .summary{grid-template-columns:repeat(2,1fr)} .tablewrap{overflow:auto} table{min-width:850px} .wrap{padding:0 12px 36px} }
+  </style>
+</head>
+<body>
+  <script src="/static/nav.js" data-active="sources"></script>
+  <div class="wrap">
+    <h1>Asset Sources</h1>
+    <div class="sub">One control plane for live acquisition, Visual Lib harvesting, HyperFrames recall, and key-asset research. Credentials are represented only as present or missing; secret values never leave the server.</div>
+
+    <div class="summary">
+      <div class="metric"><b id="m-total">—</b><span>registered sources</span></div>
+      <div class="metric"><b id="m-ready">—</b><span>ready or connected</span></div>
+      <div class="metric"><b id="m-auth">—</b><span>credential-backed</span></div>
+      <div class="metric"><b id="m-harvest">—</b><span>catalog harvesters</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <input id="query" placeholder="Filter source, role, rights…" oninput="renderRows()">
+        <select id="role" onchange="renderRows()"><option value="">All roles</option><option value="acquisition">Acquisition</option><option value="hybrid_search">Hybrid search</option><option value="key_asset">Key asset</option><option value="catalog_harvest">Catalog harvest</option></select>
+        <select id="media" onchange="renderRows()"><option value="">All media</option><option value="image">Images</option><option value="video">Video</option></select>
+        <select id="health" onchange="renderRows()"><option value="">All states</option><option value="ready">Ready</option><option value="connected">Connected</option><option value="attention">Attention</option><option value="missing">Missing</option><option value="unavailable">Unavailable</option></select>
+      </div>
+      <div class="notice" id="action-status"></div>
+    </div>
+
+    <div class="panel tablewrap">
+      <table><thead><tr><th>Source</th><th>Media / roles</th><th>Authentication</th><th>Health</th><th>Coverage</th><th>Priority positions</th><th>Action</th></tr></thead><tbody id="rows"></tbody></table>
+    </div>
+
+    <div class="panel">
+      <div class="section-title"><h2>Resolved source tiers</h2><span>Lower number means earlier preference; fan-out still preserves recall.</span></div>
+      <div class="pipeline-tabs" id="pipeline-tabs"></div>
+      <div class="matrix" id="matrix"></div>
+    </div>
+  </div>
+  <script>
+    var DATA={sources:[],tiers:{}}, pipeline="acquisition", localActions=false;
+    function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}
+    function badge(v,cls){return '<span class="badge '+esc(cls||'')+'">'+esc(v)+'</span>'}
+    function flatTiers(t){var out=[]; Object.keys(t||{}).forEach(function(group){Object.keys(t[group]||{}).forEach(function(intent){out.push(group+':'+intent+' #'+t[group][intent])})}); return out}
+    function coverage(c){if(!c)return '<span class="muted">—</span>'; var s=Number(c.indexed||0).toLocaleString()+' indexed'; if(c.collections!=null)s+='<br><span class="muted">'+Number(c.collections).toLocaleString()+' collections</span>'; if(c.upstream)s+='<br><span class="muted">of '+Number(c.upstream).toLocaleString()+'</span>'; return s}
+    function renderRows(){var q=document.getElementById('query').value.toLowerCase(), role=document.getElementById('role').value, media=document.getElementById('media').value, health=document.getElementById('health').value; var html=''; DATA.sources.filter(function(s){var hay=[s.id,s.title,s.rights,(s.roles||[]).join(' ')].join(' ').toLowerCase(); return (!q||hay.indexOf(q)>=0)&&(!role||(s.roles||[]).indexOf(role)>=0)&&(!media||(s.media||[]).indexOf(media)>=0)&&(!health||s.health===health)}).forEach(function(s){var auth=s.auth==='api_key'?'API key':s.auth==='browser_session'?'Chrome session':s.auth==='local'?'Local':'Keyless'; var cfg=s.auth==='api_key'?(s.configured?'configured':'missing'):''; var tiers=flatTiers(s.tiers); var action=''; if((s.actions||[]).indexOf('refresh_session')>=0)action='<button class="btn" '+(localActions?'':'disabled title="Open this page on localhost to refresh"')+' onclick="refreshRawpixel(this)">Refresh from Chrome</button>'; var title=s.docs_url?'<a class="source" href="'+esc(s.docs_url)+'" target="_blank" rel="noreferrer">'+esc(s.title)+'</a>':'<span class="source">'+esc(s.title)+'</span>'; html+='<tr><td>'+title+'<div class="source-id">'+esc(s.id)+'</div><div class="muted">'+esc(s.rights)+'</div></td><td><div class="badges">'+(s.media||[]).map(function(x){return badge(x)}).join('')+'</div><div class="badges" style="margin-top:4px">'+(s.roles||[]).map(function(x){return badge(x.replace('_',' '))}).join('')+'</div></td><td>'+esc(auth)+(cfg?' · '+esc(cfg):'')+'<div class="muted">'+(s.env_fields||[]).map(esc).join('<br>')+'</div></td><td>'+badge(s.health,s.health)+(s.browser_session&&s.browser_session.browser?'<div class="muted">'+esc(s.browser_session.browser)+'</div>':'')+'</td><td>'+coverage(s.coverage)+'</td><td><div class="badges">'+tiers.map(function(x){return badge(x,'tier')}).join('')+'</div></td><td>'+action+'</td></tr>'}); document.getElementById('rows').innerHTML=html||'<tr><td colspan="7" class="muted">No matching sources.</td></tr>'}
+    function renderMatrix(){var tabs=document.getElementById('pipeline-tabs'); tabs.innerHTML=Object.keys(DATA.tiers).map(function(p){return '<button class="btn ghost '+(p===pipeline?'on':'')+'" onclick="pipeline=\''+esc(p)+'\';renderMatrix()">'+esc(p.replace('_',' '))+'</button>'}).join(''); var groups=DATA.tiers[pipeline]||{}; document.getElementById('matrix').innerHTML=Object.keys(groups).map(function(intent){return '<div class="intent"><h3>'+esc(intent)+'</h3><div class="ordered">'+groups[intent].map(function(id){var s=DATA.sources.find(function(x){return x.id===id});return '<span title="'+esc(id)+'">'+esc(s?s.title:id)+'</span>'}).join('')+'</div></div>'}).join('')}
+    async function refreshRawpixel(btn){btn.disabled=true; var el=document.getElementById('action-status'); el.className='notice'; el.textContent='Refreshing Rawpixel from the authorised Chrome profile…'; try{var r=await fetch('/api/sources/rawpixel/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); var d=await r.json(); if(!r.ok)throw new Error(d.detail||'refresh failed'); el.className='notice ok'; el.textContent=d.message+' Verified '+d.search_rows+' rows.'; await load()}catch(e){el.className='notice err';el.textContent=e.message}finally{btn.disabled=false}}
+    async function load(){var r=await fetch('/api/sources'); DATA=await r.json(); localActions=!!DATA.local_actions_allowed; document.getElementById('m-total').textContent=DATA.sources.length; document.getElementById('m-ready').textContent=DATA.sources.filter(function(s){return s.health==='ready'||s.health==='connected'}).length; document.getElementById('m-auth').textContent=DATA.sources.filter(function(s){return s.auth==='api_key'||s.auth==='browser_session'}).length; document.getElementById('m-harvest').textContent=DATA.sources.filter(function(s){return s.harvest}).length; renderRows();renderMatrix()}
+    load().catch(function(e){document.getElementById('action-status').className='notice err';document.getElementById('action-status').textContent=e.message});
+  </script>
+</body>
+</html>

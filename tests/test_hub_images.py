@@ -148,6 +148,10 @@ def test_hub_visual_lib_page_and_registry_endpoints(tmp_path):
         assert client.post("/api/visuallib/caption", json={"limit": 0}).status_code == 400
         assert client.post("/api/visuallib/harvest",
                            json={"source": "artic", "limit": "many"}).status_code == 400
+        # Artist-scoped sources fail at the request boundary, not later in a background job.
+        missing_artist = client.post(
+            "/api/visuallib/harvest", json={"source": "artvee", "limit": 5})
+        assert missing_artist.status_code == 400 and "artist" in missing_artist.json()["detail"]
 
 
 def test_hub_add_by_url(tmp_path):
@@ -217,3 +221,38 @@ def test_hub_promote(tmp_path):
         assert client.get("/api/images/list?scope=global").json()["results"][0]["title"] == "red"
         # missing project -> 400
         assert client.post(f"/api/images/{a.id}/promote", json={}).status_code == 400
+
+
+def test_every_registered_adapter_is_describable_without_running_a_crawl():
+    """A MENU MUST NEVER RUN A CRAWL'S PRECONDITIONS.
+
+    `/api/visuallib/sources` built its list by calling `collection()` on every adapter. An adapter
+    whose collection needs an argument therefore 500'd the whole route and rendered the Sources tab
+    EMPTY for every source — including one with 69,117 indexed rows. `describe()` answers from the
+    registry (and `source_registry` for identity/rights), so one unwalkable source costs its own row
+    and nothing else.
+
+    Asserted as a PROPERTY of the mechanism, not against whichever adapters happen to be registered
+    today — a roster-shaped test would pass or fail on someone else's in-flight source."""
+    from nolan.imagelib.harvest import SOURCES, SourceAdapter
+
+    for name, adapter in SOURCES.items():
+        d = adapter.describe()
+        assert d["title"], f"{name}: no menu title"
+        assert d["rights"], f"{name}: a source must state its rights"
+        assert not d["error"], f"{name} raised while being described: {d['error']}"
+
+    # an adapter that CANNOT be walked whole is described anyway, from the shared registry
+    def _explodes(*a, **kw):
+        raise ValueError("this source requires a --query")
+
+    guarded = SourceAdapter(id="artvee", collection=_explodes, items=iter,
+                            enumeration="search-ranked", requires_query=True)
+    d = guarded.describe()
+    assert d["requires"] and not d["error"]
+    assert d["title"] and d["rights"], "identity and rights come from source_registry, not the crawl"
+
+    # and one that raises UNEXPECTEDLY degrades to its own row rather than the whole menu
+    boom = SourceAdapter(id="artvee", collection=_explodes, items=iter, enumeration="bulk-listing")
+    d = boom.describe()
+    assert d["error"] and d["title"], "an unexpected failure must not erase the source"

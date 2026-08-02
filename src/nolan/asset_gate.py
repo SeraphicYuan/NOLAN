@@ -127,6 +127,9 @@ def collection_is_open(source: Optional[str], collection: Optional[str]) -> Opti
 # the credits pipeline).
 LICENSED_STOCK_SOURCES = frozenset({
     "pexels", "pexels_video", "pixabay", "pixabay_video", "unsplash",
+    # The provider itself restricts results to Rawpixel's Free + Public Domain
+    # union; premium previews never enter NOLAN through these provider names.
+    "rawpixel", "rawpixel_video",
 })
 
 # License strings that read as open regardless of provider.
@@ -195,6 +198,9 @@ FLOORS = {
     # size defence stays where it belongs, at promotion, where `check_file` measures actual bytes
     # for something a human has chosen to hold.
     "curated": (0, 0),
+    # Metadata/thumbnail indexing: retain published dimensions but do not use
+    # them as an admission test. Pixel fitness is a promotion/render concern.
+    "indexed": (0, 0),
 }
 # Tiers that demand a KNOWN-OPEN licence rather than merely flagging an unknown one. Named as a
 # set because "is this tier strict about rights?" and "what is this tier's pixel floor?" are two

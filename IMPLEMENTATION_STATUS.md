@@ -6087,3 +6087,86 @@ including startup (15 new thumbnails, 5 cached; 0 errors/refusals). Text identit
 metadata + thumbnail path for each artist. Progress and resume state remain in the normal per-artist
 collection rows, so an interrupted run resumes the first incomplete artist and skips exhausted ones.
 Use `--max-artists N` for a bounded smoke run or `--no-pixels` for metadata only.
+Cross-process SQLite lock failures explicitly roll back the long-lived catalog connection and retry
+the same artist four times; a transient Visual Lab write therefore cannot poison the rest of a run.
+Generic pixel backfill now selects `thumb_path IS NULL` in SQL before applying its bound, so old
+thumbnail gaps remain reachable after the discovery catalog grows beyond the newest result page.
+
+**Full live completion (2026-08-02):** 480/480 artist collections reached exhaustion and yielded
+69,117 artwork rows with 69,117 raw thumbnails (6,331,534,967 bytes / 5.90 GiB). The directory's
+69,119 headline is stale by two: Evelyn De Morgan advertises 56 but its exhausted grid yields 55;
+Edmund Blair Leighton advertises 37 but yields 36. Final audit found zero missing titles, creators,
+types, or basic SDL download links; all 36 thumbnails left by an interrupted desktop session or a
+transient CDN error were recovered by the corrected backfill. Source-authored completeness is 478
+artist bios, 480 nationalities, and 477 birth/death ranges; Artvee supplies no artwork date for
+13,454 rows, which remain null. No captions and no CLIP embeddings were generated. The final
+359-artist resume took 5,896.84 seconds (98.3 minutes); total active transfer time was roughly two
+hours, excluding desktop sleep and an unrelated concurrent LoC catalog write lock.
+
+## Rawpixel collection-aware research source + HF highest tier (2026-08-02)
+
+Added `src/nolan/rawpixel.py`: structured search over Rawpixel's current same-origin
+`www.rawpixel.com/api/v1/search` endpoint, merging the frontend's explicit `$free` and
+`$publicdomain` requests into the requested union. Stable top paths are Images `1522`, Videos `1604`, Wallpapers `1636`; all
+20 verified path-dependent image/video facet tokens are maintained as described routing records.
+Search ranks matching facet/collection descriptions, interleaves those results with a broad-route
+safety search, and preserves actual tier, tags, AI-generated/editorial flags, source collections,
+dimensions, creator, basic download and optional high-resolution metadata. AI/editorial records are
+retained. `RAWPIXEL_COOKIE` plus `RAWPIXEL_USER_AGENT` can carry a normal authorised browser session
+when Rawpixel's Cloudflare edge challenges anonymous API requests; the client never solves/bypasses
+the challenge.
+
+Registered `rawpixel` and `rawpixel_video` in the canonical `ImageSearchClient` and CLI. Both are
+the first external provider in all hybrid HyperFrames provider tiers and in the acquisition engine's
+art/archival/general tiers; Rawpixel is also first in key-asset image and footage preferences. Video
+results require a real video URL (a poster is never treated as footage) and use basic SD/MP4 by
+default while retaining 4K/HD metadata. Rawpixel stays outside the uniformly-open legacy art list
+because its Free and CC0 rights differ per item.
+
+Visual Lab now has an `asset_collections` join table while retaining `assets.collection_id` as the
+primary compatibility FK. Existing rows migrate into primary memberships; collection filters include
+secondary memberships. `nolan images harvest rawpixel --query "wave" --limit 50` seeds the verified
+route table, indexes a bounded/restartable research slice, retains primary plus additional source
+memberships, and uses raw thumbnails four-wide with no decode, dimension admission check, or CLIP.
+The crawler refuses comprehensive mode unless written permission is explicitly acknowledged, matching
+Rawpixel's terms. Offline verification: 136 targeted provider/search/HF/catalog/gate regression tests
+green. A valid session can still receive Cloudflare 403 from a script because the edge also checks its
+browser/TLS fingerprint. `RAWPIXEL_CDP_URL=http://127.0.0.1:9222` makes the provider use a temporary tab
+in an authorised local Chrome DevTools session, preserving Chrome's own connection and cookies; NOLAN
+closes only that tab. Direct cookie plus matching user-agent remains a fallback. Live validation returned
+138 deduplicated page-one records for `wave` (38 Free, 100 Public Domain) with 228,119 combined matches;
+the parser maps the current nested title, creator, license, AI, type, keyword and basic-download fields.
+End-to-end Visual Lab validation indexed five `wave` records, refreshed their text identity entries,
+fetched five raw thumbnails four-wide (zero errors/refusals), generated no CLIP embeddings, and stored
+the page-1/offset-5 resume cursor plus the 228,119-result coverage denominator.
+
+Added `src/nolan/source_sessions.py` plus `scripts/refresh_rawpixel_session.py` for repeatable session
+maintenance. With the dedicated Chrome profile running on port 9222,
+`D:\env\nolan\python.exe -X utf8 scripts\refresh_rawpixel_session.py` verifies a real Public Domain
+search, requires a signed-in Rawpixel session cookie, captures only cookies applicable to Rawpixel's
+search endpoint, and atomically updates `RAWPIXEL_COOKIE`, `RAWPIXEL_USER_AGENT`, and
+`RAWPIXEL_CDP_URL` in `.env`. `--dry-run` performs the health check without writing. Cookie values are
+never accepted on the command line or printed; embedded JSON quotes are dotenv-escaped correctly, and
+the script detaches from Chrome without closing it. The function is reusable by a future localhost-only
+asset-source management action. Offline session/env tests and Rawpixel contract tests: 15 green.
+
+## Asset Sources control plane + canonical tiers (2026-08-02)
+
+Added `src/nolan/source_registry.py` as the single policy source for acquisition tiers, provider-only
+HyperFrames hybrid tiers, key-asset source preferences, source media/auth/rights metadata, roles, and
+resolved per-intent positions. `acquire.engine.TIERS`, the HyperFrames bridge's `_PROVIDER_TIERS`, and
+key-assets `_SOURCE_PREF` now import those canonical objects instead of maintaining three hidden copies;
+their deliberately different local/provider/precision orderings are preserved exactly.
+
+Added `src/nolan/source_control.py`, `/sources`, and `/api/sources`. The page lists 33 local, keyless,
+API-key, and browser-session sources with media, roles, secret-free configured/missing state, health,
+rights, actual Visual Lib coverage, documentation links, and every resolved acquisition/hybrid/key-asset
+tier matrix. It is linked as **Asset Sources** in the shared navigation. No credential value appears in
+the JSON or DOM: config state is boolean-only.
+
+Rawpixel exposes one **Refresh from Chrome** action shared by image and video. The POST endpoint is
+localhost-only, accepts only loopback `http://` CDP targets, calls the same tested session service as the
+CLI, atomically refreshes `.env`, and returns only counts/status. Live browser QA rendered all 33 rows,
+three acquisition intents, switched Hybrid and Key Asset matrices, and completed a real 100-row Rawpixel
+refresh. Verification: 86 acquisition/HyperFrames/key-assets/source tests green, plus 6 explicit legacy
+tier-parity tests green; the only browser console miss was Chrome's automatic favicon request.

@@ -35,7 +35,7 @@ def _scoring_vision_config(config, vision: str) -> dict:
 
 @main.command('image-search')
 @click.argument('query')
-@click.option('--source', '-s', type=click.Choice(['ddgs', 'pexels', 'pixabay', 'wikimedia', 'smithsonian', 'loc', 'wellcome', 'europeana', 'dpla', 'artvee', 'all']),
+@click.option('--source', '-s', type=click.Choice(['rawpixel', 'rawpixel_video', 'ddgs', 'pexels', 'pixabay', 'wikimedia', 'smithsonian', 'loc', 'wellcome', 'europeana', 'dpla', 'artvee', 'all']),
               default='ddgs', help='Image source to search.')
 @click.option('--output', '-o', type=click.Path(), default='.scratch/image_search_results.json',
               help='Output JSON file for results (default: .scratch/image_search_results.json).')
@@ -62,6 +62,8 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
     QUERY is the search term for finding images.
 
     Sources:
+      - rawpixel: Rawpixel Free + Public Domain images (collection-aware)
+      - rawpixel_video: Rawpixel Free + Public Domain videos
       - ddgs: DuckDuckGo image search (no API key needed)
       - pexels: Pexels stock photos (requires PEXELS_API_KEY)
       - pixabay: Pixabay stock photos (requires PIXABAY_API_KEY)

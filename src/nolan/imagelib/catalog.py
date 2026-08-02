@@ -98,6 +98,24 @@ CREATE TABLE IF NOT EXISTS collections (
     added_at       TEXT NOT NULL,
     last_crawled   TEXT
 );
+
+-- An asset may participate in several editorial collections. `assets.collection_id`
+-- remains the primary collection for compatibility and fast common-case queries;
+-- this table preserves every additional membership (Rawpixel boards are the first
+-- source that needs it).
+CREATE TABLE IF NOT EXISTS asset_collections (
+    asset_id       INTEGER NOT NULL,
+    collection_id  INTEGER NOT NULL,
+    is_primary     INTEGER NOT NULL DEFAULT 0,
+    position       INTEGER,
+    source         TEXT,
+    added_at       TEXT NOT NULL,
+    PRIMARY KEY (asset_id, collection_id),
+    FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE,
+    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_asset_collections_collection
+    ON asset_collections(collection_id, asset_id);
 """
 
 # Columns added after the first release. Applied by ALTER TABLE on open (SQLite has no
@@ -657,6 +675,12 @@ class AssetCatalog:
             self._conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_assets_collection "
                 "ON assets(status, held, collection_id) WHERE held=0")
+            # Upgrade pre-join catalogs: every legacy FK is a primary membership.
+            self._conn.execute(
+                """INSERT OR IGNORE INTO asset_collections
+                   (asset_id, collection_id, is_primary, position, source, added_at)
+                   SELECT id, collection_id, 1, 0, source, added_at FROM assets
+                   WHERE collection_id IS NOT NULL""")
             # `discovery_stats` counts these two over the whole tier on every request, for the
             # footer line. Partial indexes because both are sparse: 1.7% have pixels, ~0% a
             # caption, so the index holds a few thousand rows rather than 357,027.
@@ -719,6 +743,16 @@ class AssetCatalog:
         with self._lock:
             self._conn.commit()
 
+    def rollback(self) -> None:
+        """Clear a failed write transaction so a long-lived crawler can safely retry.
+
+        SQLite leaves a connection inside its transaction after some cross-process lock errors.
+        Without an explicit rollback, one transient busy window can make every later collection
+        on the same ImageLibrary instance fail immediately.
+        """
+        with self._lock:
+            self._conn.rollback()
+
     def _commit(self) -> None:
         """The per-write commit, skipped while a batch owns the transaction.
 
@@ -769,6 +803,13 @@ class AssetCatalog:
                  asset.year_from, asset.year_to,
                  asset.caption_json, asset.caption_schema),
             )
+            if asset.collection_id is not None:
+                self._conn.execute(
+                    """INSERT OR REPLACE INTO asset_collections
+                       (asset_id, collection_id, is_primary, position, source, added_at)
+                       VALUES (?,?,?,?,?,?)""",
+                    (cur.lastrowid, int(asset.collection_id), 1, 0, asset.source,
+                     asset.added_at))
             self._commit()
         asset.id = cur.lastrowid
         return asset
@@ -796,6 +837,15 @@ class AssetCatalog:
         with self._lock:
             self._conn.execute(f"UPDATE assets SET {sets} WHERE id=?",
                                [*fields.values(), asset_id])
+            if fields.get("collection_id") is not None:
+                self._conn.execute(
+                    "UPDATE asset_collections SET is_primary=0 WHERE asset_id=?", (asset_id,))
+                self._conn.execute(
+                    """INSERT INTO asset_collections
+                       (asset_id, collection_id, is_primary, position, source, added_at)
+                       SELECT id, ?, 1, 0, source, ? FROM assets WHERE id=?
+                       ON CONFLICT(asset_id, collection_id) DO UPDATE SET is_primary=1""",
+                    (int(fields["collection_id"]), datetime.now(timezone.utc).isoformat(), asset_id))
             self._commit()
 
     def update_many(self, patches: "Dict[int, dict]") -> int:
@@ -952,7 +1002,12 @@ class AssetCatalog:
         if source:
             sql += " AND source=?"; params.append(source)
         if collection_id is not None:
-            sql += " AND collection_id=?"; params.append(int(collection_id))
+            # Primary membership stays inline on assets; overlapping editorial
+            # memberships live in the join table. Search either without a JOIN so
+            # callers that select assets.* keep the same row shape.
+            sql += (" AND (collection_id=? OR EXISTS (SELECT 1 FROM asset_collections ac "
+                    "WHERE ac.asset_id=assets.id AND ac.collection_id=?))")
+            params.extend((int(collection_id), int(collection_id)))
         if license_contains:
             sql += " AND license LIKE ?"; params.append(f"%{license_contains}%")
         for k in self.FACET_EXACT:
@@ -1018,6 +1073,25 @@ class AssetCatalog:
                 f"SELECT COUNT(*) c FROM assets WHERE {where} "
                 f"AND thumb_path IS NOT NULL AND TRIM(thumb_path)<>''", params).fetchone()
         return int(row["c"])
+
+    def list_missing_pixels(self, *, status: Optional[str] = "active",
+                            held: Optional[int] = 0,
+                            collection_id: Optional[int] = None,
+                            source: Optional[str] = None,
+                            limit: int = 200) -> List[Asset]:
+        """Return discovery rows lacking a local thumbnail, filtered before LIMIT.
+
+        Filtering a bounded `list()` in Python misses old gaps once a catalog grows beyond the
+        bound. This SQL ordering keeps backfill incremental while making every gap reachable.
+        """
+        where, params = self._filter_sql(status=status, held=held, source=source,
+                                         collection_id=collection_id)
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT * FROM assets WHERE {where} "
+                "AND (thumb_path IS NULL OR TRIM(thumb_path)='') "
+                "ORDER BY id DESC LIMIT ?", [*params, int(limit)]).fetchall()
+        return [self._row(r) for r in rows]
 
     def facets(self, field: str, *, status: Optional[str] = "active", held: Optional[int] = 0,
                limit: int = 40, **filters) -> List[Tuple[str, int]]:
@@ -1437,4 +1511,42 @@ class AssetCatalog:
     def list_collections(self) -> List[Collection]:
         with self._lock:
             rows = self._conn.execute("SELECT * FROM collections ORDER BY id").fetchall()
+        return [self._collection_row(r) for r in rows]
+
+    def link_asset_collection(self, asset_id: int, collection_id: int, *,
+                              primary: bool = False, position: Optional[int] = None,
+                              source: Optional[str] = None) -> None:
+        """Add one collection membership without discarding existing memberships.
+
+        Promoting a membership to primary also updates the compatibility FK and
+        clears the old join-row primary marker. The old collection membership is
+        retained; only its role changes.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        with self._lock:
+            if primary:
+                self._conn.execute(
+                    "UPDATE asset_collections SET is_primary=0 WHERE asset_id=?", (asset_id,))
+                self._conn.execute(
+                    "UPDATE assets SET collection_id=? WHERE id=?", (collection_id, asset_id))
+            self._conn.execute(
+                """INSERT INTO asset_collections
+                   (asset_id, collection_id, is_primary, position, source, added_at)
+                   VALUES (?,?,?,?,?,?)
+                   ON CONFLICT(asset_id, collection_id) DO UPDATE SET
+                     is_primary=excluded.is_primary,
+                     position=COALESCE(excluded.position, asset_collections.position),
+                     source=COALESCE(excluded.source, asset_collections.source)""",
+                (int(asset_id), int(collection_id), int(primary), position, source, now))
+            self._commit()
+
+    def collections_for_asset(self, asset_id: int) -> List[Collection]:
+        """All memberships, primary first and then source position/order."""
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT c.* FROM collections c
+                   JOIN asset_collections ac ON ac.collection_id=c.id
+                   WHERE ac.asset_id=?
+                   ORDER BY ac.is_primary DESC, ac.position IS NULL, ac.position, c.title""",
+                (int(asset_id),)).fetchall()
         return [self._collection_row(r) for r in rows]

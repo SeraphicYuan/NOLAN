@@ -149,6 +149,7 @@ class _FakeCfg:
 # the FULL registry pool.py must inherit — if image_search adds a provider and the pool goes
 # stale, this set stops matching and the test fails (docs claim, tests enforce).
 _FULL_ROSTER = {
+    "rawpixel", "rawpixel_video",
     "ddgs", "pexels", "pexels_video", "pixabay", "pixabay_video", "wikimedia", "smithsonian",
     "loc", "archive", "archive_image", "nasa", "nasa_video", "openverse", "met", "artic",
     "cleveland", "wellcome", "europeana", "dpla", "flickr", "unsplash", "rijksmuseum",
@@ -168,7 +169,7 @@ def test_pool_client_surfaces_keyless_archival_and_art_sources():
     without any key, so a video essay actually gets fine-art and archival footage, not just ddgs."""
     pool = _load_pool()
     avail = set(pool._client(_FakeCfg()).get_available_providers())
-    for name in ("artvee", "archive", "archive_image", "met", "nasa_video"):
+    for name in ("rawpixel", "rawpixel_video", "artvee", "archive", "archive_image", "met", "nasa_video"):
         assert name in avail, f"{name} should be available (keyless) in the pool fan-out"
 
 

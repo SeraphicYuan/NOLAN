@@ -5,7 +5,7 @@ import logging
 import threading
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
@@ -98,6 +98,7 @@ _RATE_LIMITER = _RateLimiter()
 # within the timeout SKIPS that provider (returns []) rather than piling onto the 429 burst; fast
 # providers (ddgs/pexels/pixabay) are unthrottled here and stay at full speed.
 _PROVIDER_MAX_CONCURRENCY = {
+    "rawpixel": 2, "rawpixel_video": 2,
     "wikimedia": 2, "artvee": 2, "met": 2, "artic": 2, "rijksmuseum": 2, "harvard": 2,
     "cleveland": 2, "loc": 2, "smithsonian": 2, "europeana": 2, "dpla": 2, "nasa": 2,
 }
@@ -126,6 +127,10 @@ class ImageSearchResult:
     scored_by: Optional[str] = None  # Which vision model scored this
     quality_score: Optional[float] = None  # Image quality score (0-10)
     quality_reason: Optional[str] = None  # Explanation for quality score
+    # Provider-rich fields that should survive the generic search layer without
+    # expanding this dataclass for every source-specific facet. Rawpixel uses it
+    # for tier, tags, AI/editorial flags and overlapping collections.
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -1422,6 +1427,91 @@ class ArtveeProvider(ImageProvider):
         return result
 
 
+class _RawpixelProvider(ImageProvider):
+    """Rawpixel Free + Public Domain search, collection-aware and lazy."""
+
+    media_type = "image"
+
+    def __init__(self, *, media_type: str = "image", cookie: Optional[str] = None,
+                 user_agent: Optional[str] = None, cdp_url: Optional[str] = None):
+        self.media_type = media_type
+        self.name = "rawpixel_video" if media_type == "video" else "rawpixel"
+        self._cli = None
+        self.cookie = cookie
+        self.user_agent = user_agent
+        self.cdp_url = cdp_url
+
+    def _client(self):
+        if self._cli is None:
+            from nolan.rawpixel import RawpixelClient
+            self._cli = RawpixelClient(cookie=self.cookie, user_agent=self.user_agent,
+                                       cdp_url=self.cdp_url)
+        return self._cli
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        hits = self._client().search(
+            query, media_type=self.media_type, max_results=max_results,
+            sort="curated", collection_aware=True)
+        out = []
+        for r in hits:
+            url = r.download_url or r.preview_url or r.thumbnail_url
+            if not url:
+                continue
+            out.append(ImageSearchResult(
+                url=url, thumbnail_url=r.thumbnail_url, preview_image_url=r.thumbnail_url,
+                title=r.title, source=self.name, source_url=r.detail_url,
+                width=r.width, height=r.height, photographer=r.creator,
+                license=r.license, media_type=r.media_type, duration=r.duration,
+                ref=f"rawpixel:{r.id}",
+                metadata={
+                    "rawpixel_id": r.id, "tier": r.tier,
+                    "description": r.description, "tags": r.tags,
+                    "image_type": r.image_type,
+                    "editorial_only": r.editorial_only,
+                    "ai_generated": r.ai_generated,
+                    "primary_collection": r.primary_collection_slug,
+                    "collections": r.collection_slugs,
+                    "high_resolution_url": r.high_resolution_url,
+                    "high_width": r.high_width, "high_height": r.high_height,
+                }))
+        return out
+
+    def resolve(self, result: "ImageSearchResult") -> "ImageSearchResult":
+        """Use the best non-watermarked derivative exposed by the API.
+
+        Rawpixel's account download handshake remains authoritative for original
+        files. We never manufacture a high-resolution URL or use a URL carrying
+        its explicit watermark transform.
+        """
+        if self.media_type == "video":
+            return result  # basic SD/MP4 by default; 4K/MOV remains in metadata
+        high = (result.metadata or {}).get("high_resolution_url")
+        if high and "mark=rawpixel-watermark" not in str(high):
+            result.url = high
+            result.width = (result.metadata or {}).get("high_width") or result.width
+            result.height = (result.metadata or {}).get("high_height") or result.height
+        return result
+
+
+class RawpixelProvider(_RawpixelProvider):
+    name = "rawpixel"
+
+    def __init__(self, *, cookie: Optional[str] = None, user_agent: Optional[str] = None,
+                 cdp_url: Optional[str] = None):
+        super().__init__(media_type="image", cookie=cookie, user_agent=user_agent,
+                         cdp_url=cdp_url)
+
+
+class RawpixelVideoProvider(_RawpixelProvider):
+    name = "rawpixel_video"
+    media_type = "video"
+
+    def __init__(self, *, cookie: Optional[str] = None, user_agent: Optional[str] = None,
+                 cdp_url: Optional[str] = None):
+        super().__init__(media_type="video", cookie=cookie, user_agent=user_agent,
+                         cdp_url=cdp_url)
+
+
 class ImageSearchClient:
     """Client for searching images across multiple providers."""
 
@@ -1441,6 +1531,13 @@ class ImageSearchClient:
         """
         k = keys or {}
         self.providers: Dict[str, ImageProvider] = {
+            # Highest-tier broad visual source: Free + Public Domain only.
+            "rawpixel": RawpixelProvider(cookie=k.get("rawpixel_cookie"),
+                                          user_agent=k.get("rawpixel_user_agent"),
+                                          cdp_url=k.get("rawpixel_cdp_url")),
+            "rawpixel_video": RawpixelVideoProvider(cookie=k.get("rawpixel_cookie"),
+                                                     user_agent=k.get("rawpixel_user_agent"),
+                                                     cdp_url=k.get("rawpixel_cdp_url")),
             "ddgs": DDGSProvider(),
             "pexels": PexelsProvider(api_key=pexels_api_key),
             "pixabay": PixabayProvider(api_key=pixabay_api_key),

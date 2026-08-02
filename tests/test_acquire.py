@@ -71,6 +71,8 @@ def test_generate_skipped_for_non_evocative(tmp_path):
 
 def test_source_rank_tiers():
     from nolan.acquire.engine import source_rank
+    assert source_rank("general", "stock:rawpixel") < source_rank("general", "stock:pexels")
+    assert source_rank("art", "stock:rawpixel") < source_rank("art", "stock:artvee")
     assert source_rank("art", "stock:artvee") < source_rank("art", "stock:ddgs")        # art: artvee beats web
     assert source_rank("general", "library") == 0                                        # library ranks first
     assert source_rank("archival", "stock:archive") < source_rank("archival", "stock:pexels_video")

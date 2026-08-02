@@ -155,6 +155,13 @@ class ImageSourcesConfig:
     coverr_api_key: str = ""       # https://coverr.co/ (API access)
     freesound_api_key: str = ""    # SFX audio — https://freesound.org/apiv2/apply/
 
+    # Optional cookie + matching UA exported from the user's normal Rawpixel
+    # browser session. Needed only when its Cloudflare edge challenges the API.
+    rawpixel_cookie: str = ""
+    rawpixel_user_agent: str = ""
+    # Preferred when Cloudflare requires Chrome's real browser/TLS fingerprint.
+    rawpixel_cdp_url: str = ""
+
     def provider_keys(self) -> dict:
         """Map for ImageSearchClient(keys=...)."""
         return {
@@ -165,6 +172,9 @@ class ImageSourcesConfig:
             "rijksmuseum": self.rijksmuseum_api_key,
             "harvard": self.harvard_art_api_key,
             "coverr": self.coverr_api_key,
+            "rawpixel_cookie": self.rawpixel_cookie,
+            "rawpixel_user_agent": self.rawpixel_user_agent,
+            "rawpixel_cdp_url": self.rawpixel_cdp_url,
         }
 
 
@@ -243,6 +253,9 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
     config.image_sources.harvard_art_api_key = os.getenv("HARVARD_ART_API_KEY", "")
     config.image_sources.coverr_api_key = os.getenv("COVERR_API_KEY", "")
     config.image_sources.freesound_api_key = os.getenv("FREESOUND_API_KEY", "")
+    config.image_sources.rawpixel_cookie = os.getenv("RAWPIXEL_COOKIE", "")
+    config.image_sources.rawpixel_user_agent = os.getenv("RAWPIXEL_USER_AGENT", "")
+    config.image_sources.rawpixel_cdp_url = os.getenv("RAWPIXEL_CDP_URL", "")
     config.web_search.tavily_api_key = os.getenv("TAVILY_API_KEY", "")
     config.web_search.brave_api_key = os.getenv("BRAVE_API_KEY", "")
     config.web_search.serpapi_api_key = os.getenv("SERPAPI_API_KEY", "")

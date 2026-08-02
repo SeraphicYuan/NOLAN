@@ -89,10 +89,14 @@ def register(app, ctx):
 
         out = []
         for name, adapter in sorted(SOURCES.items()):
-            col = adapter.collection()
+            # `describe()`, NOT `collection()`: building the menu used to run each crawl's
+            # preconditions, so rawpixel's "requires --query" guard 500'd this route and erased
+            # every source from the tab — artvee's 69,117 indexed rows included.
+            d = adapter.describe()
             got = per_source.get(name, {})
-            out.append({"id": name, "title": col.title, "rights": got.get("rights") or col.rights,
-                        "description": col.description,
+            out.append({"id": name, "title": d["title"], "rights": got.get("rights") or d["rights"],
+                        "description": d["description"],
+                        "requires": d["requires"], "error": d["error"],
                         # what this source has ACTUALLY delivered, not what it could
                         "indexed": got.get("rows", 0),
                         "collections": got.get("collections", 0),
@@ -228,13 +232,15 @@ def register(app, ctx):
                 continue
             if needle and needle not in f"{c.title} {c.slug}".lower():
                 continue
-            # A whole-source harvest is not a curated collection, and `upstream_count` is the
-            # clean tell: only a source-wide crawl is in a position to know how big the source
-            # is, so a curated set never has one. That separates "Aubrey Beardsley" (74 pictures
+            # For museum/API crawls, `upstream_count` separates a whole-source harvest from a
+            # curated set. That separates "Aubrey Beardsley" (74 pictures
             # someone chose) from "Cleveland Museum of Art — CC0 artworks" (everything they have)
             # and from the `pdia-uncollected` fallback, which is a harvest bucket wearing a
             # collection's clothes.
-            curated = c.upstream_count is None
+            # Artist is Artvee's chosen collection boundary even when the page supplies an
+            # exact denominator; coverage knowledge must not make the collection look uncurated.
+            curated = c.upstream_count is None or (
+                c.source == "artvee" and c.slug.startswith("artvee-artist-"))
             if curated_only and not curated:
                 continue
             d = c.to_dict()
@@ -260,13 +266,19 @@ def register(app, ctx):
         if source not in SOURCES:
             raise HTTPException(status_code=400,
                                 detail=f"unknown source {source!r} (known: {sorted(SOURCES)})")
+        artist = (body.get("artist") or "").strip() or None
+        if source == "artvee" and not artist:
+            raise HTTPException(status_code=400,
+                                detail="Artvee harvest requires an artist name or slug")
         limit = _bounded_limit(body.get("limit"), default=200)
         job = job_manager.start(
             "visuallib-harvest", operations.harvest_visual_lib,
             meta={"source": source, "limit": limit,
-                  "dept": body.get("dept") or None, "query": body.get("query") or None},
+                  "dept": body.get("dept") or None, "query": body.get("query") or None,
+                  "artist": artist},
             source=source, limit=limit, dept=(body.get("dept") or None),
-            query=(body.get("query") or None), scope=body.get("scope", "global"),
+            query=(body.get("query") or None), artist=artist,
+            scope=body.get("scope", "global"),
             project=body.get("project") or None)
         return {"job_id": job.id, "type": "visuallib-harvest"}
 

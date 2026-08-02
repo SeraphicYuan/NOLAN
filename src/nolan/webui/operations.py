@@ -3319,7 +3319,8 @@ async def publish_article(job, *, src: str, theme: str = "press", type: str = "e
 # --------------------------------------------------------------------------
 
 async def harvest_visual_lib(job, *, source: str, limit: int = 200, dept: Optional[str] = None,
-                             query: Optional[str] = None, scope: str = "global",
+                             query: Optional[str] = None, artist: Optional[str] = None,
+                             scope: str = "global",
                              project: Optional[str] = None):
     """Harvest a collection into the discovery tier (metadata + a 512px thumbnail, no bytes).
 
@@ -3332,7 +3333,7 @@ async def harvest_visual_lib(job, *, source: str, limit: int = 200, dept: Option
 
     if source not in SOURCES:
         raise RuntimeError(f"unknown harvest source {source!r} (known: {', '.join(sorted(SOURCES))})")
-    kw = {k: v for k, v in (("dept", dept), ("query", query)) if v}
+    kw = {k: v for k, v in (("dept", dept), ("query", query), ("artist", artist)) if v}
     job.set_progress(0.02, f"Harvesting {source} ({limit} rows) …")
 
     def _progress(rep):

@@ -1305,10 +1305,9 @@ class ImageLibrary:
         The fetch runs `concurrency`-wide: it is nearly all network, and a serial batch spends
         its whole wall-clock waiting on museum CDNs.
         """
-        pool_rows = [a for a in self.catalog.list(status="active", held=0,
-                                                  collection_id=collection_id, source=source,
-                                                  limit=max(limit * 4, 200))
-                     if not a.thumb_path]
+        pool_rows = self.catalog.list_missing_pixels(
+            status="active", held=0, collection_id=collection_id, source=source,
+            limit=max(limit * 2, 200))
         resolved = self._resolve_missing_thumb_urls(pool_rows[:limit * 2])
         rows = [a for a in pool_rows if a.thumb_url][:limit]
 

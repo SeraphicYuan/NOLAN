@@ -22,6 +22,8 @@ optional — a plain {"query"} still works; the bridge falls back to a single li
 import argparse, asyncio, json, os
 from pathlib import Path
 
+from nolan.source_registry import HYBRID_PROVIDER_TIERS as _PROVIDER_TIERS
+
 
 def _client(cfg):
     """Canonical ImageSearchClient (whole provider registry, no hand-maintained subset) — delegates to
@@ -74,18 +76,6 @@ def _need_queries(need) -> list:
 # provider is still queried (full fan-out) — this only ranks the PICK order. Providers not
 # listed for a category fall to a default low rank (still included, just later). Names are
 # validated against the live registry by tests/test_hf_pool_expand.py (can't go stale silently).
-_PROVIDER_TIERS = {
-    # fine art / paintings / illustration — artvee + wikicommons best, then museum APIs
-    "art": ["artvee", "wikimedia", "met", "artic", "rijksmuseum", "harvard", "cleveland",
-            "wellcome", "europeana", "dpla", "smithsonian", "loc", "openverse", "ddgs"],
-    # historical stills & FOOTAGE — archive.org first (movies + stills), then heritage archives
-    "archival": ["archive", "archive_image", "loc", "smithsonian", "europeana", "dpla", "nasa",
-                 "nasa_video", "wikimedia", "flickr", "pexels_video", "pixabay_video",
-                 "coverr_video", "ddgs"],
-    # modern photos & video, people/places/nature/objects — the usual stock, movie-style clips
-    "general": ["pexels", "pixabay", "unsplash", "ddgs", "openverse", "pexels_video",
-                "pixabay_video", "coverr_video", "flickr", "wikimedia", "nasa", "nasa_video"],
-}
 _DEFAULT_CATEGORY = "general"
 
 
