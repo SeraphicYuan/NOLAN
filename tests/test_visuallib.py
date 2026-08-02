@@ -1737,6 +1737,69 @@ def test_context_line_does_not_double_parenthesise_a_catalog_display_name():
     assert "(France, 1840–1926)" in plain.context_line()
 
 
+def test_clip_is_opt_in_but_identity_is_not(lib, monkeypatch):
+    """CLIP used to default ON in the library and be switched OFF at each call site that had
+    thought about it — so it ran wherever nobody remembered: the CLI, scripts, new adapters. At
+    ~103 ms/row against identity's 8, that is the difference between a 3-hour crawl of the
+    Library of Congress and a 34-hour one.
+
+    Turning it off must NOT take the identity channel with it: identity is what makes a row
+    findable by name at all, and 96% of the library already has no pixels.
+    """
+    from PIL import Image
+
+    def _fake_dl(url, dest, **kw):
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (400, 400), (120, 90, 60)).save(dest)
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _fake_dl)
+    calls = {"clip": 0}
+    monkeypatch.setattr(type(lib.embedder), "embed_image",
+                        lambda self, p: calls.__setitem__("clip", calls["clip"] + 1) or [0.1] * 8)
+
+    asset, _ = lib.add_discovery(source_ref="x:1", thumb_url="https://e/x.jpg", source="artic",
+                                 title="A Wave", creator="Hokusai", license="CC0", pixels=True)
+    lib.flush_index()
+    assert calls["clip"] == 0, "the look channel must not run unasked"
+    # ...but the row is still findable by name, which is the whole point of the split
+    assert lib.search_discovery("A Wave", k=5), "identity indexing must still have happened"
+
+    asset2, _ = lib.add_discovery(source_ref="x:2", thumb_url="https://e/y.jpg", source="artic",
+                                  title="Another Wave", license="CC0", pixels=True,
+                                  clip_embed=True)
+    assert calls["clip"] == 1, "explicit opt-in must still work"
+
+
+def test_every_downloaded_thumbnail_is_accounted_for(lib, monkeypatch):
+    """A thumbnail on disk with no vector pointing at it is a producer that ran and a consumer
+    that never saw the output — the same silent class as the stale-consumer bug.
+
+    Found live: 11,457 rows had a downloaded thumbnail and no CLIP vector, 11,197 of them the
+    ENTIRETY of the Public Domain Image Archive, because those pixels arrived through the URL
+    repair rather than through `backfill_pixels`. Nothing failed and nothing said so.
+    """
+    from PIL import Image
+
+    def _fake_dl(url, dest, **kw):
+        Path(dest).parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (400, 400), (90, 120, 60)).save(dest)
+
+    monkeypatch.setattr("nolan.http_client.download_file_sync", _fake_dl)
+    lib.add_discovery(source_ref="x:1", thumb_url="https://e/x.jpg", source="artic",
+                      title="one", license="CC0", pixels=True)
+    lib.flush_index()
+    with_pixels = [a for a in lib.catalog.list(status="active", held=0, limit=100)
+                   if a.thumb_path]
+    indexed = {int(i) for i in lib._disc_coll().get(limit=10_000, include=[])["ids"]
+               if str(i).isdigit()}
+    # With CLIP off by default the honest state is "pixels, no vector" — the invariant is not
+    # that they match, but that the gap is VISIBLE rather than assumed away.
+    gap = [a.id for a in with_pixels if a.id not in indexed]
+    assert len(gap) == len(with_pixels), (
+        "CLIP is opt-in, so a default harvest must leave the look index empty — "
+        "if this fails, something is embedding without being asked")
+
+
 def test_the_met_dump_hands_over_artist_qids_positionally():
     """Both columns are pipe-separated and positional, and a slot may be blank when the museum
     identified one collaborator but not the other. Splitting either column alone shifts every id

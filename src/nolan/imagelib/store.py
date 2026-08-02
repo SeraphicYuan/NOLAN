@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +31,21 @@ _DESC_COLLECTION = "descriptions"
 _DISC_COLLECTION = "discovery_images"
 _DISC_IDENT_COLLECTION = "discovery_identity"
 _THUMB_PX = 512
+
+# THE LOOK CHANNEL IS OPT-IN, EVERYWHERE, FROM ONE PLACE.
+#
+# It used to default ON in the library and be switched OFF at each call site that had thought
+# about it — the search page, the acquire pipeline. So CLIP ran wherever nobody had remembered:
+# the CLI, scripts, tests, and any adapter written next. Defaults are what unexamined callers
+# get, and this one cost ~103 ms/row against the identity channel's 8 — which at the Library of
+# Congress's 1.19M images is the difference between a 3-hour crawl and a 34-hour one.
+#
+# The consequence is stated rather than hidden: rows indexed with this off are findable by NAME
+# and by facet, and absent from look ranking until something embeds them. That is already true
+# of 96% of the library, and `backfill_pixels(embed=True)` is the deliberate way back.
+#
+# Set NOLAN_IMAGELIB_CLIP=1 to restore the old behaviour process-wide.
+CLIP_DEFAULT = os.environ.get("NOLAN_IMAGELIB_CLIP", "").strip().lower() in {"1", "true", "yes"}
 # How much of a catalog TITLE a query must cover before the query counts as NAMING that work (and
 # retrieval routes to the identity channel). The lexical matcher itself admits a hit at 0.5, which
 # is right for "is this title relevant"; it is too loose for "is this query an identity question" —
@@ -470,7 +486,8 @@ class ImageLibrary:
                       tags=None, tier: str = "archival", embed: bool = True,
                       pixels: bool = True,
                       medium=None, classification=None, department=None,
-                      culture=None, place=None, primary_maker=None):
+                      culture=None, place=None, primary_maker=None,
+                      clip_embed: bool = CLIP_DEFAULT):
         """Index an image we do NOT hold: catalog metadata + (optionally) a local thumbnail.
         Returns ``(Asset, created)``; re-indexing a known `source_ref` refreshes it in place.
 
@@ -540,7 +557,7 @@ class ImageLibrary:
                 wikidata_qid=wikidata_qid, collection_id=collection_id, license=license,
                 thumb_url=thumb_url, medium=medium, classification=classification,
                 department=department, culture=culture, place=place,
-                primary_maker=primary_maker)
+                primary_maker=primary_maker, clip_embed=clip_embed)
 
         fresh_thumb = not dest.exists()
         if fresh_thumb:
@@ -595,10 +612,11 @@ class ImageLibrary:
             wikidata_qid=wikidata_qid, collection_id=collection_id, license=license,
             thumb_url=thumb_url, medium=medium, classification=classification,
             department=department, culture=culture, place=place,
-            primary_maker=primary_maker)
+            primary_maker=primary_maker, clip_embed=clip_embed)
 
     def _write_discovery_row(self, *, source_ref, existing, rel, fresh_thumb, embed,
-                             thumb_url, description_source="catalog", **fields):
+                             thumb_url, description_source="catalog",
+                             clip_embed: bool = CLIP_DEFAULT, **fields):
         """Insert-or-refresh one discovery row and index its channels.
 
         Shared by both crawl phases. `rel` is the stored thumbnail path, or None for a Phase-A
@@ -652,9 +670,14 @@ class ImageLibrary:
             # A re-crawl re-embedded every unchanged row — at catalog scale that is the whole cost
             # of the crawl for no new information. Embed the thumbnail only when it is actually new,
             # and the identity text only when it actually changed.
+            #
+            # `embed` means the IDENTITY channel and stays on by default; `clip_embed` is the look
+            # channel and does not (see CLIP_DEFAULT). Conflating them would mean turning CLIP off
+            # also turned off the thing that makes the row findable at all.
             thumb = (self.base / rel) if rel else None
             self._index_discovery(
-                asset, thumb, clip=bool(rel) and (created or fresh_thumb),
+                asset, thumb,
+                clip=clip_embed and bool(rel) and (created or fresh_thumb),
                 ident=created or (existing.identity_text() != asset.identity_text()))
         return asset, created
 
@@ -1097,19 +1120,24 @@ class ImageLibrary:
         return {"changed": changed, "covered": covered,
                 "movements": len(display), "artists_with_movement": len(by_key)}
 
-    def _fetch_thumb(self, source_ref: str, thumb_url: str) -> Path:
-        """Download + shrink one thumbnail. Pure I/O, safe to run on a worker thread."""
+    def _fetch_thumb(self, source_ref: str, thumb_url: str, *, raw: bool = False) -> Path:
+        """Download one thumbnail. Pure I/O, safe to run on a worker thread.
+
+        ``raw=True`` keeps a source-supplied display thumbnail byte-for-byte: no PIL decode and
+        no resize. The original artwork is still validated later if it is promoted.
+        """
         from nolan.http_client import download_file_sync
 
         dest = self._thumb_dest(source_ref, thumb_url)
         if not dest.exists():
             dest.parent.mkdir(parents=True, exist_ok=True)
             download_file_sync(thumb_url, str(dest), headers={"User-Agent": _UA})
-            _shrink(dest, _THUMB_PX)
+            if not raw:
+                _shrink(dest, _THUMB_PX)
         return dest
 
     def warm_pixels(self, assets, *, concurrency: int = 8, tier: str = "archival",
-                    embed: bool = True) -> dict:
+                    embed: bool = CLIP_DEFAULT, raw: bool = False) -> dict:
         """Fetch pixels for a HANDFUL of rows right now — the on-demand path behind search.
 
         Retrieval returns a page of results; the ones a human is about to look at are exactly the
@@ -1153,7 +1181,7 @@ class ImageLibrary:
 
         downloaded: Dict[int, Path] = {}
         with ThreadPoolExecutor(max_workers=max(1, concurrency)) as pool:
-            futures = {pool.submit(self._fetch_thumb, a.source_ref, a.thumb_url): a
+            futures = {pool.submit(self._fetch_thumb, a.source_ref, a.thumb_url, raw=raw): a
                        for a in todo}
             for fut, a in futures.items():
                 try:
@@ -1250,7 +1278,8 @@ class ImageLibrary:
 
     def backfill_pixels(self, *, limit: int = 200, collection_id: Optional[int] = None,
                         source: Optional[str] = None, tier: Optional[str] = None,
-                        embed: bool = True, concurrency: int = 8, progress=None) -> dict:
+                        embed: bool = CLIP_DEFAULT, concurrency: int = 8,
+                        raw: bool = False, progress=None) -> dict:
         """PHASE B — fetch thumbnails for record-only rows, so `look` retrieval grows over time.
 
         Deliberately incremental and bounded: measured at 470 ms/row, the whole artic
@@ -1282,7 +1311,7 @@ class ImageLibrary:
         step = max(1, concurrency * 2)
         for i in range(0, len(rows), step):
             res = self.warm_pixels(rows[i:i + step], concurrency=concurrency,
-                                   tier=tier or "archival", embed=embed)
+                                   tier=tier or "archival", embed=embed, raw=raw)
             for k in ("attempted", "fetched", "refused", "errors"):
                 out[k] += res[k]
             out["reasons"].extend(res["reasons"][:max(0, 12 - len(out["reasons"]))])
@@ -1382,13 +1411,16 @@ class ImageLibrary:
         if len(self._ident_buf) >= self._IDENT_BATCH:
             self.flush_index()
 
-    def _index_discovery(self, asset: Asset, thumb: Optional[Path], *, clip: bool = True,
+    def _index_discovery(self, asset: Asset, thumb: Optional[Path], *, clip: bool = CLIP_DEFAULT,
                          ident: bool = True) -> None:
         """Both discovery channels for one row: CLIP over the thumbnail (look) and BGE over the
         catalog identity (names). Either may fail independently without losing the other.
 
         `thumb` is None on a Phase-A record-only row; the identity channel still indexes, which
         is why such a row is at full strength for named queries and absent from look ranking.
+
+        CLIP IS OPT-IN (`CLIP_DEFAULT`); the identity channel is not. Identity is what makes the
+        library searchable at all, and it costs 8 ms/row against CLIP's ~103.
         """
         meta = {"source": asset.source or "", "license": asset.license or "",
                 "collection_id": asset.collection_id or 0}
@@ -1492,7 +1524,7 @@ class ImageLibrary:
     def search_discovery(self, query: str, *, k: int = 12, offset: int = 0,
                          collection_id: Optional[int] = None,
                          warm: bool = False, warm_concurrency: int = 8,
-                         warm_embed: bool = True, use_clip: bool = True,
+                         warm_embed: bool = CLIP_DEFAULT, use_clip: bool = CLIP_DEFAULT,
                          **facets) -> List[LibraryHit]:
         """Search the NOT-HELD tier. Three channels, ROUTED by what the query is asking for.
 
