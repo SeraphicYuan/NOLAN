@@ -149,6 +149,56 @@ def register(app, ctx):
         return {"total": lib.catalog.count("active", held=0, **f), "applied": f,
                 "facets": out, "artists": artists}
 
+    @app.get("/api/visuallib/artists")
+    async def visuallib_artists(scope: str = "global", project: str = None,
+                                q: str = None, limit: int = 200, offset: int = 0,
+                                kind: str = None, known: str = None):
+        """The visual knowledge table — one row per MAKER, with the work count it earns.
+
+        A separate resource from `/facets`'s artist strip, which answers "which artists are in the
+        current result set" in 24 chips. This answers "who is in this library, and what do we know
+        about them" — the table itself, browsable and sortable, which until now had no surface at
+        all: 4,115 rows of dates, nationality, movement and biography reachable only from a card
+        that happened to show one of their pictures.
+
+        Counts come from ONE grouped query over `assets.artist_key`, not a lookup per artist —
+        the same shape the collections list had to be rewritten into when 581 collections cost
+        119 seconds.
+        """
+        lib = _open(scope, project)
+        counts = {k: n for k, _, n in lib.catalog.creator_histogram(held=0)}
+        needle = (q or "").strip().lower()
+        rows = []
+        for a in lib.catalog.list_artists(limit=100_000):
+            n = counts.get(a.name_key or "", 0)
+            if kind and (a.kind or "") != kind:
+                continue
+            # "known" means we actually learned something — as opposed to a row that exists only
+            # to record that we looked and Wikidata did not have them.
+            has = bool(a.birth_year or a.nationality or a.movement or a.biography)
+            if known == "yes" and not has:
+                continue
+            if known == "no" and has:
+                continue
+            if needle and needle not in f"{a.name} {a.nationality or ''} {a.movement or ''}".lower():
+                continue
+            d = a.to_dict()
+            d.update({"works": n, "lifespan": a.lifespan(), "sources": a.sources,
+                      "active_years": a.active_years(), "known": has})
+            d.pop("sources_json", None)
+            rows.append(d)
+        rows.sort(key=lambda d: -d["works"])
+        total = len(rows)
+        off = max(0, int(offset))
+        page = rows[off:off + max(1, int(limit))]
+        # What the TABLE covers, not what this page shows — a list that renders 200 of 4,115 and
+        # says nothing about the rest reads as "that is all there is".
+        return {"artists": page, "total": total, "offset": off,
+                "stats": {"rows": len(counts), "in_table": total,
+                          "with_dates": sum(1 for d in rows if d.get("birth_year")),
+                          "with_qid": sum(1 for d in rows if d.get("wikidata_qid")),
+                          "organizations": sum(1 for d in rows if d.get("kind") == "organization")}}
+
     @app.get("/api/visuallib/collections")
     async def visuallib_collections(scope: str = "global", project: str = None,
                                     q: str = None, source: str = None,

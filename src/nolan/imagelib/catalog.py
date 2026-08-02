@@ -1223,6 +1223,39 @@ class AssetCatalog:
         return {"examined": len(rows), "rekeyed": rekeyed, "merged": merged,
                 "remaining": len(seen)}
 
+    def prune_orphan_artists(self, *, dry_run: bool = False) -> dict:
+        """Drop artist rows no asset points at any more — but only the ones that know NOTHING.
+
+        Re-keying strands rows by design. Repairing the Met's multi-maker credits left 819 artists
+        that nothing references, 815 of them named "Israël Henriet|Jacques Callot" and the like:
+        entries whose whole content is "we looked this up and Wikidata had never heard of it",
+        which was the correct answer, because that string is not a person.
+
+        A row that DID learn something is kept even when orphaned. Facts are expensive and a key
+        can come back — a later crawl, a rule change — whereas a cached miss about a name that
+        should never have existed costs a line in every listing and buys nothing.
+        """
+        with self._lock:
+            live = {r["k"] for r in self._conn.execute(
+                "SELECT DISTINCT artist_key k FROM assets WHERE artist_key IS NOT NULL")}
+            rows = self._conn.execute("SELECT * FROM artists").fetchall()
+        knows = ("wikidata_qid", "birth_year", "death_year", "nationality", "biography",
+                 "movement", "period", "style", "subjects", "palette")
+        doomed = [r["name_key"] for r in rows
+                  if r["name_key"] not in live and not any(r[f] for f in knows)]
+        if doomed and not dry_run:
+            with self._lock:
+                for i in range(0, len(doomed), 400):
+                    chunk = doomed[i:i + 400]
+                    self._conn.execute(
+                        f"DELETE FROM artists WHERE name_key IN ({','.join('?' * len(chunk))})",
+                        chunk)
+                self._commit()
+        return {"examined": len(rows), "orphaned_and_empty": len(doomed),
+                "kept_orphans_with_facts": sum(
+                    1 for r in rows if r["name_key"] not in live and any(r[f] for f in knows)),
+                "remaining": len(rows) - (0 if dry_run else len(doomed))}
+
     def get_artist(self, name_or_key: str) -> Optional[Artist]:
         key = artist_key(name_or_key) or (name_or_key or "").strip()
         with self._lock:
@@ -1289,9 +1322,17 @@ class AssetCatalog:
         The ordering IS the budget: enriching the top 200 creators of a 60k-row corpus covers far
         more rows than 200 arbitrary ones, and the histogram is what makes that visible instead
         of guessed.
+
+        GROUPS ON THE STORED `artist_key`, not on a key re-folded from `creator`. The two are the
+        same for three of the four sources and DIFFERENT for the Met, where 31,452 rows credit
+        several people and the stored key has been repaired to point at whichever of them actually
+        made the object. Re-folding the raw string here rebuilt the pre-repair buckets — Thomas
+        Rowlandson reading 552 works instead of 2,010 — so the enrichment budget kept being spent
+        on fragments of artists it had already learned.
         """
-        sql = ["SELECT creator, COUNT(*) n FROM assets",
-               "WHERE status='active' AND creator IS NOT NULL AND TRIM(creator) <> ''"]
+        sql = ["SELECT artist_key k, creator, COUNT(*) n FROM assets",
+               "WHERE status='active' AND artist_key IS NOT NULL",
+               "AND creator IS NOT NULL AND TRIM(creator) <> ''"]
         args: List[Any] = []
         if held is not None:
             sql.append("AND held=?")
@@ -1299,17 +1340,21 @@ class AssetCatalog:
         if collection_id is not None:
             sql.append("AND collection_id=?")
             args.append(collection_id)
-        sql.append("GROUP BY creator")
+        sql.append("GROUP BY artist_key, creator")
         with self._lock:
             rows = self._conn.execute(" ".join(sql), args).fetchall()
-        agg: Dict[str, Tuple[str, int]] = {}
+        # key -> (best display name, that name's own count, total across all spellings)
+        agg: Dict[str, Tuple[str, int, int]] = {}
         for r in rows:
-            k = artist_key(r["creator"])
-            if not k:
-                continue
-            name, n = agg.get(k, (r["creator"], 0))
-            agg[k] = (name, n + int(r["n"]))
-        return sorted(((k, v[0], v[1]) for k, v in agg.items()),
+            k, n, name = r["k"], int(r["n"]), r["creator"]
+            best, best_n, total = agg.get(k, (name, -1, 0))
+            # The commonest spelling wins, shortest breaking a tie — and for a multi-credit Met
+            # row the raw `creator` names EVERYONE, so the shorter string is the likelier plain
+            # name of the one maker this key actually points at.
+            if (n, -len(name)) > (best_n, -len(best)):
+                best, best_n = name, n
+            agg[k] = (best, best_n, total + n)
+        return sorted(((k, v[0], v[2]) for k, v in agg.items()),
                       key=lambda t: -t[2])
 
     # ------------------------------------------------------------- collections

@@ -76,6 +76,7 @@
            Domain Image Archive arrived every collection was a whole-source harvest and this tab
            would have been a duplicate of Sources; there are now 577 real ones. -->
       <div class="tab" data-tab="collections" onclick="showTab('collections')">Collections</div>
+      <div class="tab" data-tab="artists" onclick="showTab('artists')">Artists</div>
       <div class="tab" data-tab="sources" onclick="showTab('sources')">Sources</div>
       <div class="tab" data-tab="coverage" onclick="showTab('coverage')">Coverage</div>
     </div>
@@ -162,6 +163,40 @@
       </div>
     </div>
 
+    <!-- ===== ARTISTS — the visual knowledge table =====
+         One row per MAKER, joined onto pictures by `assets.artist_key`. Distinct from the artist
+         STRIP on the Search tab, which answers "who is in these results"; this is the table
+         itself, which had no surface at all until now. -->
+    <div id="tab-artists" style="display:none">
+      <div class="card">
+        <b>Visual knowledge table</b>
+        <div class="dim" style="margin:4px 0 10px">What is true of a <b>maker</b>, looked up once and
+          spent across every work they made. Dates, nationality and movement come from
+          <b>Wikidata</b> (marked ✓); style and palette come from a model, and the two are never
+          mixed. Click a name to see their pictures.</div>
+        <div class="row">
+          <input type="text" id="artq" placeholder="name, nationality or movement…" style="flex:1;min-width:220px"
+                 onkeydown="if(event.key==='Enter')loadArtists(0)">
+          <select id="artkind" onchange="loadArtists(0)">
+            <option value="">People and firms</option>
+            <option value="person">People only</option>
+            <option value="organization">Firms only</option>
+          </select>
+          <select id="artknown" onchange="loadArtists(0)">
+            <option value="">Everything we looked up</option>
+            <option value="yes">Only what we know something about</option>
+            <option value="no">Only the blanks</option>
+          </select>
+          <button class="btn" onclick="loadArtists(0)">Filter</button>
+        </div>
+        <div id="artmeta" class="dim" style="margin-top:8px"></div>
+        <div style="overflow-x:auto"><table id="arttable"></table></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="artmore" style="display:none" onclick="loadArtists(ARTOFF+ARTPAGE)"></button>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== SOURCES ===== -->
     <div id="tab-sources" style="display:none">
       <div class="card">
@@ -230,12 +265,80 @@
 
     function showTab(t){
       document.querySelectorAll(".tab").forEach(function(x){ x.classList.toggle("on", x.dataset.tab===t); });
-      ["search","collections","sources","coverage"].forEach(function(n){
+      ["search","collections","artists","sources","coverage"].forEach(function(n){
         $("#tab-"+n).style.display = (n===t) ? "block" : "none";
       });
       if (t==="sources" || t==="coverage") loadCollections();
       if (t==="collections") loadCuratedCollections();
+      if (t==="artists" && !ARTLOADED) loadArtists(0);
     }
+
+    // ---- the visual knowledge table ----------------------------------------------
+    var ARTOFF = 0, ARTPAGE = 200, ARTLOADED = false;
+
+    function loadArtists(off){
+      ARTOFF = off || 0;
+      var q = $("#artq").value.trim();
+      $("#artmeta").textContent = "Loading…";
+      fetch("/api/visuallib/artists?scope=global&limit="+ARTPAGE+"&offset="+ARTOFF
+            + (q ? "&q="+encodeURIComponent(q) : "")
+            + ($("#artkind").value ? "&kind="+$("#artkind").value : "")
+            + ($("#artknown").value ? "&known="+$("#artknown").value : ""))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          ARTLOADED = true;
+          var rows = d.artists || [], s = d.stats || {};
+          $("#artmeta").innerHTML =
+            "<b>" + (d.total||0).toLocaleString() + "</b> makers match · "
+            + (s.with_dates||0).toLocaleString() + " with dates · "
+            + (s.with_qid||0).toLocaleString() + " linked to Wikidata · "
+            + (s.organizations||0).toLocaleString() + " are firms"
+            + " · the library holds " + (s.rows||0).toLocaleString() + " distinct makers in all";
+          var head = "<tr><th style='text-align:right'>works</th><th>name</th><th>dates</th>"
+            + "<th>nationality</th><th>movement</th><th>what we know</th><th></th></tr>";
+          var body = rows.map(function(a){
+            // ✓ marks a LOOKED-UP field. The whole reason provenance is stored per field is that
+            // a citable date and a generated one must never look alike.
+            var src = a.sources || {};
+            var tick = (src.birth_year === "wikidata")
+              ? ' <span class="dim" title="looked up on Wikidata">✓</span>' : "";
+            var known = [a.style, a.period, a.subjects].filter(Boolean).join("; ");
+            return "<tr>"
+              + "<td style='text-align:right'>" + (a.works||0).toLocaleString() + "</td>"
+              + "<td><a href='#' data-akey='" + esc(a.name_key||"") + "'>" + esc(a.name||"") + "</a>"
+              +   (a.kind === "organization" ? ' <span class="badge fact">firm</span>' : "") + "</td>"
+              + "<td>" + esc(a.lifespan||"") + tick + "</td>"
+              + "<td>" + esc(a.nationality||"") + "</td>"
+              + "<td>" + esc(a.movement||"") + "</td>"
+              + "<td class='dim'>" + esc((a.biography||known||"").slice(0,90)) + "</td>"
+              + "<td>" + (a.wikipedia_url
+                  ? "<a class='dim' href='"+esc(a.wikipedia_url)+"' target='_blank' rel='noopener'>wiki ↗</a>"
+                  : "") + "</td></tr>";
+          }).join("");
+          $("#arttable").innerHTML = head + (body || "<tr><td colspan='7' class='dim'>No makers match.</td></tr>");
+          // Say what is NOT shown. A table that renders 200 of 4,115 in silence reads as the whole
+          // table — the same silent-cap failure this tier exists to avoid.
+          var shown = ARTOFF + rows.length, left = (d.total||0) - shown;
+          var more = $("#artmore");
+          more.style.display = left > 0 ? "inline-block" : "none";
+          more.textContent = "Load " + Math.min(ARTPAGE, left) + " more (" + left.toLocaleString() + " left)";
+        })
+        .catch(function(e){ $("#artmeta").textContent = "Error: "+e.message; });
+    }
+
+    // Clicking a maker shows their PICTURES — the same search grid narrowed by the exact join
+    // key, not a second results view. `artist_key` and not `creator`, so the count in the table
+    // is the count you get.
+    $("#arttable").addEventListener("click", function(ev){
+      var a = ev.target.closest && ev.target.closest("[data-akey]");
+      if (!a) return;
+      ev.preventDefault();
+      $("#q").value = "";
+      clearFacets(true);
+      artistKey = a.dataset.akey;
+      showTab("search");
+      doSearch();
+    });
 
     // ---- curated collections -----------------------------------------------------
     // Counts come from ONE grouped query server-side. The per-collection version cost 119
@@ -405,11 +508,14 @@
       return p;
     }
 
-    function clearFacets(){
+    // `quiet` skips the re-search, for callers that are about to set a narrowing of their own —
+    // otherwise picking a maker from the Artists tab costs two round trips and the first one is
+    // for a query nobody asked for.
+    function clearFacets(quiet){
       FACETS.forEach(function(f){ $("#f-"+f.id).value = ""; });
       TEXT_FACETS.forEach(function(k){ $("#f-"+k).value = ""; });
       artistKey = "";
-      doSearch();
+      if (!quiet) doSearch();
     }
 
     // Pick an artist. The chip carries the KEY, so the filter is exact and the count on the chip

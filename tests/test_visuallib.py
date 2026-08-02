@@ -1649,6 +1649,43 @@ def test_backfill_movements_uses_the_STORED_artist_key(lib):
     assert lib.catalog.get_by_ref("met:1").movement == "Baroque"
 
 
+def test_the_creator_histogram_groups_on_the_STORED_key(lib):
+    """Re-folding `creator` rebuilt the pre-repair buckets — Rowlandson reading 552 works instead
+    of 2,010 — so the enrichment budget kept being spent on fragments of artists already learned,
+    and the Artists tab showed counts that disagreed with the grid it links to."""
+    for i in range(3):
+        lib.add_discovery(source_ref=f"met:{i}", thumb_url="https://e/x.jpg", source="met",
+                          title=f"e{i}", creator="Jacques Callot|Israël Henriet",
+                          primary_maker="Jacques Callot", license="CC0", pixels=False)
+    lib.add_discovery(source_ref="met:9", thumb_url="https://e/x.jpg", source="met",
+                      title="solo", creator="Jacques Callot", license="CC0", pixels=False)
+    hist = dict((k, n) for k, _, n in lib.catalog.creator_histogram(held=0))
+    assert hist.get("callot jacques") == 4, (
+        f"the pair must join the solo work, got {hist}")
+
+
+def test_pruning_orphan_artists_keeps_every_row_that_learned_something(lib):
+    """Re-keying strands rows by design. Dropping the empty ones is housekeeping; dropping one
+    that holds facts would throw away work that cost real lookups."""
+    from nolan.imagelib.catalog import Artist
+
+    lib.add_discovery(source_ref="a:1", thumb_url="https://e/x.jpg", source="artic",
+                      title="m", creator="Claude Monet", license="CC0", pixels=False)
+    lib.catalog.upsert_artist(Artist(name="Claude Monet", birth_year=1840))
+    # an orphan that knows nothing — exactly what a re-key leaves behind
+    lib.catalog.upsert_artist(Artist(name="Someone|Someone Else", checked_at="2026-01-01"))
+    # an orphan that DOES know something — must survive
+    lib.catalog.upsert_artist(Artist(name="Forgotten Painter", movement="Baroque"))
+
+    res = lib.catalog.prune_orphan_artists()
+    assert res["orphaned_and_empty"] == 1
+    assert res["kept_orphans_with_facts"] == 1
+    assert lib.catalog.get_artist("Someone|Someone Else") is None
+    assert lib.catalog.get_artist("Forgotten Painter").movement == "Baroque"
+    assert lib.catalog.get_artist("Claude Monet").birth_year == 1840
+    assert lib.catalog.prune_orphan_artists()["orphaned_and_empty"] == 0, "must be idempotent"
+
+
 def test_the_met_dump_hands_over_artist_qids_positionally():
     """Both columns are pipe-separated and positional, and a slot may be blank when the museum
     identified one collaborator but not the other. Splitting either column alone shifts every id

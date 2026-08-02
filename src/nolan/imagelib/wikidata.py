@@ -299,7 +299,11 @@ def artist_facts(name: str, *, qid: Optional[str] = None) -> Optional[Dict[str, 
     nat = [labels[q] for q in _linked(ent, nat_prop)[:2] if q in labels]
     mov = [labels[q] for q in _linked(ent, P_MOVEMENT)[:2] if q in labels]
     if nat:
-        out["nationality"] = ", ".join(nat)
+        # ONE country, like the single-line label it feeds. People who outlived a state carry
+        # several citizenships, and joining them produced "United Kingdom of Great Britain and
+        # Ireland, Kingdom of Great Britain" on every Rowlandson card — 62 characters saying
+        # "British". The shortest is the least ceremonial name for the same place.
+        out["nationality"] = min(nat, key=len)
     if mov:
         out["movement"] = mov[0]              # one movement, like the column it feeds
     en = ((ent.get("sitelinks") or {}).get("enwiki") or {}).get("title")
