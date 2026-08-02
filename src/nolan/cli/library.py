@@ -330,6 +330,50 @@ def images_fetch(asset_id, scope, project, tier):
                f"({asset.width}x{asset.height}) -> {asset.path}")
 
 
+@images.command('ingest')
+@click.argument('folder', type=click.Path(exists=True, file_okay=False))
+@click.option('--creator', '-a', default=None, help='Who made these. Folds into artist_key.')
+@click.option('--source', '-s', default='local', help='Where they came from, for provenance.')
+@click.option('--license', '-l', default=None, help='Rights, as YOU understand them.')
+@click.option('--kind', 'image_kind', default=None,
+              help='poster / print / painting / photograph … (else derived from the title).')
+@click.option('--date', 'date_text', default=None, help='e.g. "1896" or "c. 1900".')
+@click.option('--collection', '-c', default=None, help='Name a collection to file them under.')
+@click.option('--dry-run', is_flag=True, help='Say what would happen, write nothing.')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_ingest(folder, creator, source, license, image_kind, date_text, collection,
+                  dry_run, scope, project):
+    """Ingest a folder of images YOU downloaded, catalogued like a harvested row.
+
+    For pictures a person chose by hand from somewhere we do not crawl. `add_file` alone would
+    store the bytes and nothing else — no creator, no artist_key, so no join to the artist
+    knowledge table. This fills the same catalog fields an adapter fills, so a hand-picked
+    picture is indistinguishable downstream: same fold, same facets, same movement backfill.
+
+    Naming the creator is what earns the join. With `--creator "Alphonse Mucha"` the row
+    inherits his dates, nationality and movement from the artists table for free.
+    """
+    lib = _open_library(scope, project)
+    res = lib.ingest_folder(folder, creator=creator, source=source, license=license,
+                            image_kind=image_kind, date_text=date_text, collection=collection,
+                            dry_run=dry_run)
+    for e in res["examples"]:
+        click.echo(f"  {e['file'][:52]:54s} -> {e.get('title') or '(no title)'}")
+    for e in res["errors"]:
+        click.echo(f"  FAILED {e}")
+    click.echo(f"{res['found']} images found: {res['added']} added, "
+               f"{res['duplicate']} already held, {res['failed']} failed"
+               + (" [DRY RUN — nothing written]" if dry_run else ""))
+    if res.get("artist_key"):
+        art = lib.catalog.get_artist(res["artist_key"])
+        if art:
+            click.echo(f"joined to: {art.context_line() or art.name}")
+        else:
+            click.echo(f"artist_key '{res['artist_key']}' is not in the knowledge table yet — "
+                       f"run `nolan images artists --wikidata` to fill it")
+
+
 @images.command('artists')
 @click.option('--limit', '-n', type=int, default=25,
               help='How many artists to spend on (LLM calls, or lookups with --wikidata).')

@@ -1686,6 +1686,57 @@ def test_pruning_orphan_artists_keeps_every_row_that_learned_something(lib):
     assert lib.catalog.prune_orphan_artists()["orphaned_and_empty"] == 0, "must be idempotent"
 
 
+def test_a_hand_ingested_file_is_catalogued_like_a_harvested_one(lib, tmp_path):
+    """`add_file` stores bytes and nothing else — no creator, so no `artist_key`, so no join to
+    the artist knowledge table. A picture a person CHOSE would know less about itself than a Met
+    row nobody chose."""
+    from PIL import Image
+
+    from nolan.imagelib.catalog import Artist
+
+    src = tmp_path / "downloads"
+    src.mkdir()
+    # DIFFERENT pixels per file — identical bytes would (correctly) dedup by content hash, which
+    # would be the ingest's own dedup passing itself off as a failed add.
+    for i, name in enumerate(("job-cigarette-papers-1896.jpg", "zodiac-la-plume-00.jpg")):
+        Image.new("RGB", (900, 1400), (220 - 40 * i, 210, 190)).save(src / name)
+    lib.catalog.upsert_artist(Artist(name="Alphonse Mucha", movement="Art Nouveau",
+                                     birth_year=1860, death_year=1939, nationality="Czech"))
+
+    res = lib.ingest_folder(src, creator="Alphonse Mucha", source="local",
+                            image_kind="poster", date_text="1896", embed=False)
+    assert res["added"] == 2 and res["failed"] == 0, res
+
+    rows = lib.catalog.list(status="active", held=1, limit=10, artist_key="alphonse mucha")
+    assert len(rows) == 2
+    by_title = {r.title: r for r in rows}
+    # a trailing SHORT number is a download serial; a trailing YEAR belongs in the title
+    assert "Job Cigarette Papers 1896" in by_title
+    assert "Zodiac La Plume" in by_title
+    a = by_title["Zodiac La Plume"]
+    assert a.image_kind == "poster"
+    assert a.year_from == 1896 and a.year_to == 1896
+    assert a.identity_source == "human", "a person chose and named this, not a model"
+    assert a.movement == "Art Nouveau", "must inherit from the artist knowledge table"
+
+    # re-ingesting the same bytes is a no-op, not a duplicate
+    again = lib.ingest_folder(src, creator="Alphonse Mucha", embed=False)
+    assert again["added"] == 0 and again["duplicate"] == 2
+
+
+def test_context_line_does_not_double_parenthesise_a_catalog_display_name():
+    """Cleveland writes "Alphonse Mucha (Czech, 1860-1939)", and appending our own gave
+    "Alphonse Mucha (Czech, 1860-1939) (Austrian Empire, 1860-1939)"."""
+    from nolan.imagelib.catalog import Artist
+
+    already = Artist(name="Alphonse Mucha (Czech, 1860–1939)", nationality="Austrian Empire",
+                     birth_year=1860, death_year=1939, movement="Art Nouveau")
+    assert already.context_line().count("(") == 1
+    plain = Artist(name="Claude Monet", nationality="France", birth_year=1840, death_year=1926,
+                   movement="Impressionism")
+    assert "(France, 1840–1926)" in plain.context_line()
+
+
 def test_the_met_dump_hands_over_artist_qids_positionally():
     """Both columns are pipe-separated and positional, and a slot may be blank when the museum
     identified one collaborator but not the other. Splitting either column alone shifts every id

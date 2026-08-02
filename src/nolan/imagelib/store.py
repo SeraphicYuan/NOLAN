@@ -369,6 +369,99 @@ class ImageLibrary:
         h = hashlib.sha256(source_ref.encode("utf-8")).hexdigest()
         return self.thumbs_dir / h[:2] / f"{h}{_ext_for(url, None)}"
 
+    def ingest_folder(self, folder, *, creator: str = None, source: str = "local",
+                      license: str = None, image_kind: str = None, date_text: str = None,
+                      collection: str = None, title_from: str = "filename",
+                      embed: bool = True, dry_run: bool = False, progress=None) -> dict:
+        """Take a folder of images someone downloaded by hand into the HELD tier, catalogued.
+
+        `add_file` already hashes, dedups and embeds — but it is blind to the catalog tier, so a
+        file landed through it has no `creator`, no `artist_key`, and therefore no join to the
+        artist knowledge table. A hand-picked Mucha poster would sit in the library knowing less
+        about itself than a Met row that nobody chose.
+
+        This is the entry point for pictures a HUMAN selected and downloaded from a source we do
+        not (or may not) crawl. It fills the same catalog fields an adapter would, so a
+        hand-ingested picture is indistinguishable downstream from a harvested one: same fold,
+        same facets, same `movement` backfill, same identity embedding.
+
+        `title_from="filename"` is the practical default — download buttons name files after the
+        work, and a stem like `lance-parfum-rodo-gesetzlich-geschvetz` is a better title than
+        nothing. Anything genuinely unknown stays NULL rather than being invented.
+        """
+        import re as _re
+
+        from nolan.imagelib.catalog import folded_artist
+        from nolan.imagelib.taxonomy import image_kind as _kind
+
+        folder = Path(folder)
+        if not folder.is_dir():
+            raise NotADirectoryError(f"not a folder: {folder}")
+        exts = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".gif"}
+        files = sorted(p for p in folder.rglob("*") if p.suffix.lower() in exts and p.is_file())
+
+        coll_id = None
+        if collection and not dry_run:
+            from nolan.imagelib.catalog import Collection
+            c = self.upsert_collection(Collection(
+                slug=_re.sub(r"[^a-z0-9]+", "-", collection.lower()).strip("-"),
+                source=source, title=collection,
+                description=f"Hand-picked and ingested locally from {source}."))
+            coll_id = c.id
+
+        out = {"found": len(files), "added": 0, "duplicate": 0, "failed": 0,
+               "collection_id": coll_id, "artist_key": folded_artist(creator),
+               "examples": [], "errors": []}
+        for p in files:
+            title = None
+            if title_from == "filename":
+                # "lance-parfum-rodo-gesetzlich-geschvetz.jpg" -> "Lance Parfum Rodo Gesetzlich..."
+                stem = _re.sub(r"[-_]+", " ", p.stem).strip()
+                # A trailing SHORT number is a download serial ("…-00"); a trailing FOUR-digit
+                # number is a year and belongs in the title. Stripping both cost "Job Cigarette
+                # Papers 1896" its date on the first run.
+                stem = _re.sub(r"\s+\d{1,3}$", "", stem).strip()
+                title = stem.title() if stem else None
+            if dry_run:
+                out["added"] += 1
+                if len(out["examples"]) < 8:
+                    out["examples"].append({"file": p.name, "title": title})
+                continue
+            try:
+                asset, created = self.add_file(
+                    p, source=source, license=license, title=title, embed=embed,
+                    describe=False)          # a caption is a separate, on-demand decision
+            except Exception as e:
+                out["failed"] += 1
+                if len(out["errors"]) < 5:
+                    out["errors"].append(f"{p.name}: {type(e).__name__}: {e}")
+                continue
+            if not created:
+                out["duplicate"] += 1
+                continue
+            # The catalog tier, filled the same way an adapter fills it — including the FOLD, so
+            # this picture joins the artist knowledge table and inherits dates/movement/nationality.
+            patch = {"creator": creator, "artist_key": folded_artist(creator),
+                     "date_text": date_text, "collection_id": coll_id,
+                     "identity_source": "human",   # a person chose and named this, not a model
+                     "image_kind": image_kind or _kind(image_kind, None, None, title)}
+            if date_text:
+                from nolan.imagelib.dates import parse_years
+                yrs = parse_years(date_text)
+                if yrs:
+                    patch["year_from"], patch["year_to"] = yrs
+            self.catalog.update(asset.id, **{k: v for k, v in patch.items() if v is not None})
+            out["added"] += 1
+            if len(out["examples"]) < 8:
+                out["examples"].append({"id": asset.id, "file": p.name, "title": title})
+            if progress:
+                progress(out)
+        # Same reason every other write path does it: `movement` is a denormalised copy, and a
+        # picture that never gets one is invisible to the filter that exists to find it.
+        if out["added"] and not dry_run:
+            out["movement_backfill"] = self.backfill_movements()
+        return out
+
     def add_discovery(self, *, source_ref: str, thumb_url: str, source: str,
                       title=None, creator=None, date_text=None, institution=None,
                       description=None, license=None, url=None, source_url=None,

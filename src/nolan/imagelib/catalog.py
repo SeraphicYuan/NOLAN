@@ -502,7 +502,10 @@ class Artist:
         an empty string is honest, a confident-sounding placeholder is not."""
         span = self.lifespan()
         head = f"{self.name}"
-        if self.nationality or span:
+        # A catalog display name may ALREADY carry its own parenthetical — Cleveland writes
+        # "Alphonse Mucha (Czech, 1860-1939)" — and appending ours produced
+        # "Alphonse Mucha (Czech, 1860-1939) (Austrian Empire, 1860-1939)".
+        if (self.nationality or span) and not head.rstrip().endswith(")"):
             head += f" ({', '.join(b for b in (self.nationality, span) if b)})"
         bits = [b for b in (self.movement, self.period, self.style) if b]
         line = head
