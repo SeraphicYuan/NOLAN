@@ -739,16 +739,27 @@
       var body = $("#ctable").querySelector("tbody");
       if (!SOURCES.length){ body.innerHTML = "<tr><td colspan='6' class='dim'>No sources registered.</td></tr>"; return; }
       body.innerHTML = SOURCES.map(function(s){
-        var pct = (s.upstream && s.indexed) ? Math.round(100*s.indexed/s.upstream) : null;
+        // numerator and denominator must describe the SAME population
+        var pct = (s.upstream && s.rows_measured) ? Math.round(100*s.rows_measured/s.upstream) : null;
         return "<tr><td><b>"+esc(s.id)+"</b><div class='dim'>"+esc(String(s.title).slice(0,44))+"</div></td>"
           // The DENOMINATOR beside the numerator: "56,707" reads as complete, "56,707 of 62,035
           // (91%)" does not. A source that cannot be asked how big it is shows the count alone
           // rather than a guess.
           + "<td>"+(s.indexed||0).toLocaleString()
-          +   (s.upstream ? "<div class='dim'>of "+s.upstream.toLocaleString()+" ("+pct+"%)</div>" : "")+"</td>"
+          // The percentage describes the MEASURED collections only, and what it excludes is stated
+          // beside it. Dividing every row by only the denominators that exist made artvee read 105%
+          // and PDIA a flat 100% with 85% of its rows in collections that have no denominator.
+          +   (s.upstream ? "<div class='dim'>of "+s.upstream.toLocaleString()+" ("+pct+"%)</div>" : "")
+          +   (s.collections_unmeasured
+                 ? "<div class='warn' title='These collections publish no upstream count, so their rows cannot be part of a coverage ratio'>+"
+                   + (s.rows_unmeasured||0).toLocaleString()+" rows in "+s.collections_unmeasured
+                   + " unmeasured</div>"
+                 : "")+"</td>"
           + "<td>"+(s.collections||0).toLocaleString()+"</td>"
           + "<td class='dim'>"+esc(s.enumeration||"?")
-          +   (s.resumable ? "" : "<div class='warn'>not resumable</div>")+"</td>"
+          +   (s.resumable ? "" : "<div class='warn'>not resumable</div>")
+          +   (s.requires ? "<div class='warn' title='declared in the registry, not discovered by calling it'>needs "+esc(s.requires)+"</div>" : "")
+          +   (s.error ? "<div class='warn'>"+esc(s.error)+"</div>" : "")+"</td>"
           + "<td class='dim'>"+esc(String(s.rights||"?").slice(0,44))+"</td>"
           + "<td class='dim'>"+esc(String(s.last_crawled||"never").replace("T"," ").slice(0,16))+"</td></tr>";
       }).join("");

@@ -143,6 +143,34 @@ from the registry, `author.py` delegation, `block_registry` / `style_contract` /
 classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
 honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
 
+## PDIA reported 100% coverage while 85% of it was unmeasured (2026-08-02)
+
+`Collection.coverage` is honest per collection — it returns None without a denominator and clamps
+a stale one rather than exceeding 100%. The Sources ROW then threw that away: it summed EVERY
+collection's rows over only the denominators that existed, so the ratio described two different
+populations.
+
+Two live consequences, both visible on the tab:
+
+- **artvee read 69,117 / 65,720 = 105%**, an impossible number, because 3 of its 480 collections
+  publish no upstream count.
+- **pdia read a flat 100%** while 576 of its 577 collections — holding 9,523 of its 11,197 rows —
+  had no denominator at all. It is **15%** measured. That is the dangerous direction: a source
+  that reads as fully indexed is a source nobody re-crawls.
+
+The numerator now covers the same population as the denominator (`rows_measured`), and what the
+ratio EXCLUDES is stated beside it rather than folded in: "+9,523 rows in 576 unmeasured". The
+per-collection invariant — unknown must read as unknown, never as full — has to survive
+aggregation, which is the case it had never been tested against.
+
+The test exercises the ROUTE rather than the arithmetic. The first version I wrote recomputed the
+ratio inside the test and would have passed against the broken code, which is worth naming: a test
+that reimplements the thing it is checking tests nothing.
+
+Also surfaced on the row: `requires` and `error` from `SourceAdapter.describe()`, so a source that
+cannot be walked whole says so in the table instead of being indistinguishable from one nobody has
+crawled yet.
+
 ## Source kinds became a registry, and connectors stopped pretending to be channels (2026-08-02)
 
 `kind` was a bare string branched on in 25 places across four files, and the branches were

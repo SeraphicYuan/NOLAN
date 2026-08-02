@@ -256,3 +256,42 @@ def test_every_registered_adapter_is_describable_without_running_a_crawl():
     boom = SourceAdapter(id="artvee", collection=_explodes, items=iter, enumeration="bulk-listing")
     d = boom.describe()
     assert d["error"] and d["title"], "an unexpected failure must not erase the source"
+
+
+def test_source_coverage_never_mixes_measured_and_unmeasured_collections(tmp_path):
+    """"Unknown must read as unknown, never as full" has to survive AGGREGATION.
+
+    `Collection.coverage` is honest per collection, but the Sources row summed EVERY collection's
+    rows over only the denominators that existed — two different populations in one ratio. Live:
+    artvee read 69,117/65,720 = 105% because 3 of its 480 collections publish no upstream count,
+    and PDIA read a flat 100% while 576 of its 577 collections, holding 9,523 of its 11,197 rows,
+    had no denominator at all. A source that is 40% measured must not render as fully indexed."""
+    from nolan.imagelib.catalog import Collection
+    root = tmp_path / "lib"
+
+    def fake_paths(scope="global", project=None):
+        return root / "global"
+
+    with patch.object(store_mod, "library_paths", side_effect=fake_paths), \
+         patch.object(store_mod, "ClipEmbedder", FakeEmbedder):
+        lib = ImageLibrary(scope="global")
+        known = lib.catalog.upsert_collection(Collection(
+            slug="known", source="artic", title="measured", rights="CC0", upstream_count=100))
+        blind = lib.catalog.upsert_collection(Collection(
+            slug="blind", source="artic", title="no denominator", rights="CC0"))
+        from nolan.imagelib.catalog import Asset
+        for col, n, tag in ((known, 40, "k"), (blind, 60, "b")):
+            for i in range(n):
+                lib.catalog.add(Asset(content_hash=f"{tag}{i}", path="", title=f"{tag}{i}",
+                                      source="artic", source_ref=f"artic:{tag}{i}",
+                                      collection_id=col.id, held=0, license="CC0"))
+
+        client = TestClient(create_hub_app(db_path=None, projects_dir=None))
+        row = next(s for s in client.get("/api/visuallib/sources").json()["sources"]
+                   if s["id"] == "artic")
+
+    assert row["indexed"] == 100, "the row count is every row, unchanged"
+    assert row["upstream"] == 100, "the denominator covers only the measured collection"
+    assert row["rows_measured"] == 40, "so the numerator must too — 40/100, not 100/100"
+    assert row["collections_unmeasured"] == 1 and row["rows_unmeasured"] == 60, (
+        "what the ratio excludes has to be reported, or 40% reads as the whole story")

@@ -77,11 +77,24 @@ def register(app, ctx):
         for c in lib.catalog.list_collections():
             agg = per_source.setdefault(c.source, {"rows": 0, "collections": 0,
                                                    "upstream": None, "last_crawled": None,
-                                                   "rights": None})
-            agg["rows"] += counts.get(c.id or -1, {}).get("indexed", 0)
+                                                   "rights": None, "rows_measured": 0,
+                                                   "collections_unmeasured": 0,
+                                                   "rows_unmeasured": 0})
+            n = counts.get(c.id or -1, {}).get("indexed", 0)
+            agg["rows"] += n
             agg["collections"] += 1
+            # COVERAGE IS COMPUTED OVER MEASURED COLLECTIONS ONLY. Summing every collection's rows
+            # over only the denominators that exist mixes two populations and yields a number that
+            # is neither: artvee read 69,117/65,720 = 105% because 3 of its 480 collections have no
+            # upstream_count, and PDIA read a flat 100% while 576 of its 577 collections — holding
+            # 9,523 of its 11,197 rows — had no denominator at all. "Unknown must read as unknown,
+            # never as full" has to survive AGGREGATION, not just the single-collection case.
             if c.upstream_count:
                 agg["upstream"] = (agg["upstream"] or 0) + c.upstream_count
+                agg["rows_measured"] += n
+            else:
+                agg["collections_unmeasured"] += 1
+                agg["rows_unmeasured"] += n
             if c.rights and not agg["rights"]:
                 agg["rights"] = c.rights
             if c.last_crawled and (agg["last_crawled"] or "") < c.last_crawled:
@@ -101,6 +114,10 @@ def register(app, ctx):
                         "indexed": got.get("rows", 0),
                         "collections": got.get("collections", 0),
                         "upstream": got.get("upstream"),
+                        # the honest numerator for `upstream`, plus what it deliberately excludes
+                        "rows_measured": got.get("rows_measured", 0),
+                        "collections_unmeasured": got.get("collections_unmeasured", 0),
+                        "rows_unmeasured": got.get("rows_unmeasured", 0),
                         "last_crawled": got.get("last_crawled"),
                         "gate_tier": adapter.gate_tier,
                         # How this source can be walked, and what that costs, straight from the
