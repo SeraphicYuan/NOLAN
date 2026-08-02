@@ -116,7 +116,7 @@ def register(app, ctx):
                                image_kind: str = None, department: str = None,
                                creator: str = None, place: str = None,
                                classification: str = None, artist_key: str = None,
-                               movement: str = None,
+                               movement: str = None, source: str = None,
                                year_from: int = None, year_to: int = None):
         """What can this search be narrowed by, and what does each choice cost?
 
@@ -135,13 +135,16 @@ def register(app, ctx):
                                ("creator", creator), ("place", place),
                                ("classification", classification),
                                ("artist_key", artist_key), ("movement", movement),
+                               ("source", source),
                                ("year_from", year_from), ("year_to", year_to))
              if v not in (None, "")}
         try:
             out = {name: [{"value": v, "count": c}
                           for v, c in lib.catalog.facets(name, held=0, limit=30, **f)]
-                   for name in ("image_kind", "department", "classification", "place",
-                                "movement")}
+                   # `source` first: once one institution can outweigh all the others, "which
+                   # library am I even looking at" is the OUTERMOST question, not the innermost.
+                   for name in ("source", "image_kind", "department", "classification",
+                                "place", "movement")}
             artists = [{"name": n, "key": k, "count": c}
                        for n, k, c in lib.catalog.artist_facets(held=0, limit=24, **f)]
         except ValueError as e:

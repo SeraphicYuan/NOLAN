@@ -95,6 +95,7 @@
              legitimately called The Wave; narrowed to Japanese prints, Hokusai takes 1-2-3. The
              COUNTS are the point — they say what a choice costs before it is made. -->
         <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">
+          <select id="f-source" onchange="doSearch()"></select>
           <select id="f-image_kind" onchange="doSearch()"></select>
           <select id="f-department" onchange="doSearch()"></select>
           <select id="f-classification" onchange="doSearch()"></select>
@@ -481,6 +482,11 @@
     // are 100% populated with tiny vocabularies; `classification` and `place` are longer-tailed.
     var FACETS = [
       {id:"image_kind",     label:"Any kind"},
+      // SOURCE FIRST — it is the outermost question, not the innermost. One institution can
+      // outweigh every other (the Met is already 70% of rows; the Library of Congress has 1.19M
+      // images available), and "which library am I even looking at" has to be answerable before
+      // any narrowing inside it means anything.
+      {id:"source",         label:"All sources"},
       {id:"department",     label:"Any department"},
       {id:"classification", label:"Any classification"},
       {id:"place",          label:"Anywhere"},

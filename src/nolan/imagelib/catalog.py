@@ -921,8 +921,13 @@ class AssetCatalog:
     # cannot ("Millet" is inside "Jean-François Millet" and also inside nothing else, but "Bosch"
     # is inside "Bosch" and "Boschaert"). Same reason `movement` is exact: it is a stored
     # vocabulary, not free text.
+    # `source` is EXACT and listed here even though `_filter_sql` has always taken it as a named
+    # argument. The plumbing worked; nothing could COUNT by it, so no UI could offer it — and the
+    # moment one institution outweighs the rest ("filter LoC out" over 1.19M images) that is the
+    # narrowing people reach for first. The named parameter still does the filtering, so adding it
+    # here cannot double-apply: `source=` never lands in `**facets`.
     FACET_EXACT = ("image_kind", "classification", "department", "culture",
-                   "artist_key", "movement")
+                   "artist_key", "movement", "source")
     # `tags` is CONTAINS and multi-valued — one row holds "Ghosts & Occult, Religion, Myth &
     # Legend, yokai, demons, folklore". It is the only SUBJECT column this catalog has:
     # `classification` is a medium and `culture` is a place, so until PDIA arrived nothing could
