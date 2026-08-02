@@ -897,6 +897,24 @@ def _gate_and_build(comp: str, spec_file: Path) -> Tuple[bool, str]:
                 spec_file.write_bytes(out)
         except Exception as e:                                    # a bad binding fails loud, as a gate error
             return False, f"dataset resolution failed: {type(e).__name__}: {e}"
+
+    # …and the same for MATH, for the same reason. A `math` scene's pixels are a Manim clip mounted
+    # as its video ground; recomposing the HTML alone leaves `data.ground` pointing at the clip the
+    # PREVIOUS maths produced, so an edit to a formula or a scene program appeared to succeed and
+    # changed nothing on screen. Verified before this existed: editing a derivation's final step
+    # recomposed the frame and left the ground byte-identical.
+    #
+    # Affordable because the resolver is content-addressed: an untouched scene hashes to its
+    # existing clip and returns in milliseconds. Only maths the author actually changed costs a
+    # render — which is precisely what they asked for by changing it.
+    if any(sc.get("type") == "math" for fr in spec.get("frames", []) for sc in fr.get("scenes", [])):
+        try:
+            from nolan.mathanim.resolve import resolve_math_spec
+            resolve_math_spec(comp, spec_file)
+        except Exception as e:                                    # bad maths fails loud, as a gate error
+            return False, f"math resolution failed: {type(e).__name__}: {e}"
+        spec = json.loads(spec_file.read_bytes().decode("utf-8"))  # re-read: the ground was stamped
+
     r = subprocess.run(
         [sys.executable, "-X", "utf8", str(AUTHOR), "--spec", str(spec_file),
          "--out-dir", str(_frames_dir(comp))],

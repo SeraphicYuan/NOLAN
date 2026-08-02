@@ -94,10 +94,19 @@ def _comp_theme(pdir: Path) -> Optional[str]:
         return None
 
 
-def iter_math_scenes(pdir: Path) -> Iterator[Tuple[Path, Dict, Dict, Dict, int]]:
-    """Every `math` scene in the comp: (spec_file, spec, frame, scene, frame_index)."""
+def iter_math_scenes(
+    pdir: Path, only: Optional[Path] = None
+) -> Iterator[Tuple[Path, Dict, Dict, Dict, int]]:
+    """Every `math` scene in the comp: (spec_file, spec, frame, scene, frame_index).
+
+    `only` restricts the walk to ONE spec file while keeping its position in the comp — the frame
+    index is what pairs a spec with its voice track, so it has to come from the full ordering even
+    when a single frame is being resolved (the edit loop's case).
+    """
 
     for index, spec_file in enumerate(_spec_files(pdir)):
+        if only is not None and spec_file.resolve() != Path(only).resolve():
+            continue
         try:
             spec = json.loads(spec_file.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
@@ -121,7 +130,9 @@ def _write_spec(spec_file: Path, spec: Dict[str, Any]) -> None:
 # --- the step --------------------------------------------------------------------------------
 
 
-def build_all(pdir: Path) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]], List[str]]:
+def build_all(
+    pdir: Path, only: Optional[Path] = None
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]], List[str]]:
     """Build every math scene's project. Returns (built, blocking findings, notes).
 
     Building is where authoring errors surface, so it happens for ALL scenes
@@ -136,7 +147,7 @@ def build_all(pdir: Path) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]], L
     findings: List[Dict[str, str]] = []
     notes: List[str] = []
 
-    for spec_file, spec, frame, scene, index in iter_math_scenes(pdir):
+    for spec_file, spec, frame, scene, index in iter_math_scenes(pdir, only):
         frame_id = str(frame.get("id") or spec_file.stem)
         where = f"{frame_id}/{scene.get('id')}"
         data = scene.get("data") or {}
@@ -177,7 +188,18 @@ def build_all(pdir: Path) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]], L
     return built, findings, notes
 
 
-def resolve_math(comp, *, render: bool = True) -> int:
+def resolve_math_spec(comp, spec_file) -> int:
+    """Resolve just ONE frame's math scenes — the edit loop's entry point.
+
+    Same builder, same gate, same content-addressed cache as the full-comp path; only the walk is
+    narrowed. A separate implementation here is how the edit loop and the finish DAG would start
+    disagreeing about what a scene means.
+    """
+
+    return resolve_math(comp, only=Path(spec_file))
+
+
+def resolve_math(comp, *, render: bool = True, only: Optional[Path] = None) -> int:
     """Resolve every math scene in `comp`. Returns how many scenes were resolved.
 
     Raises `MathResolveError` on a gate failure or a render failure — this step
@@ -188,7 +210,7 @@ def resolve_math(comp, *, render: bool = True) -> int:
     from nolan.hyperframes.edit import _project_dir
 
     pdir = Path(_project_dir(comp))
-    built, findings, notes = build_all(pdir)
+    built, findings, notes = build_all(pdir, only)
     if not built and not findings:
         return 0
 

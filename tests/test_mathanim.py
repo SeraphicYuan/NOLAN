@@ -613,3 +613,31 @@ def test_clip_names_are_content_addressed():
     assert sha256_json(first) == sha256_json(chrome), (
         "a chrome-only edit invalidated the Manim clip — chrome is HTML, it costs nothing"
     )
+
+
+def test_the_edit_loop_reresolves_a_math_scene(tmp_path, monkeypatch):
+    """The /hyperframes edit loop must agree with the finish DAG about what a scene means.
+
+    `_gate_and_build` already mirrors the DAG's dataset step so an edited data block previews real
+    numbers. Math needed the same and did not have it: a math scene's pixels are a Manim clip
+    mounted as its video ground, so recomposing the HTML alone left `data.ground` pointing at the
+    clip the PREVIOUS maths produced. Verified before the fix — editing a derivation's final step
+    recomposed the frame and left the ground byte-identical, so the edit silently did nothing.
+
+    Asserted structurally (no Manim needed): the edit path must REACH the resolver.
+    """
+    from nolan.hyperframes import edit as hfedit
+
+    source = (REPO / "src" / "nolan" / "hyperframes" / "edit.py").read_text(encoding="utf-8")
+    assert "resolve_math_spec" in source, (
+        "_gate_and_build does not resolve math — an edited math scene would keep its stale clip"
+    )
+    # the single-spec entry point exists and shares the full-comp machinery
+    from nolan.mathanim import resolve as mr
+
+    assert hasattr(mr, "resolve_math_spec")
+    import inspect
+
+    assert "resolve_math(" in inspect.getsource(mr.resolve_math_spec), (
+        "the edit path must go through the same builder/gate/cache as the DAG, not a private copy"
+    )

@@ -209,6 +209,14 @@ Clips are content-addressed on the built project — the authored data, the them
 the exact duration and the sliced word timings — so an unchanged scene never re-renders. Change
 any of those and only that scene rebuilds.
 
+**Every surface resolves the same way.** `_gate_and_build` is the one choke point every recompose
+path goes through — the `/hyperframes` edit loop, `nolan hf-render`, auto-ground and the finish DAG
+— so editing a math scene anywhere re-resolves its clip. That matters because a math scene's pixels
+are a VIDEO GROUND, not HTML: recomposing the frame alone would leave `data.ground` pointing at the
+clip the previous maths produced, and the edit would appear to succeed while changing nothing on
+screen. The cache is what makes it affordable — an untouched scene hashes to its existing clip and
+returns in milliseconds; only maths you actually changed costs a render.
+
 The gate's escape is `HF_ALLOW_UNVERIFIED_MATH=1`, for a knowing exception only.
 
 Deferred deliberately (see `vendor/math-animation/docs/DEFERRED_NOLAN_WORK.md`): alpha-MOV

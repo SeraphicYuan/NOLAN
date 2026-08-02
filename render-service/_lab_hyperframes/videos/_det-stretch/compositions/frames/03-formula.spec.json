@@ -58,7 +58,7 @@
                 "c01": "assumed",
                 "c02": "assumed"
               },
-              "cached": false
+              "cached": true
             }
           },
           "start": 0.0,
