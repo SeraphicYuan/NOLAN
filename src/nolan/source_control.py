@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import httpx
 
 from nolan.source_registry import (all_source_ids, source_roles, source_spec,
-                                   source_tier_positions, tier_payload)
+                                   source_surface, source_tier_positions, tier_payload)
 
 
 def loopback_cdp_url(value: str) -> str:
@@ -119,6 +119,11 @@ def build_source_rows(config, *, library=None, probe_cdp: bool = True) -> dict:
             "health": health,
             "coverage": coverage.get(source_id),
             "harvest": source_id in HARVEST_SOURCES,
+            # Where this source's rows actually live. /sources is CONFIGURATION (credentials,
+            # priority); the library pages are INVENTORY. The link is what makes them one system
+            # rather than three pages that happen to say "source". None for a live provider that
+            # has no local tier to browse.
+            "surface": source_surface(source_id),
             # Rawpixel Video shares the same browser session; expose one action,
             # on the parent source, so the UI cannot imply two credentials.
             "actions": (["refresh_session"] if source_id == "rawpixel" else []),

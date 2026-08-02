@@ -97,3 +97,34 @@ def test_sync_all_refuses_a_kind_its_walker_cannot_enumerate():
     assert '"skipped": skipped' in route, "a batch covering a subset must report what it skipped"
     walkable = [k.id for k in ts.all_kinds() if k.enumeration == "channel-listing"]
     assert set(walkable) == {"youtube", "youtube_cc"}
+
+
+def test_every_crawlable_source_is_in_the_shared_catalog():
+    """`/sources` claims to be the catalog of every source, and it described the image half plus
+    one quarter of the video half: `youtube`, `youtube_cc` and `tdf` had no SourceSpec at all, so
+    their rights, media and docs were unstated in the one place that is supposed to hold them."""
+    from nolan.source_registry import SOURCE_SPECS
+    from nolan import transcript_sources as ts
+    from nolan.imagelib.harvest import SOURCES as harvest
+
+    missing_video = [k for k in ts.KINDS if k not in SOURCE_SPECS]
+    missing_image = [k for k in harvest if k not in SOURCE_SPECS]
+    assert not missing_video, f"video kinds absent from the shared catalog: {missing_video}"
+    assert not missing_image, f"harvest adapters absent from the shared catalog: {missing_image}"
+
+    for k in ts.KINDS:
+        spec = SOURCE_SPECS[k]
+        assert "video" in spec.media, f"{k} is a video source but its spec says {spec.media}"
+        assert spec.rights, f"{k}: the catalog must state rights"
+
+
+def test_a_source_points_at_the_library_that_actually_holds_its_rows():
+    """The cross-link that makes three pages one system: /sources is configuration, the library
+    pages are inventory. A live provider with no local tier correctly resolves to nothing."""
+    from nolan.source_registry import source_surface
+    assert source_surface("tdf")["href"] == "/transcripts"
+    assert source_surface("youtube_cc")["href"] == "/transcripts"
+    assert source_surface("artvee")["href"] == "/visual-lib"
+    assert source_surface("met")["href"] == "/visual-lib"
+    assert source_surface("pexels") is None, "a live provider has no local tier to browse"
+    assert source_surface("nonexistent") is None

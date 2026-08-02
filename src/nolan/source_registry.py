@@ -101,6 +101,22 @@ SOURCE_SPECS: Dict[str, SourceSpec] = {
     "artvee": _s("artvee", "Artvee", rights="Public Domain; basic download only", docs_url="https://artvee.com/"),
     "pdia": _s("pdia", "Public Domain Image Archive", rights="CC0/Public Domain", docs_url="https://pdimagearchive.org/"),
     "archive": _s("archive", "Internet Archive Video", media=("video",), rights="Per-item; strict gate required", docs_url="https://archive.org/"),
+    # VIDEO source kinds. These are families the transcript library crawls (`transcript_sources`),
+    # and they were absent here — so /sources, which claims to be the catalog of every source,
+    # described the image half and three quarters of nothing on the video half.
+    "youtube": _s("youtube", "YouTube channel", media=("video",),
+                  rights="Copyrighted — a searchable reference, never usable b-roll",
+                  docs_url="https://www.youtube.com/",
+                  description="A documentary or news channel, transcript-indexed for discovery."),
+    "youtube_cc": _s("youtube_cc", "Copyright-free YouTube", media=("video",),
+                     rights="Copyright-free per channel assertion (stock / b-roll)",
+                     docs_url="https://www.youtube.com/",
+                     description="Stock and b-roll channels whose videos are all free to use."),
+    "tdf": _s("tdf", "Top Documentary Films", media=("video",),
+              rights="Copyrighted documentaries; the index is metadata only",
+              docs_url="https://topdocumentaryfilms.com/",
+              description="A curated INDEX over YouTube/Vimeo — every entry resolves to a video "
+                          "hosted elsewhere, with a human-written synopsis and a runtime."),
     "archive_image": _s("archive_image", "Internet Archive Images", rights="Per-item; strict gate required", docs_url="https://archive.org/"),
 }
 
@@ -123,6 +139,31 @@ _keyed("unsplash", "Unsplash", "unsplash_access_key", "UNSPLASH_ACCESS_KEY", "Un
 _keyed("rijksmuseum", "Rijksmuseum", "rijksmuseum_api_key", "RIJKSMUSEUM_API_KEY", "Per-item open data rights", "https://data.rijksmuseum.nl/")
 _keyed("harvard", "Harvard Art Museums", "harvard_art_api_key", "HARVARD_ART_API_KEY", "Per-item rights statement", "https://harvardartmuseums.org/collections/api")
 _keyed("coverr_video", "Coverr Video", "coverr_api_key", "COVERR_API_KEY", "Coverr License", "https://coverr.co/", ("video",))
+
+
+# Which SURFACE holds a source's rows — so /sources can send you to the page that actually has
+# them, and each library page can send you back here for credentials and priority.
+SOURCE_SURFACES: Dict[str, Tuple[str, str]] = {
+    "video": ("/transcripts", "Transcript Library"),
+    "image": ("/visual-lib", "Visual Lib"),
+}
+
+
+def source_surface(source_id: str) -> Optional[Dict[str, str]]:
+    """``{href, label}`` for the library page that holds this source's rows, or None when the
+    source is a live provider with no local tier of its own (pexels, ddgs, …)."""
+    from nolan import transcript_sources as _ts
+    if source_id in _ts.KINDS:
+        href, label = SOURCE_SURFACES["video"]
+        return {"href": href, "label": label}
+    try:
+        from nolan.imagelib.harvest import SOURCES as _harvest
+    except Exception:
+        return None
+    if source_id in _harvest:
+        href, label = SOURCE_SURFACES["image"]
+        return {"href": href, "label": label}
+    return None
 
 
 def _members(table: Dict[str, Iterable[str]]) -> set[str]:

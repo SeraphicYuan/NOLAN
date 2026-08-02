@@ -143,6 +143,31 @@ from the registry, `author.py` delegation, `block_registry` / `style_contract` /
 classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
 honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
 
+## Three pages that said "source" and never referred to each other (2026-08-02)
+
+`/sources` calls itself the control plane for every source. It described the image half and one
+quarter of the video half: `youtube`, `youtube_cc` and `tdf` had no `SourceSpec` at all, so their
+rights, media and docs were unstated in the one place meant to hold them. All seven harvest
+adapters were already there; the video kinds simply never arrived. 33 specs -> 36.
+
+The three surfaces keep their distinct jobs, because merging them would put credentials next to
+coverage bars:
+
+| page | question |
+|---|---|
+| `/sources` | what providers exist, are they configured, what priority? — CONFIGURATION |
+| `/visual-lib` -> Sources | what have I harvested, how complete? — INVENTORY |
+| `/transcripts` -> Sources | which video sources do I draw from, are they current? — INVENTORY |
+
+What they lacked was a way to refer to each other. `source_surface(id)` resolves a source to the
+library page that actually holds its rows, so each `/sources` row links out to it and both library
+tabs link back with a `⚙ Configure` button. 11 of 36 sources resolve; the other 25 are live
+providers with no local tier, and correctly get no link rather than a broken one.
+
+Two tests bind it: every crawlable source — every video kind AND every harvest adapter — must have
+a spec in the shared catalog, and the surface resolver must send video kinds to /transcripts, image
+adapters to /visual-lib, and a live provider nowhere.
+
 ## PDIA reported 100% coverage while 85% of it was unmeasured (2026-08-02)
 
 `Collection.coverage` is honest per collection — it returns None without a denominator and clamps
