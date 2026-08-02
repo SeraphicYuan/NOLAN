@@ -471,12 +471,19 @@ def _survey_key(ref: str, kind: str) -> str:
     if kind == "archive":
         from nolan import archive_source as ar
         return f"archive:{ar.collection_ref(ref)}"
+    if kind == "tdf":
+        return "tdf:topdocumentaryfilms.com"          # one site, one survey — the ref is a formality
     return f"{kind}:{_channel_key(ref)}"
 
 
 def _thumb_for(video_id: str, kind: str) -> str:
-    return (f"https://archive.org/services/img/{video_id}" if kind == "archive"
-            else f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg")
+    if kind == "archive":
+        return f"https://archive.org/services/img/{video_id}"
+    # A `tdf` row is keyed by its HOST's id — a YouTube id or a numeric Vimeo one. Vimeo thumbnails
+    # need an API round-trip, so say nothing rather than emit a ytimg URL that 404s.
+    if kind == "tdf" and str(video_id).isdigit():
+        return ""
+    return f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
 
 
 def save_survey(channel: str, titles: List[Dict[str, Any]], catalog_dir: Optional[Path] = None,
@@ -494,9 +501,16 @@ def save_survey(channel: str, titles: List[Dict[str, Any]], catalog_dir: Optiona
                "duration": t.get("duration")}
         if t.get("copyright_free"):
             row["copyright_free"] = True                          # copyright-free families (archive / youtube_cc)
-        if kind == "archive":
-            row.update(subject=t.get("subject") or [], license=t.get("license") or "",
-                       description=t.get("description") or "")
+        # Keep whatever ENRICHMENT a source supplied, rather than allow-listing one kind's fields.
+        # This was `if kind == "archive"`, so a tdf survey persisted only id/url/title/duration and
+        # silently dropped the synopsis, category, director, host, playlist and page_url — the entire
+        # reason that source exists. A sink that discards what it does not recognise is the same bug
+        # the lossless-scene_plan rule exists to prevent: never strip what you did not author.
+        for field, empty in (("subject", []), ("license", ""), ("description", ""),
+                             ("host", ""), ("playlist", ""), ("page_url", ""),
+                             ("director", ""), ("rating", ""), ("date", "")):
+            if t.get(field):
+                row[field] = t[field] or empty
         rows.append(row)
     surveys[_survey_key(channel, kind)] = {"channel": channel, "kind": kind, "label": channel,
                                            "fetched": fetched, "count": len(rows),
@@ -1275,7 +1289,20 @@ def survey_channel(channel: str, limit: Optional[int] = None, catalog_dir: Optio
                      "in_library": r["video_id"] in have, "_cached": cached.get("fetched", "")}
                     for r in cached["titles"]]
     total = 0
-    if kind == "archive":
+    if kind == "tdf":
+        # A curated INDEX over YouTube/Vimeo: the survey resolves every entry to its host's video id,
+        # so ingest, transcripts and search all reuse the YouTube path and these rows dedupe against
+        # anything already pulled from a channel crawl.
+        from nolan import tdf_source as tdf
+        items, st = tdf.survey_collection(limit=limit)
+        total = st.get("posts") or len(items)
+        rows = [{"video_id": v["video_id"], "url": v["url"], "title": v["title"],
+                 "duration": v.get("duration"), "subject": v.get("subject") or [],
+                 "license": "", "copyright_free": False,          # copyrighted documentaries
+                 "description": v.get("description") or "", "host": v.get("host") or "youtube",
+                 "page_url": v.get("page_url") or ""}
+                for v in items]
+    elif kind == "archive":
         from nolan import archive_source as ar
         items, total = ar.survey_collection(channel, limit, collection_free=collection_free)
         rows = [{"video_id": v["video_id"], "url": v["url"], "title": v["title"], "duration": v.get("duration"),

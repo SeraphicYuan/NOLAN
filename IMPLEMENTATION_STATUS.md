@@ -143,6 +143,53 @@ from the registry, `author.py` delegation, `block_registry` / `style_contract` /
 classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
 honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
 
+## topdocumentaryfilms: a curated index over YouTube, and two silent drops (2026-08-02)
+
+A fourth source kind — except it is not a content host. Every entry resolves to a video hosted
+elsewhere, so `tdf_source` is a DISCOVERY adapter shaped like `archive_source`: it produces survey
+rows and nothing else, and ingest, transcripts, keyframes and search reuse the YouTube path
+unchanged. 2,321 documentaries surveyed of 3,076 posts.
+
+**The "hard part" was not hard.** The play button is a lazy-load facade: the id is server-rendered
+in an embed `<meta>` AND in the player's thumbnail, so the extractor cross-checks the two rather
+than trusting one. Necessary, because a documentary page also carries thumbnails for two RELATED
+films — a page-wide regex picks a neighbour about two thirds of the time.
+
+**The real obstacle was Cloudflare.** Every plain HTTP request 403s, including the sitemap.xml
+robots.txt advertises. `page.goto` clears it (headless included); an in-page `fetch()` does not, and
+a fresh context sustains only ~2 navigations — pacing does not change that (2/10 at both 1s and 3s),
+so contexts are RECYCLED rather than slowed. But the WordPress REST API is not challenged at all,
+and carries better metadata than the page: synopsis, category, release year, director, and `runtime`
+IN MINUTES. That last one is the prize — the length filter can only bite when a row has a duration,
+and archive rows carry one 14% of the time. It is also a free documentary filter (blog posts and
+listicles never have one), which is most of the crawl budget saved.
+
+**Two silent drops, both caught by counters rather than by luck.**
+
+`videoseries` — YouTube's playlist placeholder for a multi-part documentary — is exactly ELEVEN
+characters, so it satisfies a YouTube-id pattern and read as an ordinary video id. 190 films (8%)
+would have shipped pointing at `watch?v=videoseries`. The thumbnail cross-check caught every one as
+a conflict, which is the whole argument for refusing on disagreement instead of picking a side. Now
+recognised: the thumbnail's id is the entry point, the `list=` id is kept so the other parts stay
+reachable. Verified live — all three sampled resolve to Part 1 on the real publishers' channels.
+
+`save_survey` allow-listed ARCHIVE's enrichment (`if kind == "archive"`), so a tdf survey persisted
+only id/url/title/duration and discarded the synopsis, category, director, host, playlist and
+page_url on write — 2,131 rows' worth, and the same lossless violation the scene_plan rule exists to
+prevent. It now keeps whatever a source supplied, by field rather than by kind, so the next source
+cannot hit it. Recovery cost 11 minutes rather than a re-crawl: the ids survived, the descriptions
+came back from the API and joined by title with ZERO unmatched rows.
+
+**Vimeo is stored but not yet ingestable.** 150 of 2,321 (7%). Extraction works; yt-dlp cannot
+authenticate — its macOS client was the only one able to fetch an anonymous OAuth token and Vimeo now
+401s it (yt-dlp #17271). Confirmed against two independently verified LIVE videos, with and without
+the Referer header and the player URL form, so it is not the domain-restriction problem those fixes
+address. `--cookies-from-browser` would work and is deliberately not wired in.
+
+Known caveat, recorded in the code: on a playlist row `runtime` describes the WHOLE series while
+`video_id` is part one, so those 190 rows read longer than the video an ingest would fetch.
+Also 203 posts carry a runtime but no player at all, and 0 of 2,524 page fetches were unreachable.
+
 ## The bugs behind "where do I pick the source?" (2026-08-01)
 
 **60 videos belonged to no source at all.** `ingest_videos` attributed a pick with
@@ -6010,3 +6057,33 @@ TestClient; node JS syntax check; presence of new UI strings.
 
 Verified via TestClient: /output 200 present / 404 absent; DELETE 200/400(bad name)/404;
 has_output toggles; node JS syntax; new UI strings present.
+## Artvee artist collections in Visual Lab — pilot (2026-08-01)
+
+Artvee now participates in the existing `nolan.imagelib` discovery/Visual Lab schema rather
+than writing a separate metadata format. Each artist is one collection; the artist-page bio is
+the collection description, and nationality plus birth/death years also populate the shared
+Artist record. Artwork rows use the normal non-caption fields: title, creator, exact date text,
+classification/type, dimensions, source page, thumbnail, rights, and stable source id.
+
+The adapter walks artist pages with `orderby=title_asc`, `per_page=70`, and a resumable
+page/offset cursor. `url` is the durable unsigned **basic SDL download**
+(`https://mdl.artvee.com/sdl/<key>sdl.jpg`); premium HDL is never requested. Artvee's `Posters`
+classification now derives to Visual Lab's existing `poster` kind instead of `unknown`.
+
+Usage: `nolan images harvest artvee --artist alphonse-mucha --limit 5`. The initial live pilot
+indexed 5/203 Mucha works with 0 refusals/errors, stored the full artist bio, and verified all
+five basic download URLs (HTTP 206). The Visual Lab Sources form exposes an Artvee-specific
+artist input and the resulting artist appears as a curated collection while retaining its
+coverage denominator. Re-running without `--restart` continues from the cursor.
+
+**Fast thumbnail default:** Artvee now indexes catalog identity first, then fetches its own CDN
+thumbnails six-wide. These thumbnails are kept byte-for-byte: no PIL decode/resize, no dimension
+or content-box validation, and no CLIP vector. Rights/host checks remain, and the full basic image
+is still validated if promoted into the held Picture Library. A live 20-row run took 14.27s
+including startup (15 new thumbnails, 5 cached; 0 errors/refusals). Text identity/BGE remains on.
+
+**Full-site coordinator:** `nolan images harvest-artvee-all` walks the 16-page artist directory
+(480 artist collections; 69,119 works advertised at verification time) and runs the same fast
+metadata + thumbnail path for each artist. Progress and resume state remain in the normal per-artist
+collection rows, so an interrupted run resumes the first incomplete artist and skips exhausted ones.
+Use `--max-artists N` for a bounded smoke run or `--no-pixels` for metadata only.
