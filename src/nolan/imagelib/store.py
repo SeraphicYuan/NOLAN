@@ -377,7 +377,7 @@ class ImageLibrary:
                       tags=None, tier: str = "archival", embed: bool = True,
                       pixels: bool = True,
                       medium=None, classification=None, department=None,
-                      culture=None, place=None):
+                      culture=None, place=None, primary_maker=None):
         """Index an image we do NOT hold: catalog metadata + (optionally) a local thumbnail.
         Returns ``(Asset, created)``; re-indexing a known `source_ref` refreshes it in place.
 
@@ -446,7 +446,8 @@ class ImageLibrary:
                 institution=institution, identity_source=identity_source,
                 wikidata_qid=wikidata_qid, collection_id=collection_id, license=license,
                 thumb_url=thumb_url, medium=medium, classification=classification,
-                department=department, culture=culture, place=place)
+                department=department, culture=culture, place=place,
+                primary_maker=primary_maker)
 
         fresh_thumb = not dest.exists()
         if fresh_thumb:
@@ -500,7 +501,8 @@ class ImageLibrary:
             institution=institution, identity_source=identity_source,
             wikidata_qid=wikidata_qid, collection_id=collection_id, license=license,
             thumb_url=thumb_url, medium=medium, classification=classification,
-            department=department, culture=culture, place=place)
+            department=department, culture=culture, place=place,
+            primary_maker=primary_maker)
 
     def _write_discovery_row(self, *, source_ref, existing, rel, fresh_thumb, embed,
                              thumb_url, description_source="catalog", **fields):
@@ -516,6 +518,15 @@ class ImageLibrary:
         fields = {k: v for k, v in fields.items()}
         fields["thumb_path"] = rel
         fields["thumb_url"] = thumb_url
+        # WHO THE JOIN KEY POINTS AT, when the source credited several names. `creator` keeps the
+        # source's whole string (provenance — "Jacques Callot|Israël Henriet" is what the Met
+        # says); `artist_key` gets the one who MADE it, chosen by role. Without this the pair
+        # becomes one artist who is neither man, and 611 Callot etchings can never join the 751
+        # already filed under him. Only the Met credits this way — 30% of its attributed rows.
+        maker = fields.pop("primary_maker", None)
+        if maker:
+            from nolan.imagelib.catalog import folded_artist
+            fields["artist_key"] = folded_artist(maker)
         # DERIVED, never asked of a model: the institution already catalogued the object, and a
         # regex over its own words beat the VLM on every row where the two disagreed. Order is
         # authority order — classification, then the type tag, then the medium (the Art Institute
@@ -777,6 +788,64 @@ class ImageLibrary:
         if progress:
             progress(out)
 
+    def repair_met_artist_keys(self, *, dry_run: bool = False, progress=None) -> dict:
+        """Re-point `artist_key` at the maker for Met rows that credit several names.
+
+        32,146 rows — 30% of the Met's attributed rows and 18% of the whole attributed library —
+        store a pipe-joined credit as though it were one person's name. "Jacques Callot|Israël
+        Henriet" folds to a key that is neither man, so those 611 etchings cannot join the 751
+        already under Callot, and neither bucket can reach the artist knowledge table.
+
+        The roles are not in our schema (the crawl never harvested `Artist Role`), so this reads
+        them back out of the bulk CSV on disk and joins by `source_ref`. Zero requests.
+
+        `creator` is NOT rewritten. It is what the source said, and the whole point of keeping the
+        raw string is that a later, better rule can be applied to it — which is exactly what this
+        is. Only the derived join key moves.
+        """
+        from nolan.imagelib.catalog import folded_artist
+        from nolan.imagelib.harvest import met_csv_rows, primary_maker
+
+        # source_ref -> chosen maker, for the multi-credit rows only.
+        chosen: Dict[str, Optional[str]] = {}
+        for row in met_csv_rows(public_domain_only=False):
+            names = row.get("Artist Display Name") or ""
+            if "|" not in names:
+                continue
+            oid = (row.get("Object ID") or "").strip()
+            if oid:
+                chosen[f"met:{oid}"] = primary_maker(names, row.get("Artist Role"))
+
+        out = {"csv_multi_credit": len(chosen), "examined": 0, "changed": 0,
+               "no_maker": 0, "unchanged": 0, "not_in_csv": 0, "examples": []}
+        rows = self.catalog.list(status="active", held=0, source="met", limit=1_000_000)
+        with self.catalog.batched_writes():
+            for a in rows:
+                if not a.creator or "|" not in a.creator:
+                    continue
+                out["examined"] += 1
+                if a.source_ref not in chosen:
+                    out["not_in_csv"] += 1
+                    continue
+                maker = chosen[a.source_ref]
+                new_key = folded_artist(maker) if maker else None
+                if new_key == a.artist_key:
+                    out["unchanged"] += 1
+                    continue
+                if new_key is None:
+                    # Credited only to someone depicted in it. No maker is the honest answer.
+                    out["no_maker"] += 1
+                else:
+                    out["changed"] += 1
+                    if len(out["examples"]) < 8:
+                        out["examples"].append({"ref": a.source_ref, "creator": a.creator,
+                                                "was": a.artist_key, "now": new_key})
+                if not dry_run:
+                    self.catalog.update(a.id, artist_key=new_key)
+                if progress and out["examined"] % 2000 == 0:
+                    progress(out)
+        return out
+
     def repair_pdia_image_urls(self) -> dict:
         """Repoint PDIA rows at the CDN. No network — the path was always right, the host wasn't.
 
@@ -915,7 +984,14 @@ class ImageLibrary:
         patches: dict = {}
         for a in self.catalog.list(status="active", held=None,
                                    collection_id=collection_id, limit=1_000_000):
-            m = by_key.get(artist_key(a.creator)) if a.creator else None
+            # THE STORED KEY WINS. Re-folding `creator` here recomputes a key the row already
+            # carries — and gets a WORSE one on the 31,452 Met rows whose credit names several
+            # people: `folded_artist("Jacques Callot|Israël Henriet")` is neither man, while
+            # `artist_key` has been repaired to point at Callot. Ignoring the column meant the
+            # re-key bought nothing downstream (`changed: 0` on 31k moved rows), which is the
+            # stale-consumer failure this method's own docstring warns about.
+            key = a.artist_key or (artist_key(a.creator) if a.creator else None)
+            m = by_key.get(key) if key else None
             m = display.get(m.casefold()) if m else None
             if m:
                 covered += 1

@@ -82,6 +82,9 @@ class HarvestItem:
     # "Operation Doorstep (1953)" — and 26% of its rows belong to none, which is why this is
     # optional and the harvest's own collection remains the fallback.
     collection: Optional[Collection] = None
+    # WHICH of several credited names actually MADE this. `creator` stays exactly as the source
+    # wrote it (provenance); this is the one the join key is built from. See `primary_maker`.
+    primary_maker: Optional[str] = None
 
 
 @dataclass
@@ -614,6 +617,77 @@ def met_upstream_count(dept: Optional[str] = None, query: Optional[str] = None) 
         return None
 
 
+# Roles that are NOT a maker — the person is in the picture, or paid for it, or was once wrongly
+# credited. Attributing a portrait to its SITTER is the worst join this module can make: it files
+# the painting under the person depicted and then hands that person's biography to every row.
+# Measured over the dump: Sitter 6,051 slots, Subject 2,821, Person in Photograph 1,246,
+# Dedicatee 1,212, Former Attribution 1,426, Patron 647, Correspondent 588.
+_NOT_A_MAKER = ("sitter", "subject", "person in photograph", "dedicatee", "patron",
+                "correspondent", "former attribution", "owner", "collector")
+# "Artist" is its OWN tier, above every other making role, because it is the museum's own primary
+# attribution — the same reason we read their QID column rather than guessing one. Without the
+# split, "John Boydell|Valentine Green|Benjamin West" (Publisher|Engraver|Artist) filed a West
+# painting under Green, who engraved the reproduction. Substring-matched, so the Met's compound
+# credits ("Artist and publisher", "Artist and engraver") land in this tier too.
+_IS_THE_ARTIST = ("artist", "painter", "sculptor", "photographer", "maker")
+# Made it with their hands, but the museum did not call them THE artist — typically the person who
+# cut the plate or decorated the blank for someone else's design.
+_HELPED_MAKE_IT = ("designer", "etcher", "engraver", "lithographer", "illustrator", "draftsman",
+                   "architect", "modeler", "decorator", "calligrapher", "weaver", "potter",
+                   "goldsmith", "silversmith", "author", "composer", "embroiderer", "printmaker")
+
+
+def _role_rank(role: str) -> int:
+    """0 = the artist, 1 = a hand that made it, 2 = produced/published it, 3 = not a maker."""
+    r = (role or "").strip().lower()
+    if any(w in r for w in _NOT_A_MAKER):
+        return 3
+    if any(w in r for w in _IS_THE_ARTIST):
+        return 0
+    if any(w in r for w in _HELPED_MAKE_IT):
+        return 1
+    return 2                                   # publisher, printer, manufactory, factory, unknown
+
+
+def primary_maker(display_names: Optional[str], roles: Optional[str] = None) -> Optional[str]:
+    """WHICH of several credited names actually made the object.
+
+    30% of the Met's attributed rows credit more than one name, pipe-separated — 32,146 rows in
+    this library, and zero from any other source. Stored whole, "Jacques Callot|Israël Henriet"
+    becomes ONE artist who is neither man, so 611 Callot etchings sit in a bucket that can never
+    match the 751 already filed under him.
+
+    THE FIRST NAME IS NOT THE ANSWER. `Artist Role` is pipe-separated and positional alongside,
+    and the first slot holds "Artist" only 47,286 times out of 97,567 multi-maker rows — the rest
+    lead with Publisher (14,928), Designer, Author, Printer. Picking position 0 would file half of
+    them under a print shop.
+
+    So: the name the museum called THE ARTIST; failing that a hand that made it; failing that
+    whoever produced it; and NEVER one that is merely depicted in it. A row whose only credit is a
+    sitter has no maker and returns None, rather than attributing a portrait to its subject.
+
+    That ordering is what makes "Louis Lumet|Vincent van Gogh|Dr. Paul Ferdinand Gachet"
+    (Dedicatee|Subject|Artist) resolve to Gachet — who really did etch it — instead of to van
+    Gogh, who is the man in the picture.
+    """
+    names = [n.strip() for n in (display_names or "").split("|")]
+    names = [n for n in names if n]
+    if not names:
+        return None
+    parts = [r.strip() for r in (roles or "").split("|")]
+    if len(names) == 1:
+        # One name, but it may still be a sitter — a photograph credited only to the person in it.
+        return None if parts and _role_rank(parts[0]) == 3 else names[0]
+    best, best_rank = None, 99
+    for i, name in enumerate(names):
+        rank = _role_rank(parts[i]) if i < len(parts) else 2
+        if rank < best_rank:
+            best, best_rank = name, rank
+            if rank == 0:
+                break                          # the artist; nothing later can beat it
+    return best if best_rank < 3 else None
+
+
 def _met_row_item(row: Dict[str, str]) -> HarvestItem:
     """One CSV row as a HarvestItem, with NO image url — see `met_csv_items`."""
     bits = [row.get("Medium"), row.get("Culture"), row.get("Country"),
@@ -626,6 +700,7 @@ def _met_row_item(row: Dict[str, str]) -> HarvestItem:
         source_url=(row.get("Link Resource") or "").strip() or None,
         title=(row.get("Title") or "").strip() or None,
         creator=(row.get("Artist Display Name") or "").strip() or None,
+        primary_maker=primary_maker(row.get("Artist Display Name"), row.get("Artist Role")),
         date_text=(row.get("Object Date") or "").strip() or None,
         institution="The Metropolitan Museum of Art",
         description=", ".join(b.strip() for b in bits if (b or "").strip()),
@@ -848,6 +923,9 @@ def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[s
                         url=o.get("primaryImage"),
                         source_url=o.get("objectURL"),
                         title=o.get("title"), creator=o.get("artistDisplayName") or None,
+                        # The API mirrors the dump's pipe-separated convention on both fields.
+                        primary_maker=primary_maker(o.get("artistDisplayName"),
+                                                    o.get("artistRole")),
                         date_text=o.get("objectDate") or None,
                         institution="The Metropolitan Museum of Art",
                         description=", ".join(b for b in bits if b),
@@ -1696,7 +1774,7 @@ def harvest(source: str, *, limit: int = 200, scope: str = "global",
                             pixels=pixels, tier=adapter.gate_tier,
                             medium=item.medium, classification=item.classification,
                             department=item.department, culture=item.culture,
-                            place=item.place)
+                            place=item.place, primary_maker=item.primary_maker)
                         break
                     except ValueError:
                         raise

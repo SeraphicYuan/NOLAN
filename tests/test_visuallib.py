@@ -1597,6 +1597,58 @@ def test_rekeying_cannot_drop_a_column_added_after_it_was_written(lib):
     assert a.sources["birth_year"] == "wikidata"
 
 
+def test_the_primary_maker_is_chosen_by_ROLE_not_by_position():
+    """30% of the Met's attributed rows credit several names, pipe-separated. The first slot holds
+    "Artist" only 47,286 times out of 97,567, so position 0 would file half of them under a print
+    shop."""
+    from nolan.imagelib.harvest import primary_maker
+
+    # the museum's own primary attribution wins wherever it sits
+    assert primary_maker("Jacques Callot|Israël Henriet", "Artist|Publisher") == "Jacques Callot"
+    assert primary_maker("Israël Henriet|Jacques Callot", "Publisher|Artist") == "Jacques Callot"
+    # "Artist" outranks other making roles: West painted it, Green only engraved the reproduction
+    assert primary_maker("John Boydell|Valentine Green|Benjamin West",
+                         "Publisher|Engraver|Artist") == "Benjamin West"
+    # a hand that made it beats whoever published it, when no one is called the artist
+    assert primary_maker("W. Duke, Sons & Co.|Knapp & Company",
+                         "Publisher|Lithographer") == "Knapp & Company"
+    # no roles at all — fall back to the first name rather than dropping the credit
+    assert primary_maker("Claude Monet|Someone Else") == "Claude Monet"
+
+
+def test_a_sitter_is_never_credited_as_the_maker():
+    """Filing a portrait under the person depicted is the worst join this can make: it hands that
+    person's biography to every row. Measured in the dump: Sitter 6,051 slots, Subject 2,821,
+    Person in Photograph 1,246."""
+    from nolan.imagelib.harvest import primary_maker
+
+    assert primary_maker("Mathew B. Brady|Abraham Lincoln", "Artist|Sitter") == "Mathew B. Brady"
+    # credited ONLY to the man in the photograph — there is no maker, and None says so
+    assert primary_maker("Abraham Lincoln", "Sitter") is None
+    assert primary_maker("Someone|Another", "Sitter|Dedicatee") is None
+    # van Gogh is the SUBJECT here; Gachet really did etch it
+    assert primary_maker("Louis Lumet|Vincent van Gogh|Dr. Paul Ferdinand Gachet",
+                         "Dedicatee|Subject|Artist") == "Dr. Paul Ferdinand Gachet"
+
+
+def test_backfill_movements_uses_the_STORED_artist_key(lib):
+    """Re-folding `creator` recomputes a key the row already carries, and gets a worse one on the
+    31,452 Met rows crediting several people — so the re-key bought nothing downstream and the
+    backfill reported `changed: 0` on 31k moved rows."""
+    from nolan.imagelib.catalog import Artist
+
+    asset, _ = lib.add_discovery(source_ref="met:1", thumb_url="https://e/x.jpg", source="met",
+                                 title="An etching", creator="Jacques Callot|Israël Henriet",
+                                 primary_maker="Jacques Callot", license="CC0", pixels=False)
+    assert asset.artist_key == "callot jacques", "the join key must point at the maker"
+    assert asset.creator == "Jacques Callot|Israël Henriet", "creator keeps what the source said"
+
+    lib.catalog.upsert_artist(Artist(name="Jacques Callot", movement="Baroque", source="t"))
+    res = lib.backfill_movements()
+    assert res["changed"] == 1, res
+    assert lib.catalog.get_by_ref("met:1").movement == "Baroque"
+
+
 def test_the_met_dump_hands_over_artist_qids_positionally():
     """Both columns are pipe-separated and positional, and a slot may be blank when the museum
     identified one collaborator but not the other. Splitting either column alone shifts every id
