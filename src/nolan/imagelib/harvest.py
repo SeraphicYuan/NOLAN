@@ -65,6 +65,11 @@ class HarvestItem:
     height: Optional[int] = None
     wikidata_qid: Optional[str] = None
     tags: Optional[str] = None
+    # What the picture is ABOUT, as opposed to what it is made of. Only PDIA could fill this
+    # before, and only through its post-hoc detail pass — an adapter had no way to say it at
+    # harvest time even when the source published it outright. The Library of Congress does:
+    # "World War, 1939-1945--Civil defense--Alabama" is a subject heading, not a medium.
+    subject: Optional[str] = None
     # The catalog tier as FIELDS rather than as prose. `description` keeps the joined sentence
     # (it is what BGE embeds); these are what a filter can actually act on.
     medium: Optional[str] = None
@@ -1858,6 +1863,29 @@ def describe_discovery(library, *, limit: int = 25, collection_id: Optional[int]
     from nolan.imagelib.caption import (CAPTION_SCHEMA, PROMPT, build_context,
                                         caption_text, parse_caption)
 
+    "loc": SourceAdapter(
+        id="loc",
+        collection=_loc.loc_collection,
+        items=_loc.loc_items,
+        enumeration="curated-collection",
+        upstream_count=_loc.loc_upstream_count,
+        resumable=True,
+        publishes_pixel_dims=False,
+        rights_model="per-item",
+        notes="Library of Congress Prints & Photographs — 1,220,221 images, and the only "
+              "DOCUMENTARY source here: FSA/OWI Depression negatives (171,055), Highsmith "
+              "(70,431), stereographs (55,779), HABS/HAER (45,863), WPA and wartime posters. "
+              "The museums cover art; this covers photojournalism, and there is little overlap. "
+              "Keyless. The whole record is in the LISTING — rights, medium, genre, subjects, "
+              "dates and both image URLs — so 947 items cost 2 requests, not 947, and there is "
+              "no per-item pass (c=500 is the ceiling; c=1000 truncates the response). Crawled "
+              "one named collection at a time (`--dept <slug>`), which is how LoC is organised "
+              "and what keeps a 1.19M source from arriving as one undifferentiated blob. "
+              "robots.txt Crawl-Delay: 5 is honoured, and costs seconds because it is per PAGE. "
+              "RIGHTS ARE PER ITEM: `rights_advisory` is a statement about what the Library "
+              "KNOWS, not a licence — only 'no known restrictions' is admitted, an absent "
+              "advisory is refused, and the archival gate tier is kept.",
+    ),
     describer = describer or library.describer
     if describer is None:
         raise ValueError("no describer provided")
@@ -1987,6 +2015,7 @@ def _main(argv=None) -> int:
     print(json.dumps(rep.to_dict(), indent=2, ensure_ascii=False))
     return 0 if rep.added or rep.refreshed else 1
 
+                            subject=item.subject,
 
 if __name__ == "__main__":
     raise SystemExit(_main())

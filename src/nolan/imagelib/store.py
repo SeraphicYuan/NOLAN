@@ -483,7 +483,7 @@ class ImageLibrary:
                       description=None, license=None, url=None, source_url=None,
                       width=None, height=None, wikidata_qid=None, collection_id=None,
                       identity_source: str = "catalog", description_source: str = "catalog",
-                      tags=None, tier: str = "archival", embed: bool = True,
+                      tags=None, subject=None, tier: str = "archival", embed: bool = True,
                       pixels: bool = True,
                       medium=None, classification=None, department=None,
                       culture=None, place=None, primary_maker=None,
@@ -527,7 +527,7 @@ class ImageLibrary:
         Rejections raise ValueError. Loud, per the workspace's failure rule: a discovery row that
         silently skipped the gate would be indistinguishable from one that passed it.
         """
-        from nolan.asset_gate import (OPEN_ACCESS_SOURCES, banner_suspect,
+        from nolan.asset_gate import (UNWATERMARKED_SOURCES, banner_suspect,
                                       check_candidate)
         from nolan.http_client import download_file_sync
 
@@ -552,7 +552,8 @@ class ImageLibrary:
                 source_ref=source_ref, existing=existing, rel=None, fresh_thumb=False,
                 embed=embed, url=url, source=source, source_url=source_url, title=title,
                 description=description, description_source=description_source,
-                width=width, height=height, tags=tags, creator=creator, date_text=date_text,
+                width=width, height=height, tags=tags, subject=subject,
+                creator=creator, date_text=date_text,
                 institution=institution, identity_source=identity_source,
                 wikidata_qid=wikidata_qid, collection_id=collection_id, license=license,
                 thumb_url=thumb_url, medium=medium, classification=classification,
@@ -578,7 +579,15 @@ class ImageLibrary:
         # 16231), a Spanish retable on white (artic:88793) — at ~1% of a shallow crawl rising to
         # ~5% deeper in, where object photography outnumbers framed paintings. It still runs for
         # every other source, so the Alamy shape it was written for is still caught.
-        if source not in OPEN_ACCESS_SOURCES and banner_suspect(dest):
+        # UNWATERMARKED_SOURCES, not OPEN_ACCESS_SOURCES — "serves clean images" and "is open by
+        # construction" are different questions, and `backfill_pixels` has consulted the right
+        # set since that distinction was drawn. THIS call site never got the change, so the
+        # separation existed everywhere except the door most rows come through: PDIA has been in
+        # the unwatermarked set all along and was still being banner-checked on harvest, and the
+        # Library of Congress refused 14 WPA posters whose own typography — a flat colour band
+        # with "EXHIBITION" set across it — is the heuristic's exact signature. Graphic design is
+        # made of such bands, so a poster collection is the worst possible subject for it.
+        if source not in UNWATERMARKED_SOURCES and banner_suspect(dest):
             dest.unlink(missing_ok=True)
             raise ValueError(f"discovery refused (watermark banner strip): {source_ref}")
 
@@ -607,7 +616,8 @@ class ImageLibrary:
             source_ref=source_ref, existing=existing, rel=rel, fresh_thumb=fresh_thumb,
             embed=embed, url=url, source=source, source_url=source_url, title=title,
             description=description, description_source=description_source,
-            width=width, height=height, tags=tags, creator=creator, date_text=date_text,
+            width=width, height=height, tags=tags, subject=subject,
+            creator=creator, date_text=date_text,
             institution=institution, identity_source=identity_source,
             wikidata_qid=wikidata_qid, collection_id=collection_id, license=license,
             thumb_url=thumb_url, medium=medium, classification=classification,

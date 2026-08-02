@@ -75,7 +75,15 @@ OPEN_ACCESS_SOURCES = frozenset({
 # caption under the illustration. It retired 51 of the first 765 PDIA thumbnails — "The Octopus
 # (Octopus vulgaris)", "Pontoppidan's Sea Serpent" — none of them watermarked, all of them from
 # one book.
-UNWATERMARKED_SOURCES = OPEN_ACCESS_SOURCES | frozenset({"pdia"})
+# `loc` joins for the same reason and NOT for the rights reason — the Library of Congress serves
+# its own scans from its own tile server and does not watermark them, while its rights still vary
+# per item (which is exactly why it is absent from OPEN_ACCESS_SOURCES above). Characterised
+# before wiring, as the checklist requires: the refusals were inspected BY EYE and are the
+# posters' own typography — a 1936 Federal Art Project exhibition poster carries a flat colour
+# band with "EXHIBITION" set across it, which is precisely the heuristic's signature (a
+# near-uniform band, discontinuous with the body, a few contrasting pixels). A poster is the
+# worst possible subject for this check, because graphic design is made of such bands.
+UNWATERMARKED_SOURCES = OPEN_ACCESS_SOURCES | frozenset({"pdia", "loc"})
 
 # NOT uniformly open, and therefore NOT in the set above. `loc` used to be, which meant the gate
 # waved through anything from the Library of Congress on the strength of the institution's name.
@@ -122,9 +130,20 @@ LICENSED_STOCK_SOURCES = frozenset({
 })
 
 # License strings that read as open regardless of provider.
+#
+# "no known RESTRICTIONS" sits beside "no known COPYRIGHT" because they are the same class of
+# claim — an institution stating what it knows — and the Library of Congress uses the former as
+# its standard machine-readable phrasing, per ITEM, in the field `rights_advisory`. Accepting the
+# one while refusing the other would be a distinction about wording, not about rights.
+#
+# It is deliberately NOT the same as putting `loc` in OPEN_ACCESS_SOURCES. That would vouch for
+# the institution, and the Library holds a great deal that is restricted or rights-undetermined
+# (see the note on PER_COLLECTION_RIGHTS). This accepts the CLAIM, which each row carries or does
+# not: `imagelib.loc._clears_rights` refuses an absent advisory outright, so silence never
+# reaches here as permission.
 _OPEN_LICENSE_RE = re.compile(
     r"public\s*domain|\bpd\b|cc0|cc[\s-]?by|creative\s*commons|"
-    r"no\s+known\s+copyright|open\s*access", re.I)
+    r"no\s+known\s+copyright|no\s+known\s+restrictions|open\s*access", re.I)
 
 # Sound-license policy (CC0-first, see docs/SOUND_DESIGN.md). Order matters:
 # NC/ND must reject BEFORE the CC-BY matcher (a "by-nc" string contains "by").

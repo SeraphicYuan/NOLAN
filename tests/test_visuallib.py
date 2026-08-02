@@ -1800,6 +1800,81 @@ def test_every_downloaded_thumbnail_is_accounted_for(lib, monkeypatch):
         "if this fails, something is embedding without being asked")
 
 
+def _loc_page(n, start=0):
+    """`n` LoC listing records, shaped like the real ones."""
+    return {"results": [
+        {"id": f"http://www.loc.gov/item/{start + i}/", "title": f"poster {start + i}",
+         "item": {"id": str(start + i), "rights_advisory": "No known restrictions on publication.",
+                  "service_medium": f"https://tile.loc.gov/{start + i}.jpg",
+                  "service_low": f"https://tile.loc.gov/{start + i}_150px.jpg",
+                  "sort_date": "1936", "medium": ["1 print (poster) : silkscreen, color."],
+                  "genre": ["War posters--1940-1950"], "subjects": ["Civil defense"]}}
+        for i in range(n)]}
+
+
+def test_a_bounded_loc_crawl_resumes_INSIDE_the_page_it_stopped_in(monkeypatch):
+    """A page is 500 records and a bounded crawl routinely stops mid-page. Recording only the
+    page number advances the cursor past everything after the stopping point, and those rows are
+    never seen again — the crawl reports success and the collection is quietly short.
+
+    This tier's rule is that a cursor may RE-WALK but must never SKIP.
+    """
+    from nolan.imagelib import loc as L
+    from nolan.imagelib.harvest import HarvestReport
+
+    monkeypatch.setattr(L, "LOC_CRAWL_DELAY", 0)
+    monkeypatch.setattr(L, "_get", lambda url, params, **kw:
+                        _loc_page(10) if int(params.get("sp", 1)) == 1 else None)
+
+    rep = HarvestReport(collection="c")
+    first = [i.source_ref for i in L.loc_items(4, slug="s", report=rep)]
+    assert len(first) == 4
+    assert rep.cursor["page"] == 1 and rep.cursor["offset"] == 4, rep.cursor
+
+    rep2 = HarvestReport(collection="c")
+    second = [i.source_ref for i in L.loc_items(4, slug="s", report=rep2, cursor=rep.cursor)]
+    assert second == ["loc:4", "loc:5", "loc:6", "loc:7"], second
+    assert not set(first) & set(second), "a resumed crawl must not re-yield what it already had"
+
+
+def test_walking_off_the_end_of_a_loc_collection_is_not_an_error(monkeypatch):
+    """LoC answers a page past the last one with 404, not an empty result set — so "raise on any
+    non-200" ended a COMPLETED 947-row crawl with a traceback and a non-zero exit after every row
+    had already landed. Running out of collection is a normal ending."""
+    from nolan.imagelib import loc as L
+    from nolan.imagelib.harvest import HarvestReport
+
+    monkeypatch.setattr(L, "LOC_CRAWL_DELAY", 0)
+    monkeypatch.setattr(L, "_get", lambda url, params, **kw:
+                        _loc_page(3) if int(params.get("sp", 1)) == 1 else None)
+
+    rep = HarvestReport(collection="c")
+    got = list(L.loc_items(999, slug="s", report=rep))
+    assert len(got) == 3
+    assert rep.exhausted is True, "running out must be reported, not raised"
+
+
+def test_loc_refuses_a_row_with_no_rights_advisory(monkeypatch):
+    """Silence is not permission. An absent advisory is exactly where an unexamined assumption
+    would do damage — measured live, 1 in 25 WPA records has none."""
+    from nolan.imagelib import loc as L
+    from nolan.imagelib.harvest import HarvestReport
+
+    assert L._clears_rights("No known restrictions on publication.") is True
+    assert L._clears_rights("Publication may be restricted. For information see...") is False
+    assert L._clears_rights(None) is False
+    assert L._clears_rights("") is False
+
+    page = _loc_page(2)
+    del page["results"][0]["item"]["rights_advisory"]
+    monkeypatch.setattr(L, "LOC_CRAWL_DELAY", 0)
+    monkeypatch.setattr(L, "_get", lambda url, params, **kw:
+                        page if int(params.get("sp", 1)) == 1 else None)
+    rep = HarvestReport(collection="c")
+    got = list(L.loc_items(999, slug="s", report=rep))
+    assert len(got) == 1 and rep.skipped_rights == 1
+
+
 def test_the_met_dump_hands_over_artist_qids_positionally():
     """Both columns are pipe-separated and positional, and a slot may be blank when the museum
     identified one collaborator but not the other. Splitting either column alone shifts every id
@@ -2420,13 +2495,20 @@ def test_the_curated_tier_waives_the_floor_but_never_the_rights(lib):
 
 
 def test_each_source_harvests_with_its_OWN_crawler(lib, monkeypatch):
-    """There is no generic walker, and a generic one could not work: the four sources enumerate
-    in four incompatible ways — artic and Cleveland page a listing, the Met reads a 300 MB CSV,
-    and PDIA walks a JSON API and files rows under per-item curated collections.
+    """There is no generic walker, and a generic one could not work: the sources enumerate in
+    incompatible ways — artic and Cleveland page a listing, the Met reads a 300 MB CSV, PDIA
+    walks a JSON API filing rows under per-item curated collections, and the Library of Congress
+    pages ONE named collection at a time with the whole record in the listing.
 
     `harvest()` dispatches on `SOURCES[name].items`, so selecting a source in the form runs THAT
     source's crawler. Asserted by CALLING harvest and recording which walker ran, not by reading
     the registry — the registry could be right while the dispatch ignored it.
+
+    THE ROSTER IS NOT HARDCODED ANY MORE. It was, and the list went stale the moment a source
+    landed — which is the failure it was written to catch, so it caught itself. The property that
+    actually matters is one-crawler-per-registered-source, and that holds however many there are;
+    a census belongs in the registry, not duplicated in a test that has to be edited to agree
+    with it.
     """
     from nolan.imagelib import harvest as H
 
@@ -2441,7 +2523,10 @@ def test_each_source_harvests_with_its_OWN_crawler(lib, monkeypatch):
     for name in sorted(H.SOURCES):
         H.harvest(name, limit=1, library=lib, pixels=False)
 
-    assert [r[0] for r in ran] == sorted(H.SOURCES) == ["artic", "cleveland", "met", "pdia"]
+    assert [r[0] for r in ran] == sorted(H.SOURCES), "every source must run its OWN walker"
+    # The ones this test was written against must still be there — a source going MISSING is as
+    # much a regression as one arriving undispatched.
+    assert {"artic", "cleveland", "met", "pdia", "loc"} <= set(H.SOURCES)
     # the PHASE reaches every adapter (the Met changes enumeration on it), and every one of
     # these sources is resumable so every one is handed a cursor
     assert all(r[1] is False for r in ran), ran
