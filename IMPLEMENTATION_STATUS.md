@@ -143,6 +143,57 @@ from the registry, `author.py` delegation, `block_registry` / `style_contract` /
 classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
 honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
 
+## Source kinds became a registry, and connectors stopped pretending to be channels (2026-08-02)
+
+`kind` was a bare string branched on in 25 places across four files, and the branches were
+EXCLUSION LISTS. The Sources tile decided whether to offer Sync with `(archive||cc) ? "" : Sync`,
+so a kind nobody remembered to name inherited YouTube's behaviour — `tdf` would have shipped a Sync
+button that called `list_channel("topdocumentaryfilms.com")`. Adding it had already meant
+hand-editing `_survey_key`, `_thumb_for` and `survey_channel`.
+
+`transcript_sources.py` is `imagelib.harvest.SourceAdapter`'s shape for video: declare what differs
+so callers ASK instead of matching strings — label, icon, enumeration + its constraint,
+`copyright_free_default`, where a duration comes from, whether an incremental sync exists.
+
+**`ref_kind` is the distinction that mattered.** Two shapes hid behind one word. A `user` kind takes
+a REFERENCE — a channel URL, a collection id — and there can be many. A `singleton` kind IS the
+adapter: there is one topdocumentaryfilms.com, and `_survey_key` already ignored its ref as "a
+formality". You do not add one of those, you ENABLE it, so the Sources tab now has two sections and
+connectors are never offered in a box that asks for an identifier there is no second value for.
+
+Three things that were actually wrong, now dispatched through the registry:
+
+- **Sync all** handed EVERY source to `ingest_channel_transcripts`, which walks a channel with
+  yt-dlp. Live: it now starts 5 and reports `skipped: prelinger (collection-search)` instead of
+  creating a job that enumerates nothing. A batch covering a subset must say so.
+- **`_collection_free`** tested membership of `("archive", "youtube_cc")`, so a new copyright-free
+  family would have defaulted to "not free" silently. It asks `copyright_free_default` now.
+- **Both kind pickers were hand-written buttons** (WIRING_CHECKLIST #5 — a menu copied into a
+  template is the menu that rots). Rendered from `payload()` now, with the two filters the
+  distinction demands: the add box shows only `ref_kind="user"`, the Discover filter shows ALL
+  kinds because a connector has a survey to browse even though it can never be typed.
+
+**Incremental connector sync.** A full topdocumentaryfilms pass is ~70 minutes of paced browser
+navigation, so a Sync button that re-crawled would be a trap. `survey_since` walks the API
+newest-first and stops at the first post already surveyed; only genuinely new rows pay for a page
+fetch. ~1 minute against ~70.
+
+Nine tests bind the registry to the UI — including that a singleton is never user-addable, that an
+unknown kind falls back to the SAFEST family (`youtube`, copyright_free=False, because a wrong
+guess in the other direction marks a copyrighted documentary as free footage), and that no
+hand-written kind button survives in the template.
+
+**Phase 0, recorded here because its code landed inside another agent's commit.**
+`/api/visuallib/sources` built its menu by calling `collection()` on every adapter, so rawpixel's
+"requires --query" guard 500'd the route and rendered the Sources tab EMPTY for all seven sources —
+artvee's 69,117 indexed rows included. A MENU MUST NEVER RUN A CRAWL'S PRECONDITIONS:
+`SourceAdapter.describe()` answers from the registry, falling back to `source_registry` for
+identity and rights so a source that cannot be walked whole still states its rights. Three tests in
+`test_visuallib.py` had been RED on master for the same root cause, which is why the 500 shipped
+unnoticed; they now honour the declared precondition instead of tripping over it, and
+`test_every_adapter_that_can_be_asked_declares_an_upstream_count` asserts what its name always
+claimed — a depth-capped source must report unknown rather than guess a denominator.
+
 ## topdocumentaryfilms: a curated index over YouTube, and two silent drops (2026-08-02)
 
 A fourth source kind — except it is not a content host. Every entry resolves to a video hosted

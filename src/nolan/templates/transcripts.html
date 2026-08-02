@@ -138,11 +138,9 @@
         </div>
         <div class="row" style="margin-top:10px;gap:12px;border-top:1px solid var(--border);padding-top:10px">
           <span class="dim" style="font-weight:600;font-size:11px">FILTERS</span>
-          <div class="seg" id="df-kind">
-            <button data-k="youtube" class="on" onclick="setKind('youtube')">📺 YouTube</button>
-            <button data-k="youtube_cc" onclick="setKind('youtube_cc')">🆓 Free YT</button>
-            <button data-k="archive" onclick="setKind('archive')">🏛 Archive.org</button>
-          </div>
+          <!-- filled from transcript_sources.payload(); ALL kinds, because a connector has a
+               survey to browse even though it can never be typed into the add box -->
+          <div class="seg" id="df-kind"></div>
           <span id="df-cfwrap" style="display:none"><label class="dim" title="Keep only items with a confirmed public-domain / CC license (or a collection asserted copyright-free)"><input type="checkbox" id="df-cf" checked onchange="onFilters()"> copyright-free only</label></span>
           <label class="dim" title="OPTIONAL length gate (minutes). Blank = no filter; items with UNKNOWN duration are always kept — archive rows carry a runtime only ~14% of the time.">length
             <input type="number" id="df-min" min="0" max="600" placeholder="min" style="width:52px" onchange="onFilters()">–<input type="number" id="df-max" min="0" max="600" placeholder="max" style="width:52px" onchange="onFilters()"> min</label>
@@ -328,11 +326,8 @@
            each with its own input, its own Add button and its own Curate button. -->
       <div class="card">
         <div class="row">
-          <div class="seg" id="add-kind">
-            <button data-k="youtube" class="on" onclick="setAddKind('youtube')" title="A documentary / news channel. Copyrighted — a reference, not usable b-roll.">📺 YouTube</button>
-            <button data-k="youtube_cc" onclick="setAddKind('youtube_cc')" title="A stock / b-roll channel whose videos are all copyright-free.">🆓 Free YT</button>
-            <button data-k="archive" onclick="setAddKind('archive')" title="An archive.org collection — Whisper ASR transcripts plus subject tags, runtime and licence.">🏛 Archive.org</button>
-          </div>
+          <!-- filled from the registry: only kinds that take a REFERENCE (ref_kind="user") -->
+          <div class="seg" id="add-kind"></div>
           <input type="text" id="channel" placeholder="channel URL / @handle / id (e.g. https://www.youtube.com/bloomberg)" style="flex:1;min-width:240px">
           <span id="add-cfwrap" style="display:none"><label class="dim" title="Assert the WHOLE collection is public-domain / Creative Commons. Only ~18% of items carry a per-item licence, but e.g. Prelinger is all PD — without this the copyright gate treats them as unknown."><input type="checkbox" id="arch-cf" checked> copyright-free</label></span>
           <button class="btn" id="addBtn" onclick="addSource()">Add source</button>
@@ -357,6 +352,16 @@
         <div class="row" style="justify-content:space-between"><b style="font-size:13px">Sources</b><span class="row"><button class="btn ghost mini" onclick="syncAll()" title="Re-crawl ALL channels for new uploads (incremental)">↻ Sync all</button><span id="src-stat" class="dim"></span></span></div>
         <div id="sources" style="margin-top:8px"></div>
         <div id="unreg-note" class="dim" style="margin-top:8px;font-size:11px"></div>
+      </div>
+
+      <!-- CONNECTORS — singleton site-crawlers. The adapter IS the source, so there is no
+           reference to type and no second instance to name: you enable one, you do not add it. -->
+      <div class="card" id="connectors-card" style="display:none">
+        <div class="row" style="justify-content:space-between">
+          <b style="font-size:13px">Connectors</b>
+          <span class="dim" style="font-size:11px">built-in site crawlers — enabled, not added</span>
+        </div>
+        <div id="connectors" style="margin-top:8px"></div>
       </div>
 
     </div>
@@ -460,9 +465,30 @@
         loadSources();
       }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
     }
-    /* ---- one add box, three source families ---- */
+    /* ---- one add box, families FROM THE REGISTRY ---- */
+    // The picker used to be three hand-written buttons, so a new kind meant editing this template
+    // (WIRING_CHECKLIST pitfall #5 — a menu copied by hand is the menu that rots). It is rendered
+    // from `transcript_sources.payload()` now, and singleton connectors are deliberately absent:
+    // they have no reference to type.
+    let REGISTRY = null;
+    // The Discover filter lists EVERY kind (a connector has a survey to browse); the add box lists
+    // only the ones you can type a reference for. Same source of truth, two filters.
+    function fillFilterKinds(reg){
+      const box = document.getElementById("df-kind"); if(!box) return;
+      box.innerHTML = (reg.kinds||[]).map(k =>
+        `<button data-k="${esc(k.id)}" class="${k.id===DF_KIND?'on':''}" onclick="setKind('${esc(k.id)}')" title="${esc(k.notes||'')}">${k.icon} ${esc(k.label)}</button>`).join("");
+    }
+    function fillAddKinds(reg){
+      const box = document.getElementById("add-kind"); if(!box) return;
+      const addable = (reg.kinds||[]).filter(k => reg.addable.includes(k.id));
+      box.innerHTML = addable.map(k =>
+        `<button data-k="${esc(k.id)}" class="${k.id===ADD_KIND?'on':''}" onclick="setAddKind('${esc(k.id)}')" title="${esc(k.notes||'')}">${k.icon} ${esc(k.label)}</button>`).join("");
+      ADD_UI = {};
+      addable.forEach(k => { ADD_UI[k.id] = {ph:k.ref_placeholder, note:k.notes}; });
+      setAddKind(addable.some(k=>k.id===ADD_KIND) ? ADD_KIND : (addable[0]||{}).id || "youtube");
+    }
     let ADD_KIND = "youtube";
-    const ADD_UI = {
+    let ADD_UI = {
       youtube:    {ph:"channel URL / @handle / id — e.g. https://www.youtube.com/bloomberg",
                    note:"A documentary / news channel. Copyrighted: a searchable REFERENCE, not usable b-roll."},
       youtube_cc: {ph:"channel URL / @handle — e.g. https://www.youtube.com/@FreeHDvideosnocopyright",
@@ -1209,10 +1235,39 @@
         const u=d.unregistered||{};
         // NOT sources — but never silently dropped: say what's indexed under channels nobody added, and
         // point at the list that can actually browse / promote / clear them.
+        const cons = d.connectors || [];
+        $("#connectors-card").style.display = cons.length ? "block" : "none";
+        $("#connectors").innerHTML = cons.map(connTile).join("");
+        if(d.registry){ REGISTRY = d.registry; fillAddKinds(d.registry); fillFilterKinds(d.registry); }
         $("#unreg-note").innerHTML = u.channels
           ? `${u.videos} video(s) are indexed under <b>${u.channels}</b> channel(s)/collection(s) nobody added${u.search?` — ${u.search} of them are archive.org collections a topic / 🌱 broaden search pulled items from`:""}. They aren't sources; browse, promote or clear them in <a href="#" onclick="jumpToChannels();return false">the Videos tab</a>.`
           : "";
       }catch(e){ $("#sources").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    function connTile(c){
+      const surveyed = c.surveyed ? `surveyed ${esc(c.surveyed.slice(0,10))}` : "never surveyed";
+      const badge = c.registered ? '<span class="chip frames">registered</span>'
+                                 : '<span class="chip txt" title="the survey exists; registering it makes Sync all keep it current">not registered</span>';
+      const inc = c.incremental_sync
+        ? `<button class="btn ghost mini" onclick="connSync('${esc(c.id)}')" title="Fetch only what is NEW since the last crawl — the full pass is ~70 minutes, this is about one">↻ Sync new</button>`
+        : "";
+      return `<div class="src-tile"><div>
+          <b>${c.icon} ${esc(c.label)}</b> ${badge}
+          <span class="dim">${(c.titles||0).toLocaleString()} titles · ${surveyed}</span>
+          <div class="dim" style="font-size:11px">${esc(c.notes||"")}</div>
+          <div class="dim" style="font-size:11px;margin-top:2px">${esc(c.enumeration)} — ${esc(c.enumeration_constraint||"")}</div>
+        </div>
+        <span class="row">
+          <button class="btn ghost mini" onclick="openCurateFor('${esc(c.id)}','${esc(c.id)}')" title="Browse this source's titles by topic">🎯 Curate</button>
+          ${inc}
+        </span></div>`;
+    }
+    async function connSync(id){
+      const st=$("#src-stat"); st.textContent="syncing new items…";
+      try{ const d=await jpost("/api/transcripts/connector-sync",{kind:id});
+        st.innerHTML = `✓ ${esc(d.message||"sync started")}`;
+        setTimeout(loadSources, 2000);
+      }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
     }
     function jumpToChannels(){
       showTab("videos");                       // #vchan lives in another tab now — switch, then focus it
@@ -1454,6 +1509,10 @@
 
     // init: land on the Search tab; every other tab loads lazily when it opens
     fillSearchSources();
+    // the pickers are registry-rendered, so fetch it at boot rather than waiting for a tab visit
+    jget("/api/transcripts/sources").then(d=>{
+      if(d && d.registry){ REGISTRY = d.registry; fillAddKinds(d.registry); fillFilterKinds(d.registry); }
+    }).catch(()=>{});
     setAddKind("youtube");
     setKind("youtube");
     setStrategy("curate");

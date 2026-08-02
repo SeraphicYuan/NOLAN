@@ -230,6 +230,78 @@ def load_terms(sess: _Session) -> Dict[int, str]:
     return out
 
 
+def survey_since(known_urls: set, delay: float = 1.0,
+                 progress: Optional[Callable[[str], None]] = None,
+                 headless: bool = True) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Only what is NEW: the API returns posts newest-first, so stop at the first one already held.
+
+    A full pass is ~70 minutes of paced browser navigation. This is the difference between a Sync
+    button that is usable and one that is a trap — and it is cheap because the expensive half (the
+    per-documentary page fetch) is paid only for genuinely new rows.
+
+    Returns the same `(rows, stats)` shape as `survey_collection`; the caller merges by page_url.
+    """
+    from playwright.sync_api import sync_playwright
+
+    def say(msg):
+        if progress:
+            progress(msg)
+
+    rows: List[Dict[str, Any]] = []
+    stats = {"scanned": 0, "new": 0, "no_video": 0, "unreachable": 0, "hosts": {},
+             "stopped_at_known": False}
+    with sync_playwright() as pw:
+        sess = _Session(pw, headless=headless)
+        try:
+            terms = load_terms(sess)
+            fresh: List[Dict[str, Any]] = []
+            for page_no in range(1, 40):
+                batch = sess.json(f"{API}/posts?per_page=100&page={page_no}&_fields="
+                                  "id,slug,link,title,content,meta,categories,release,date")
+                if not batch or not isinstance(batch, list):
+                    break
+                stats["scanned"] += len(batch)
+                hit_known = False
+                for post in batch:
+                    if post.get("link") in known_urls:
+                        hit_known = True                 # newest-first, so everything after is held
+                        continue
+                    if str((post.get("meta") or {}).get("runtime") or "").strip():
+                        fresh.append(post)
+                say(f"api page {page_no}: {len(fresh)} candidates")
+                if hit_known:
+                    stats["stopped_at_known"] = True
+                    break
+                if len(batch) < 100:
+                    break
+                time.sleep(delay)
+
+            for post in fresh:
+                meta = parse_post(post, terms)
+                status, page_html = sess.get(meta["page_url"])
+                if status != 200 or not page_html:
+                    stats["unreachable"] += 1
+                    time.sleep(delay)
+                    continue
+                vid = extract_video(page_html)
+                if not vid or vid.get("conflict"):
+                    stats["no_video"] += 1
+                else:
+                    stats["hosts"][vid["host"]] = stats["hosts"].get(vid["host"], 0) + 1
+                    rows.append({
+                        "video_id": vid["video_id"], "url": vid["watch_url"], "title": meta["title"],
+                        "duration": meta["duration"], "subject": meta["subject"], "license": "",
+                        "copyright_free": False, "description": meta["description"],
+                        "host": vid["host"], "playlist": vid.get("playlist", ""),
+                        "page_url": meta["page_url"], "director": meta["director"],
+                        "rating": meta["rating"], "date": meta["date"]})
+                time.sleep(delay)
+        finally:
+            sess.close()
+    stats["new"] = len(rows)
+    return rows, stats
+
+
 def survey_collection(limit: Optional[int] = None, delay: float = 1.0,
                       progress: Optional[Callable[[str], None]] = None,
                       headless: bool = True,

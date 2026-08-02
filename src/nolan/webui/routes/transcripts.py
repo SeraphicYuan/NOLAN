@@ -58,15 +58,26 @@ def register(app, ctx):
         from nolan.webui import operations
         cfg = load_config()
         idb = ctx.db_path or Path(cfg.indexing.database).expanduser()
+        from nolan import transcript_sources as tsrc
         srcs = tl.load_sources()
-        started = []
-        for ch in srcs:
+        started, skipped = [], []
+        for ch, row in srcs.items():
+            spec = tsrc.kind(row.get("kind") or "youtube")
+            # `ingest_channel_transcripts` walks a CHANNEL with yt-dlp. Handing it an archive
+            # collection or a site crawler enumerates nothing — and the tile used to offer Sync to
+            # any kind not named in an exclusion list, so a new kind inherited exactly that.
+            if spec.enumeration != "channel-listing":
+                skipped.append({"channel": ch, "kind": spec.id, "why": spec.enumeration})
+                continue
             job = job_manager.start(
                 "transcript-channel", operations.ingest_channel_transcripts, meta={"channel": ch},
                 config=cfg, db_path=idb, channel=ch, limit=int(body.get("limit", 50) or 50),
                 visual=(body.get("visual") or "keyframe"), refresh=False)
             started.append(job.id)
-        return {"started": len(started), "channels": list(srcs.keys())}
+        # report what was NOT synced; a batch that silently covers a subset reads as covering all
+        return {"started": len(started), "channels": [c for c in srcs if c not in
+                                                      {s["channel"] for s in skipped}],
+                "skipped": skipped}
 
     @app.post("/api/transcripts/crawl-all")
     async def transcripts_crawl_all(body: dict = Body(...)):
@@ -111,7 +122,12 @@ def register(app, ctx):
     def _collection_free(channel: str, kind: str) -> bool:
         """Whether a source's WHOLE set is curator-asserted copyright-free (stored on the source when added).
         Applies to archive collections and copyright-free YouTube channels; documentary `youtube` is never free."""
-        if kind not in ("archive", "youtube_cc"):
+        from nolan import transcript_sources as tsrc
+        spec = tsrc.kind(kind)
+        # ASK the registry rather than match a string: an unregistered kind used to fall through
+        # this membership test to False, which is right for `youtube` and would be wrong for the
+        # next copyright-free family someone adds.
+        if not spec.copyright_free_default and kind != "archive":
             return False
         from nolan import transcript_lib as tl
         from nolan import archive_source as ar
@@ -120,7 +136,7 @@ def register(app, ctx):
         for ref, s in tl.load_sources().items():
             if s.get("kind") == kind and norm(ref) == want:
                 return bool(s.get("copyright_free"))
-        return kind == "youtube_cc"                              # a cc channel defaults free (e.g. curate-before-add)
+        return spec.copyright_free_default        # e.g. a cc channel curated before it was added
 
     @app.get("/api/transcripts/survey")
     async def transcripts_survey(channel: str = Query(...), limit: int = Query(default=0),
@@ -291,6 +307,43 @@ def register(app, ctx):
         cat = tl.load_catalog()
         vids = sorted(cat.values(), key=lambda x: (x.get("added") or ""), reverse=True)
         return {"videos": vids, "count": len(vids), "channels": tl.channel_facets()}
+
+    @app.post("/api/transcripts/connector-sync")
+    async def transcripts_connector_sync(body: dict = Body(...)):
+        """Fetch only what a CONNECTOR has gained since its last crawl.
+
+        A full topdocumentaryfilms pass is ~70 minutes of paced browser navigation, so a Sync
+        button that re-crawled would be a trap. The API returns posts newest-first, so the scan
+        stops at the first one already surveyed and only genuinely new rows pay for a page fetch."""
+        from nolan import transcript_lib as tl
+        from nolan import transcript_sources as tsrc
+        kind_id = (body.get("kind") or "").strip()
+        spec = tsrc.KINDS.get(kind_id)
+        if not spec or not spec.is_singleton:
+            raise HTTPException(status_code=400, detail=f"{kind_id!r} is not a connector")
+        if not spec.incremental_sync:
+            raise HTTPException(status_code=400,
+                                detail=f"{spec.label} has no incremental sync — re-crawl instead")
+        key = tl._survey_key(spec.id, spec.id)
+        sv = tl.load_surveys().get(key) or {}
+        existing = list(sv.get("titles") or [])
+        known = {r.get("page_url") for r in existing if r.get("page_url")}
+
+        async def _run(job):
+            import asyncio
+            from nolan import tdf_source as tdf
+            rows, stats = await asyncio.to_thread(
+                tdf.survey_since, known, 1.0,
+                lambda m: job.set_progress(0.5, m))
+            merged = existing + [r for r in rows if r.get("page_url") not in known]
+            tl.save_survey(spec.id, merged, None, kind=spec.id,
+                           total=sv.get("total") or len(merged))
+            job.set_progress(1.0, f"{stats['new']} new of {stats['scanned']} scanned")
+            return {**stats, "total_titles": len(merged)}
+
+        job = job_manager.start("transcript-connector-sync", _run, meta={"kind": spec.id})
+        return {"job_id": job.id, "type": "transcript-connector-sync",
+                "message": f"scanning {spec.label} for new items"}
 
     @app.post("/api/transcripts/register-source")
     async def transcripts_register_source(body: dict = Body(...)):
@@ -500,13 +553,27 @@ def register(app, ctx):
         so the tab still can't understate what is indexed, and are browsable/actionable per channel on the
         Indexed-videos list (`/api/transcripts/videos` → `channels`), which is where they belong."""
         from nolan import transcript_lib as tl
+        from nolan import transcript_sources as tsrc
         rows = tl.sources_view()
         managed = [r for r in rows if r.get("origin") == "managed"]
         unreg = [r for r in rows if r.get("origin") != "managed"]
+        by_ref = {r["channel"]: r for r in managed}
+        # CONNECTORS are singleton site-crawlers: the adapter IS the source, so there is no
+        # reference to type and nothing to list N of. They are surveyed rather than registered, so
+        # their state lives in the survey sidecar, not sources.json.
+        surveys = tl.load_surveys()
+        conns = []
+        for spec in tsrc.connectors():
+            sv = surveys.get(tl._survey_key(spec.id, spec.id)) or {}
+            conns.append({**spec.to_dict(),
+                          "titles": int(sv.get("count") or 0),
+                          "surveyed": sv.get("fetched", ""),
+                          "registered": any((r.get("kind") == spec.id) for r in managed)})
         return {"sources": managed, "count": len(managed),
                 "unregistered": {"channels": len(unreg),
                                  "videos": sum(int(r.get("video_count") or 0) for r in unreg),
-                                 "search": sum(1 for r in unreg if r.get("origin") == "search")}}
+                                 "search": sum(1 for r in unreg if r.get("origin") == "search")},
+                "connectors": conns, "registry": tsrc.payload()}
 
     @app.delete("/api/transcripts/sources")
     async def transcripts_remove_source(channel: str = Query(...), purge: bool = Query(default=False)):
