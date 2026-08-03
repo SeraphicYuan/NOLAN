@@ -1266,6 +1266,31 @@ def list_assets(comp: str) -> List[Dict[str, Any]]:
     return out
 
 
+def pool_entries(comp: str) -> Dict[str, Dict[str, Any]]:
+    """The RAW pool.json rows, keyed by file basename — every field, nothing projected away.
+
+    `asset_pool_meta` (below) is a narrow view built for the edit UI: it keeps source / gen_prompt /
+    caption and drops the rest. Reading provenance through it was a real bug — every asset came back
+    licence-less because the projection never carried `license` or `source_url`, and `derived_from`
+    vanished the same way. Ask HERE for anything the pool records; ask there for the UI's five fields.
+    """
+    pool_f = _comp_dir(comp) / "pool.json"
+    if not pool_f.exists():
+        return {}
+    try:
+        pool = json.loads(pool_f.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    entries = pool if isinstance(pool, list) else pool.get("assets", pool.get("items", []))
+    out: Dict[str, Dict[str, Any]] = {}
+    for e in entries:
+        if isinstance(e, dict):
+            base = Path(str(e.get("file") or "")).name
+            if base:
+                out[base] = e
+    return out
+
+
 def asset_pool_meta(comp: str) -> Dict[str, Dict[str, Any]]:
     """Per-asset provenance from pool.json, keyed by file BASENAME so the edit UI can look an asset up from a
     scene's media src. Surfaces the enhanced generation prompt (`gen_prompt`) for ComfyUI/krea2-generated
@@ -1315,9 +1340,31 @@ def save_upload(comp: str, filename: str, data: bytes) -> Dict[str, Any]:
     return {"path": f"assets/{safe}", "name": safe}
 
 
+def pool_original(comp: str, name: str, *, _depth: int = 0) -> Optional[str]:
+    """Walk `derived_from` back to the asset a derivative came from — the TRUE original.
+
+    This is the record that used to be the FILENAME. `fit_ground_to_scene` recovered the original by
+    `re.sub(r"_fit\\d+s(?:_\\d+)?$", "", stem)` and looking in `assets/`; when only the derivative had
+    been staged there the fit silently no-op'd (`ground auto-fit skipped (asset not found:
+    assets/a19_04.mp4)`). A name is a convenience for humans; it is not a data model — parse it and
+    every rename, every second derivation, every stage/store split breaks the chain.
+
+    Returns None when the asset is not a derivative (or the chain is unknown), so callers can fall back
+    without pretending they know. `_depth` bounds a corrupt cycle."""
+    if _depth > 8:
+        return None
+    meta = pool_entries(comp).get(Path(name).name) or {}      # RAW row: the projection drops it
+    parent = meta.get("derived_from")
+    if not parent:
+        return None
+    return pool_original(comp, parent, _depth=_depth + 1) or parent
+
+
 def _register_pool_asset(comp: str, name: str, *, scene_id: Optional[str] = None,
                          frame_id: Optional[str] = None, source: str = "manual",
-                         caption: Optional[str] = None, pool_id: Optional[str] = None) -> None:
+                         caption: Optional[str] = None, pool_id: Optional[str] = None,
+                         derived_from: Optional[str] = None, op: Optional[str] = None,
+                         params: Optional[Dict[str, Any]] = None) -> None:
     """Q5: a frame-added asset also becomes a first-class POOL candidate — not just a one-off frame reference.
     Copies it into capture/assets/ (the pool's media dir) and appends an entry to pool.json (matching the
     acquire-engine schema) WITH scene/frame provenance when given. Idempotent by file name; best-effort."""
@@ -1340,8 +1387,20 @@ def _register_pool_asset(comp: str, name: str, *, scene_id: Optional[str] = None
                 pool = []
         if not isinstance(pool, list):
             pool = []
-        if any(isinstance(e, dict) and e.get("file") == name for e in pool):
-            return                                         # already registered
+        existing = next((e for e in pool if isinstance(e, dict) and e.get("file") == name), None)
+        if existing is not None:
+            # Already registered — but BACKFILL the derivation if this call knows it and the entry
+            # doesn't. An asset can be pooled by one path (a drag-drop) and derived by another (a
+            # later fit), and the chain is what `pool_original` walks; dropping it on the second
+            # call is how the record stays permanently absent.
+            if derived_from and not existing.get("derived_from"):
+                existing["derived_from"] = Path(derived_from).name
+                if op:
+                    existing["op"] = op
+                if params:
+                    existing["op_params"] = params
+                pool_f.write_text(json.dumps(pool, indent=1), encoding="utf-8")
+            return
         entry = {"id": pool_id or f"manual_{sum(1 for e in pool if isinstance(e, dict)) + 1}",
                  "file": name, "media_type": media_type, "query": "", "source": source,
                  "source_url": "", "photographer": "", "license": "user-provided",
@@ -1351,6 +1410,14 @@ def _register_pool_asset(comp: str, name: str, *, scene_id: Optional[str] = None
             entry["scene_id"] = scene_id
         if frame_id:
             entry["frame_id"] = frame_id
+        # PROVENANCE of a derivation WE performed. Without it the only record that `a19_04_fit15s.mp4`
+        # came from `a19_04.mp4` is the filename — and a filename is not a data model.
+        if derived_from:
+            entry["derived_from"] = Path(derived_from).name
+        if op:
+            entry["op"] = op
+        if params:
+            entry["op_params"] = params
         pool.append(entry)
         pool_f.write_text(json.dumps(pool, indent=1), encoding="utf-8")
     except Exception:
@@ -1467,12 +1534,27 @@ def add_pool_asset(comp: str, filename: str, data: bytes) -> Dict[str, Any]:
 
 
 def _resolve_asset_path(comp: str, path: str) -> Path:
-    """A comp-relative asset path → an absolute file INSIDE the comp (guards against traversal)."""
+    """A comp-relative asset path → an absolute file INSIDE the comp (guards against traversal).
+
+    Falls back from the STAGE to the STORE. The two tiers are a real invariant
+    (`assemble_media.stage_referenced_media` rebuilds `assets/` from `capture/assets/**`, so the stage
+    is disposable and holds only what the specs currently reference), but this resolver only ever
+    looked at the literal path. So asking for `assets/a19_04.mp4` when only its *derivative* had been
+    staged raised FileNotFoundError and the caller — `fit_ground_to_scene` — silently no-op'd, even
+    though the original was sitting in `capture/assets/videos/`.
+
+    The basename is the key on both tiers (it is what `pool.json` records), so the fallback is a
+    lookup, not a guess."""
     root = _comp_dir(comp).resolve()
     p = (root / path).resolve()
-    if root not in p.parents or not p.is_file():
-        raise FileNotFoundError(f"asset not found in {comp}: {path}")
-    return p
+    if root in p.parents and p.is_file():
+        return p
+    store = (root / "capture" / "assets").resolve()
+    if store.is_dir():
+        for cand in store.rglob(Path(path).name):
+            if cand.is_file():
+                return cand.resolve()
+    raise FileNotFoundError(f"asset not found in {comp} (stage or store): {path}")
 
 
 def quickedit_asset(comp: str, path: str, op: str, params: Dict[str, Any],
@@ -1507,7 +1589,8 @@ def quickedit_asset(comp: str, path: str, op: str, params: Dict[str, Any],
     while out.exists():
         out = adir / f"{stem}_{n}{ext}"; n += 1
     qe.apply_quick_edit(src, op, params, out)
-    _register_pool_asset(comp, out.name, source="quick-edit", caption=f"{out.name} ({op} of {src.name})", pool_id=out.name)
+    _register_pool_asset(comp, out.name, source="quick-edit", caption=f"{out.name} ({op} of {src.name})",
+                         pool_id=out.name, derived_from=src.name, op=op, params=params)
     log_activity(comp, "asset-edit", f"{op} → new pool asset {out.name}", outcome="pooled")
     return {"path": out.relative_to(root).as_posix(), "name": out.name, "mode": "new"}
 
@@ -1592,12 +1675,22 @@ def fit_ground_to_scene(comp: str, frame_id: str, scene_id: str) -> Dict[str, An
     scene_dur = float(sc.get("dur", 0) or 0)
     if scene_dur <= 0:
         return {"fitted": False, "reason": "the scene has no duration"}
-    # ALWAYS fit from the TRUE ORIGINAL — strip any prior `_fit<N>s(_M)` tag off the src. Fitting the CURRENT
-    # (already-fitted) clip is what made a retime round-trip DEGRADE (each fit slowed the last one further) and
-    # spawn redundant `_fit13s_1/_2` copies. Deriving the original + a deterministic fit name fixes both.
+    # ALWAYS fit from the TRUE ORIGINAL. Fitting the CURRENT (already-fitted) clip is what made a retime
+    # round-trip DEGRADE (each fit slowed the last one further) and spawn redundant `_fit13s_1/_2` copies.
+    #
+    # ASK THE INDEX, don't parse the name. This used to be `re.sub(r"_fit\d+s(?:_\d+)?$", "", stem)` plus a
+    # lookup in `assets/` — so when only the derivative had been staged there (the original living in
+    # `capture/assets/videos/`), the fit silently no-op'd: `ground auto-fit skipped (asset not found:
+    # assets/a19_04.mp4)`. `pool_original` walks `derived_from`, which is recorded at derivation time.
+    # The regex stays ONLY as a fallback for assets pooled before that field existed.
     cur = Path(g["src"])
-    orig_stem = re.sub(r"_fit\d+s(?:_\d+)?$", "", cur.stem)
-    orig_rel = cur.with_name(orig_stem + cur.suffix).as_posix()    # forward slashes — the HTML src needs them
+    tracked = pool_original(comp, cur.name)
+    if tracked:
+        orig_rel = cur.with_name(tracked).as_posix()
+        orig_stem = Path(tracked).stem
+    else:
+        orig_stem = re.sub(r"_fit\d+s(?:_\d+)?$", "", cur.stem)
+        orig_rel = cur.with_name(orig_stem + cur.suffix).as_posix()  # forward slashes — the HTML src needs them
     fit_name = f"{orig_stem}_fit{scene_dur:.0f}s{cur.suffix}"
     fit_rel = cur.with_name(fit_name).as_posix()
     fit_path = _comp_dir(comp) / fit_rel
