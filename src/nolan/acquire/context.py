@@ -923,8 +923,15 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
             def generate(prompt, out: Path, negative=None):
                 out = Path(out)
                 out.parent.mkdir(parents=True, exist_ok=True)
+                # QUEUE, don't race. `asyncio.run` here starts a FRESH event loop, so the hub's
+                # in-process `get_gpu_lock()` is invisible — and this call site is exactly the one a
+                # tmux fleet agent reaches during an edit-loop acquisition, from its own process. The
+                # machine-wide lockfile is the only mutex both can see; without it an edit-time
+                # generation and a hub-side voiceover retake hit the same VRAM.
+                from nolan.gpu_lock import gpu_lock
                 try:                                    # prompt is art-directed (self-sufficient) → no generic suffix
-                    asyncio.run(gclient.generate(prompt, out, timeout=200, negative=negative))
+                    with gpu_lock(owner="acquire.generate"):
+                        asyncio.run(gclient.generate(prompt, out, timeout=200, negative=negative))
                 except Exception:
                     return False
                 return out.exists() and _valid_image(out)

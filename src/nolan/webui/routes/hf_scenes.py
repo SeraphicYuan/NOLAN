@@ -506,6 +506,55 @@ def register(app, ctx):
             raise HTTPException(status_code=422, detail=(res.get("output") or "preview render failed")[-300:])
         return FileResponse(res["png"], media_type="image/png")
 
+    # ---- batch review (the aggregate the reviewer actually needs) + the undo behind it
+
+    @app.get("/api/hf/batch/sheet")
+    async def hf_batch_sheet(comp: str = Query(...), previews: bool = Query(False),
+                             status: str = Query("proposed")):
+        """Before/after + rationale + coverage + gate + anchor delta for every proposal in the batch.
+        `previews=false` (default) is instant and enough to triage; pixels are lazy per row."""
+        from nolan.hyperframes import contact_sheet
+        return await asyncio.to_thread(_guard, contact_sheet.build_sheet, comp, None,
+                                       previews=previews, status=status)
+
+    @app.post("/api/hf/batch/accept")
+    async def hf_batch_accept(payload: dict = Body(...)):
+        """Accept a SET of proposals in one transaction. Returns a `rollback_token` — the undo a
+        25-proposal review has to have (git is not available as the safety net in a shared tree)."""
+        comp, ids = payload.get("comp"), payload.get("proposal_ids") or []
+        if not (comp and ids):
+            raise HTTPException(status_code=400, detail="comp, proposal_ids required")
+        return await asyncio.to_thread(_guard, hfedit.accept_proposals, comp, ids,
+                                       all_or_nothing=bool(payload.get("all_or_nothing")))
+
+    @app.post("/api/hf/batch/rollback")
+    async def hf_batch_rollback(payload: dict = Body(...)):
+        comp, tok = payload.get("comp"), payload.get("rollback_token")
+        if not (comp and tok):
+            raise HTTPException(status_code=400, detail="comp, rollback_token required")
+        return await asyncio.to_thread(_guard, hfedit.rollback_batch, comp, tok)
+
+    @app.post("/api/hf/batch/verify")
+    async def hf_batch_verify(payload: dict = Body(...)):
+        """The closing step: the finish DAG's pre-render gates (word-sync, timing, provenance, style).
+        They never run at propose/accept time, so without this a fully-reviewed batch can still block."""
+        comp = payload.get("comp")
+        if not comp:
+            raise HTTPException(status_code=400, detail="comp required")
+        from nolan.hyperframes import batch as hfbatch
+        return await asyncio.to_thread(_guard, hfbatch.batch_verify, comp, bool(payload.get("sound")))
+
+    @app.get("/api/hf/gaps")
+    async def hf_gaps(comp: Optional[str] = Query(None)):
+        """Capability asks the gate refused — per comp, or rolled up across every comp. The count that
+        turns "an agent mentioned it in a retro" into "N asks, build it"."""
+        return {"comp": comp, "gaps": _guard(hfedit.list_gaps, comp)}
+
+    @app.get("/api/hf/deferred")
+    async def hf_deferred(comp: str = Query(...)):
+        """Work parked on an external resource, with the command that resumes each."""
+        return {"comp": comp, "deferred": _guard(hfedit.list_deferred, comp)}
+
     # ---- asset picker target (land an asset in <comp>/assets/, referenced by scene data)
 
     @app.get("/api/hf/assets")

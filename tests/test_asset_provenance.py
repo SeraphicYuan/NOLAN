@@ -19,6 +19,7 @@ from pathlib import Path
 from nolan.acquire.judge import (SCRAPED_SOURCES, caption_verified, is_junk, is_scraped, judge_prompt,
                                  parse_verdict)
 
+SRC = Path(__file__).resolve().parents[1] / "src" / "nolan"
 BRIDGE = Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"
 
 
@@ -75,15 +76,19 @@ def test_is_scraped_covers_both_scraped_sources_and_nothing_else():
 
 
 def test_pool_no_longer_exempts_library_clips_from_the_vlm():
-    """REGRESSION: an early-return on `clips_library` set usable=True and skipped the filmstrip."""
-    src = (BRIDGE / "pool.py").read_text(encoding="utf-8")
+    """REGRESSION: an early-return on `clips_library` set usable=True and skipped the filmstrip.
+
+    Reads `nolan/acquire/vlm_floor.py`, not the bridge: the floor MOVED out of the CLI script into the
+    acquire organ so the edit-loop's scene-scoped acquisition could reach it too (it had no floor at
+    all, and landed clips with burned-in subtitles). The bridge now delegates."""
+    src = (SRC / "acquire" / "vlm_floor.py").read_text(encoding="utf-8")
     body = src[src.index("async def judge(item)"):src.index("await asyncio.gather")]
     assert 'item.setdefault("usable", True)' not in body, "the blanket VLM exemption is back"
     assert "content_kind\", \"broll\")" not in body
 
 
 def test_pool_records_origin_and_caption_verification():
-    src = (BRIDGE / "pool.py").read_text(encoding="utf-8")
+    src = (SRC / "acquire" / "vlm_floor.py").read_text(encoding="utf-8")
     for field in ("origin_verified", "caption_verified", "chrome"):
         assert field in src, f"pool.json must carry `{field}` provenance"
 

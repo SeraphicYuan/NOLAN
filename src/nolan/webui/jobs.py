@@ -300,19 +300,55 @@ def get_job_manager() -> JobManager:
     return _manager
 
 
-# Process-wide GPU serialization. Both ComfyUI image generation and local TTS
-# (OmniVoice) compete for the single GPU's VRAM. They run as tasks on the one hub
-# event loop, so a shared asyncio.Lock is enough to ensure only one GPU-heavy job
-# runs at a time. Acquire it around the actual GPU work:
+# GPU serialization. ComfyUI image generation and local TTS (OmniVoice) compete for the single GPU's
+# VRAM. Acquire this around the actual GPU work:
 #     from nolan.webui.jobs import get_gpu_lock
 #     async with get_gpu_lock():
 #         ...  # GPU inference (ComfyUI generate / OmniVoice batch)
+#
+# This used to be a bare asyncio.Lock, which was right while every contender was a task on the hub's one
+# event loop. It stopped being right when fleet agents started generating: a tmux agent doing a batch
+# edit is a SEPARATE PROCESS and cannot see an in-process lock, so its ComfyUI call and a hub-side
+# voiceover retake could hit VRAM together. It is now TWO layers — the cheap asyncio lock for hub tasks,
+# plus `nolan.gpu_lock`'s machine-wide lockfile that every process can see (agents take that one
+# directly). See nolan/gpu_lock.py for the stale/dead-holder rules.
 _gpu_lock: Optional["asyncio.Lock"] = None
 
 
-def get_gpu_lock() -> "asyncio.Lock":
-    """Process-wide async lock serializing GPU work (ComfyUI vs TTS)."""
+class _GpuLock:
+    """asyncio.Lock semantics on the outside, asyncio lock + machine-wide file lock on the inside."""
+
+    def __init__(self):
+        self._local = asyncio.Lock()
+        self._file = None
+
+    async def __aenter__(self):
+        from nolan.gpu_lock import gpu_lock_async
+        await self._local.acquire()
+        try:
+            self._file = gpu_lock_async(owner="hub")
+            await self._file.__aenter__()
+        except BaseException:
+            self._local.release()
+            raise
+        return self
+
+    async def __aexit__(self, *exc):
+        try:
+            if self._file is not None:
+                await self._file.__aexit__(*exc)
+                self._file = None
+        finally:
+            self._local.release()
+        return False
+
+    def locked(self) -> bool:
+        return self._local.locked()
+
+
+def get_gpu_lock() -> "_GpuLock":
+    """Serialize GPU work (ComfyUI vs TTS) across the hub AND every other process on this machine."""
     global _gpu_lock
     if _gpu_lock is None:
-        _gpu_lock = asyncio.Lock()
+        _gpu_lock = _GpuLock()
     return _gpu_lock

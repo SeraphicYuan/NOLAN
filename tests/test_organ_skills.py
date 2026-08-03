@@ -17,6 +17,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[1]
 INDEX = json.loads((REPO / "skills" / "index.json").read_text(encoding="utf-8"))
 SKILLS = {s["id"]: s for s in INDEX["skills"]}
@@ -109,6 +111,45 @@ def test_every_harness_copy_is_a_real_file_and_in_sync():
         f"  {sid:28} {slug:26} {why}" for sid, slug, why in drift)
 
 
+def test_git_records_every_harness_copy_as_a_regular_file():
+    """The other half of "never a symlink": what GIT stores, not just what is on disk.
+
+    The filesystem check above passed while every one of the twelve copies was committed with mode
+    120000 — a git symlink whose blob happened to hold the entire 9KB document. On this Windows
+    checkout `core.symlinks=false` hides that (git compares content and calls it clean), but a
+    symlink-capable clone would try to create a link whose TARGET PATH is the whole document text.
+    The copies became real files without the mode following, because git preserves an existing
+    entry's mode and cannot see a type change it is configured not to materialise.
+
+    Skipped where git is unavailable; this asserts a repository fact, not a runtime one.
+    """
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-s", "--", ".claude/skills/"],
+            cwd=REPO, capture_output=True, text=True, timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pytest.skip("git unavailable")
+    if out.returncode != 0:
+        pytest.skip("not a git checkout")
+
+    linked = [
+        line.split("\t", 1)[1]
+        for line in out.stdout.splitlines()
+        if line.startswith("120000") and line.rstrip().endswith("SKILL.md")
+    ]
+    assert not linked, (
+        "harness copies committed as git symlinks (mode 120000) — a symlink-capable clone would "
+        "create a link named after the file's own contents. Fix with:\n"
+        + "\n".join(
+            f"  sha=$(git hash-object -w '{p}'); git update-index --add --cacheinfo 100644,$sha,'{p}'"
+            for p in linked
+        )
+    )
+
+
 def test_organ_skills_declare_a_harness_slug():
     """Every organ/lab/pipeline skill is routable by name from the harness — CLAUDE.md's "LOAD its
     skill before modifying a subsystem" is unfollowable for a skill with no `.claude/skills/` entry."""
@@ -116,3 +157,30 @@ def test_organ_skills_declare_a_harness_slug():
     missing = [s.id for s in sk.load_skills()
                if s.tier in ("primary", "organ", "lab") and s.status == "active" and not s.harness]
     assert not missing, f"no harness: slug, so unreachable via Skill(): {missing}"
+
+
+def test_hf_edit_skill_documents_the_batch_surfaces():
+    """The AI batch mode had NO skill: the whole contract lived as a Python string literal inside
+    `compile_batch_brief`, and the batch agent that prompted this work had to read compose.py to learn
+    which fields a block consumes. The skill is the durable half; the brief is per-run data.
+
+    Bound the same way every organ skill is: `documents:` targets must exist (checked above), and the
+    rules the loop actually enforces must be NAMED here, or the doc can drift from the code silently."""
+    s = SKILLS.get("pipeline.hyperframes-edit")
+    assert s, "the edit/batch loop must have a skill in the registry"
+    doc = (REPO / s["path"]).read_text(encoding="utf-8")
+    for token in ("propose_scene_edit", "CAPABILITY-GAP", "acquire_for_scene", "gpu_lock",
+                  "batch --verify", "rollback_batch", "render_scene", "deferred"):
+        assert token in doc, f"pipeline.hyperframes-edit does not document `{token}`"
+    for fn in ("accept_proposals", "rollback_batch", "render_scene", "acquire_for_scene",
+               "batch_verify", "build_sheet", "list_gaps", "list_deferred"):
+        import nolan.hyperframes as H
+        assert hasattr(H, fn), f"{fn} is documented/exported inconsistently"
+
+
+def test_the_batch_brief_points_at_the_skill_rather_than_restating_it():
+    """A contract kept as a string literal in a builder function is the thing that rots."""
+    import inspect
+    from nolan.hyperframes import batch as hfbatch
+    src = inspect.getsource(hfbatch.compile_batch_brief)
+    assert "nolan-hf-edit" in src

@@ -207,6 +207,44 @@ honesty test doesn't exist.**
     errors → 0 with all four real advisories intact, 24 gaps → 6 all
     genuine.
 
+12. **A refusal that is really a feature request.** A gate says "no" for two
+    entirely different reasons — "you did it wrong" and "the thing you asked
+    for does not exist yet" — and only the first is an agent's problem. The
+    second is the more valuable signal and it evaporates by default.
+    *Incident:* in one 25-comment batch edit, 3 notes (12%) asked for a
+    background image on a `juxtaposition`. `data.ground` validated rc=0 and
+    painted nothing; the agent worked around it by converting the scene to
+    `layout` (which costs the per-line reveal styles and changes the
+    typography) and the fact that 12% of human notes wanted a capability we
+    did not have survived only because it happened to mention it in a retro.
+    *Rule:* a capability refusal must (a) name the supported alternative, so
+    the workaround is a decision rather than a rediscovery, and (b) be
+    RECORDED, so the count — not one agent's memory — is what argues for
+    building it. *Enforcement:* `author.py` emits a machine-readable
+    `CAPABILITY-GAP` token, `nolan.hyperframes.edit.log_gap` counts it into
+    `.hf_gaps.jsonl` and `list_gaps()` rolls it up across comps;
+    `tests/test_hf_phantom_ground.py` pins the token, the named alternative,
+    the tally, and that an ORDINARY gate failure is NOT logged as a gap.
+    The loop closed once already: 3 counted asks bought `juxtaposition` a
+    real `data.ground`, and that test's exemplar had to move to `diagram`.
+
+13. **A field whose meaning depends on a sibling.** The inverse of #1:
+    not an authored field with no consumer, but a consumed field whose
+    correctness is silently voided by a change to a neighbour. *Incident:*
+    swapping `annotate.data.src` invalidates every `callouts[].x/y` — a
+    regenerated image moved the subject ~14% up the frame and a leader line
+    would have pointed at empty water. Nothing anywhere says so; it was
+    caught by eye. *Rule:* when a field's meaning is relative to another
+    (coordinates to an image, region rects to a page, pins to a map, zones
+    to a cutout), the dependency is part of the contract — a change to the
+    anchor without a change to the dependents is a gate failure, not a
+    judgement call. *Enforcement:* NOT YET BUILT — this class is documented
+    ahead of its test on purpose, because the next capability that carries
+    relative coordinates should ship with the check rather than rediscover
+    the incident. A rule without its honesty test does not exist; treat this
+    entry as the specification for the test, and delete this sentence when
+    it lands.
+
 ## The checklist (run it for every new capability)
 
 - [ ] **Registry entry** with `purpose` + `when_to_use` + constraints

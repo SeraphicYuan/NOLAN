@@ -16,7 +16,12 @@ from .edit import (
     list_themes, suggest_theme, theme_exists,
     stage_comment, list_changeset, resolve_comment, log_activity, list_activity, resolve_mentions,
     propose_scene_edit, list_proposals, accept_proposal, reject_proposal, proposal_preview,
+    accept_proposals, rollback_batch, render_scene, scene_window_frame, prune_previews,
+    log_gap, list_gaps, list_deferred, COMMENT_STATES,
 )
+from .acquire_scene import acquire_for_scene, derive_need
+from .contact_sheet import build_sheet, write_markdown, before_still
+from .batch import batch_verify, compile_batch_brief, dispatch_batch, dispatch_batch_sharded, shard_by_frame
 
 __all__ = [
     "discover_compositions", "list_frames", "load_frame_spec", "save_frame_spec", "frame_layers", "frame_transcripts",
@@ -29,4 +34,10 @@ __all__ = [
     "list_themes", "suggest_theme", "theme_exists",
     "stage_comment", "list_changeset", "resolve_comment", "log_activity", "list_activity", "resolve_mentions",
     "propose_scene_edit", "list_proposals", "accept_proposal", "reject_proposal", "proposal_preview",
+    # batch-scale editing (the review artifact, the undo, the scene-level verify tier)
+    "accept_proposals", "rollback_batch", "render_scene", "scene_window_frame", "prune_previews",
+    "build_sheet", "write_markdown", "before_still",
+    "batch_verify", "compile_batch_brief", "dispatch_batch", "dispatch_batch_sharded", "shard_by_frame",
+    # scene-scoped acquisition (the full engine at one beat) + the capability-gap ledger
+    "acquire_for_scene", "derive_need", "log_gap", "list_gaps", "list_deferred", "COMMENT_STATES",
 ]

@@ -2846,10 +2846,26 @@ def juxtaposition(sid, sc):
     G = 40 if framed else 6
     topPad = 150 if (d.get("title") or d.get("kicker")) else 0
     sides = [d["left"], d["right"]]
-    ground = d.get("backdrop") or _page_bg()
-    frag = [f'<div class="clip blk-juxtaposition sv-{variant}" data-start="{start}" data-duration="{dur}" '
-            f'data-track-index="0" style="position:absolute;inset:0;background:{esc(ground)};"></div>']
-    tl = []
+    # LAYER 3 — an authored media ground behind the contrast. 3 of 25 notes in one batch edit asked for
+    # a background on a juxtaposition; `data.ground` validated and painted nothing, because this block
+    # only ever drew `backdrop` (a flat colour). `_data_ground` is block-agnostic and brings the
+    # polarity-correct legibility veil the display type needs over footage, so wiring it is the whole
+    # fix — the alternative (converting the beat to `layout`) costs the per-line reveal styles and
+    # changes the typography, which is a real tax to pay for a background.
+    #
+    # The flat backdrop is the DEFAULT, not a competitor: `_data_ground` paints exactly that when there
+    # is no `data.ground`, so an unauthored scene renders byte-identically. Panels move to track 2+
+    # because the ground owns 0 and its veil owns 1.
+    if isinstance(d.get("ground"), dict) and (d["ground"] or {}).get("kind") not in (None, "color", "flat"):
+        frag, tl = _data_ground(sid, d, start, dur, "juxtaposition")
+        panel_track = 2
+    else:
+        ground = d.get("backdrop") or _page_bg()
+        frag = [f'<div class="clip blk-juxtaposition sv-{variant}" data-start="{start}" '
+                f'data-duration="{dur}" data-track-index="0" '
+                f'style="position:absolute;inset:0;background:{esc(ground)};"></div>']
+        tl = []
+        panel_track = 1
     top = topPad + M
     if axis == "horizontal":
         ph = (H - top - M - G) // 2
@@ -2865,7 +2881,7 @@ def juxtaposition(sid, sc):
         side, gx, gy, gw, gh = geom
         pid = f"{sid}-{'l' if k == 0 else 'r'}"
         fcls = " framed" if framed else ""
-        frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="{1+k}" '
+        frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="{panel_track+k}" '
                     f'style="position:absolute;inset:0;">'
                     f'<div id="{pid}" class="cmp-panel jx{fcls}" style="left:{gx}px;top:{gy}px;width:{gw}px;height:{gh}px;'
                     f'background:{"var(--surface)" if framed else "transparent"};">')
@@ -2881,7 +2897,7 @@ def juxtaposition(sid, sc):
         ax, off = {"left": ("xPercent", -10), "right": ("xPercent", 10),
                    "top": ("yPercent", -10), "bottom": ("yPercent", 10)}.get(side, ("xPercent", 0))
         tl.append(f'tl.fromTo("#{pid}",{{opacity:0,{ax}:{off}}},{{opacity:1,{ax}:0,duration:0.7,ease:"power3.out"}},{pcue});')
-    frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="3" style="position:absolute;inset:0;pointer-events:none;">')
+    frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="{panel_track+2}" style="position:absolute;inset:0;pointer-events:none;">')
     if not framed:
         frag.append(f'<div id="{sid}-div" class="cmp-div" style="{div_style}"></div>')
         tl.append(f'tl.fromTo("#{sid}-div",{{{div_prop}:0}},{{{div_prop}:1,duration:0.5,ease:"power2.inOut"}},{start+0.2});')

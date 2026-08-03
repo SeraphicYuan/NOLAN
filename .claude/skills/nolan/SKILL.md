@@ -54,13 +54,14 @@ A **skill** = any `.md` with an `id:` in frontmatter. Two roots, one catalog:
 <!-- BEGIN AUTOGEN:skill-router (python -m nolan.skills --emit-router) -->
 ## Skill registry — auto-generated, do not edit by hand
 
-_42 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
+_43 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
 
 ### Primary pipeline (start here)
 
 | skill | kind | what it's for |
 |---|---|---|
 | `pipeline.hyperframes` | methodology | Orient + route any compose-first HyperFrames pipeline task — the stage map, the finish DAG (each step + its gate), the load-bearing invar… |
+| `pipeline.hyperframes-edit` | methodology | Give a batch agent everything it needs to edit an essay correctly without reading compose.py — the ops grammar, what each block actually … |
 
 ### Organs
 

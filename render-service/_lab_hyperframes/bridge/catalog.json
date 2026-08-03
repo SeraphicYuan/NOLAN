@@ -304,6 +304,8 @@
         "title": "string? — a centered frame title spanning both zones",
         "titleHi": "string? — substring of title to highlight with the accent",
         "backdrop": "color? — ground fill (default: the theme surface)",
+        "ground": "object? — an optional ambient ground BEHIND the contrast: a media_ground spec ({kind:image, src, kenburns:[1.0,1.12]} / {kind:video, src} / {kind:paper}). A polarity-correct legibility veil is laid over it so the display type still reads (soften with ground.dim 0..1, default 0.6). Omit for the flat `backdrop` colour.",
+        "camera": "object|enum? — the ken-burns move for an IMAGE ground: {move, at?(seconds — the move ARRIVES on that word), target?[x,y], box?[x,y,w,h], amount?, separation?} or a bare move id. Omit and the camera is CHOSEN from the narration, the source shape and the beat length (and alternates so two shots never share a move family). `\"none\"` or `kb:false` holds. Moves: push-in, pull-out, punch-in, push-to-detail, settle, pan-left, pan-right, pan-up, pan-down, pan-to-subject, drift, parallax, parallax-pan, depth-dolly, rack-focus, blur-in, blur-out, roll-drift, read-along, scan-column, hold.",
         "_side_spec": "each side: text {kicker?, lines:str|[lines] (or title), highlight?, reveal?:rise|char|word|flip|typewriter|scramble|decode|gradient|glitch}; stat {from,to | value, prefix?, suffix?, label?, kicker?}",
         "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): split|stacked|cards|cards-stacked. See themes/composition/layout_variants.json."
       },

@@ -264,6 +264,38 @@ def validate_spec(spec):
                                     f"INERT. Remove it, or use a block that consumes cues.")
             except ImportError:
                 pass
+            # PHANTOM-GROUND GATE: sibling of the phantom-cue gate above, same pitfall class
+            # (WIRING_CHECKLIST #1 — the gate accepting what the composer never reads).
+            #
+            # `data.ground` renders for a block only if its composer calls `media_ground()` or
+            # `_data_ground()` — `block_registry.consumes_ground()` is the one place that knows, derived
+            # from the composer source. On any other block an image/paper ground validates, ships, and
+            # paints NOTHING: three of twenty-five notes in one batch asked for a background on a
+            # `juxtaposition`, whose catalog entry offers `backdrop` (a colour) and simply omits `ground`,
+            # so the only way to learn the truth was to read compose.py.
+            #
+            # A VIDEO ground is deliberately EXEMPT and that is not a loophole: `collect_video_grounds`
+            # is block-agnostic — it root-mounts any `{kind:"video"}` ground for any scene — which is
+            # exactly how a `math` scene's Manim clip reaches the screen. Refusing it here would break
+            # working behaviour. Only the composer-painted kinds are gated.
+            #
+            # Refusing beats silence, and a refusal that names the alternative beats a bare "no": the
+            # `CAPABILITY-GAP` token is machine-readable so the edit loop can log the ask
+            # (`nolan.hyperframes.edit.log_gap` -> .hf_gaps.jsonl) and a recurring one becomes a
+            # capability to build rather than a limitation each agent rediscovers.
+            if isinstance(g, dict) and g.get("kind") not in (None, "video"):
+                try:
+                    from nolan.block_registry import consumes_ground
+                    if not consumes_ground(t):
+                        alt = ("`data.backdrop` (a colour) for a flat fill, or "
+                               if "backdrop" in (templ[t].get("data_schema") or {}) else "")
+                        errs.append(
+                            f"{fid}/{sid} ({t}): CAPABILITY-GAP data.ground — the {t} block does not "
+                            f"paint `data.ground` (kind={g.get('kind')!r}), so it is INERT. Use {alt}"
+                            f"a block that paints media (`layout` is the general path; `statement`/"
+                            f"`stat`/`pull_quote` for text beats, any data-viz block for charts).")
+                except ImportError:
+                    pass
             # CAMERA GATE: a move that is not in the registry cannot be executed, and a camera on a
             # ground that has no media has nothing to move. Both fail LOUDLY here rather than silently
             # doing nothing later — the same class the phantom-cue gate above exists for.

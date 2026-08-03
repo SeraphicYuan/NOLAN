@@ -25,13 +25,34 @@ def test_the_new_source_is_ranked_not_silently_last():
         assert E.source_rank(category, "transcript_frames") < E.source_rank(category, "ddgs")
 
 
-def test_video_relevance_is_recomputed_for_the_new_source():
+def test_video_relevance_is_recomputed_for_the_new_source(tmp_path):
     """Video candidates get their retrieval score REPLACED by CLIP on the downloaded frames. A source
-    missing from that tuple keeps relevance 0.0 and is then dropped by `clip_lib_relevance_floor` — the
-    source would look empty rather than broken."""
+    left out of that recompute keeps relevance 0.0 and is then dropped by `clip_lib_relevance_floor` —
+    the source would look empty rather than broken.
+
+    This was a source-tuple membership check on the engine source. The recompute is now
+    source-AGNOSTIC (every video candidate with a local path is scored — stock video was the one being
+    left at 0.0, which made it structurally unable to outrank a local clip), so the property is asserted
+    BEHAVIOURALLY: a per-source literal can no longer drift out of a tuple, and a static grep could not
+    have told a scored source from an unscored one anyway."""
+    from nolan.acquire import AcquireConfig, Candidate, Context, acquire_need
+    clip = tmp_path / "tf.mp4"
+    clip.write_bytes(b"F" * 4096)
+    ctx = Context(search_clips=lambda need, n: [Candidate(ref="tf", source="transcript_frames",
+                                                          modality="video", path=clip)],
+                  relevance=lambda t, p: 0.0,
+                  video_relevance=lambda t, p: 0.71)
+    kept = acquire_need({"id": "n1", "query": "open pit excavation", "media_type": "video"}, ctx,
+                        AcquireConfig(per_need=2, sources=("transcript_frames",)), tmp_path, [])
+    assert kept and kept[0].relevance == 0.71, "the tier's retrieval score must be replaced by CLIP"
+
+
+def test_the_clip_floor_still_names_the_local_tiers():
+    """The CULL half is deliberately per-source: the local tiers are gated before the expensive VLM,
+    remote stock is not (an empty beat is worse than a mediocre one). A new local tier missing here is
+    ungated, not unscored."""
     src = inspect.getsource(__import__("nolan.acquire.engine", fromlist=["x"]))
-    recompute = 'c.source in ("clips_library", "transcript_lib", "transcript_frames")'
-    assert src.count(recompute) >= 2, "must be in BOTH the relevance recompute and the _keep CLIP floor"
+    assert 'c.source in ("clips_library", "transcript_lib", "transcript_frames")' in src
 
 
 def test_the_engine_gate_admits_the_new_source():

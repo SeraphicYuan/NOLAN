@@ -46,6 +46,14 @@ DATA_GROUND_BLOCKS: FrozenSet[str] = frozenset({
     "spectrum", "venn",
     "bar_race", "data_table", "dumbbell", "gauge", "histogram", "isotype", "layout", "process",
     "slope", "small_multiples", "stream", "trajectory",
+    # `juxtaposition` joined because the humans kept asking. It is not a data viz, but it has the same
+    # shape of problem: a text-only block whose only background control was `backdrop` (a flat colour),
+    # so a note asking for a photograph behind the two claims had no expression. 3 of 25 notes in one
+    # batch edit asked for exactly that; the documented workaround (convert to `layout`) costs the
+    # per-line reveal styles and changes the typography. `_data_ground`'s polarity-correct veil is what
+    # makes footage safe under display type, so the capability was ~10 lines once it was asked for
+    # three times. The flat backdrop remains the default: an unauthored scene renders unchanged.
+    "juxtaposition",
 })
 
 # `math` is deliberately in NEITHER set, and that is not an oversight.

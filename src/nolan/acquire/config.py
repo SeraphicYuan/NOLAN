@@ -43,6 +43,13 @@ class AcquireConfig:
     min_usable: int = 4               # escalate/generate if fewer than this survive fitness+relevance
     w_relevance: float = 1.0          # combined score weights
     w_fitness: float = 0.5
+    w_duration: float = 0.6           # how hard to dock a VIDEO candidate that can't cover a need's
+                                      # `min_duration` — a PENALTY scaled by the loop repeats required
+                                      # (saturating at 4×), never a hard floor: `ensure_grounds_fit`
+                                      # really does loop-fill 7.1s→15.7s, and a short clip that loops
+                                      # cleanly beats a mediocre long one. Set 0 to ignore duration.
+                                      # Only bites when the need CARRIES a min_duration, which today
+                                      # only the scene-scoped edit path knows (it has the real window).
     # generation (first-class, floor-gated — only where stock/library is thin or off-topic)
     generate_evocative: bool = True   # generate for evocative beats below the relevance floor
     generate_n: int = 3               # abstract beats lean on bespoke originals — stock/library are thin there

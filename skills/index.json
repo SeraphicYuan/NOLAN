@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 42,
+  "count": 43,
   "skills": [
     {
       "id": "art.flow",
@@ -990,6 +990,40 @@
       },
       "evals": [],
       "path": "skills/pipeline/hyperframes.md"
+    },
+    {
+      "id": "pipeline.hyperframes-edit",
+      "name": "NOLAN HyperFrames edit loop (single + AI batch)",
+      "kind": "methodology",
+      "purpose": "Give a batch agent everything it needs to edit an essay correctly without reading compose.py \u2014 the ops grammar, what each block actually consumes, how to re-anchor, how to verify before spending a render, how to get an asset, and how to report an honest miss.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "primary",
+      "description": "The /hyperframes REVIEW \u2192 EDIT \u2192 RE-RENDER loop, and the AI BATCH mode that runs it at scale: a human stages free-text comments across many frames, one (or several) fleet agents turn each into a gated PROPOSAL, the human reviews the batch on one contact sheet and accepts. Read this before running or debugging a batch edit, before writing `propose_scene_edit` ops, before acquiring an asset from the edit loop, and before parallelising agents over a comp. Covers the proposal contract, the anchor rule, the verify tiers (cheapest first), scene-scoped acquisition, the capability-gap ledger, the mandatory closing verify, and the undo.\n",
+      "harness": "nolan-hf-edit",
+      "handoffs": [
+        {
+          "process": "hyperframes",
+          "stage": "edit",
+          "gate": "B"
+        }
+      ],
+      "uses": [
+        "pipeline.hyperframes",
+        "organ.sync",
+        "organ.acquire",
+        "common.composition-craft"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "edit": "src/nolan/hyperframes/edit.py",
+        "batch": "src/nolan/hyperframes/batch.py",
+        "acquire": "src/nolan/hyperframes/acquire_scene.py",
+        "review": "src/nolan/hyperframes/contact_sheet.py"
+      },
+      "evals": [],
+      "path": "skills/pipeline/hyperframes-edit.md"
     },
     {
       "id": "publish.author-article",

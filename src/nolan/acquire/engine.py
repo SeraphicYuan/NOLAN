@@ -147,6 +147,47 @@ def _need_queries(need: Dict) -> List[str]:
     return [q for q in qs if q][:6]
 
 
+def clip_duration(c: Candidate) -> Optional[float]:
+    """A video candidate's real duration — provider metadata when it is there, else probe the file."""
+    d = c.meta.get("duration")
+    try:
+        d = float(d)
+        if d > 0:
+            return d
+    except (TypeError, ValueError):
+        pass
+    if not c.path:
+        return None
+    try:
+        from nolan.hf_qa import probe
+        d = probe(Path(c.path)).duration
+        return float(d) if d and d > 0 else None
+    except Exception:
+        return None
+
+
+def duration_penalty(c: Candidate, min_duration: float, cfg: AcquireConfig) -> float:
+    """How much to dock a clip that cannot cover its window, scaled by how much LOOPING it would take.
+
+    Duration was not a term in the ranking at all, so a beat with a 19-second hold was filled by 2.0-2.5s
+    library snippets while 9-22s stock shots sat below them. But a hard floor would be wrong in the other
+    direction: `ensure_grounds_fit` genuinely loop-fills (measured: 7.1s → 15.7s, 9.4s → 18.9s) and a
+    short clip that loops cleanly often beats a mediocre long one. So this is a PENALTY proportional to
+    the number of repeats required, saturating at 4× — past that the loop is visible and the clip is
+    simply the wrong asset for the hold.
+
+    Note this only applies to assets whose length is fixed (a local library clip). For remote video the
+    fix is upstream and better: `acquire_for_scene` raises `clip_seconds` to the window, so the segment
+    is FETCHED long enough instead of being penalised for being short."""
+    if min_duration <= 0 or c.modality != "video":
+        return 0.0
+    have = clip_duration(c)
+    if not have or have >= min_duration:
+        return 0.0
+    repeats = min_duration / have
+    return cfg.w_duration * min(1.0, (repeats - 1.0) / 3.0)
+
+
 def _usable(c: Candidate, cfg: AcquireConfig) -> bool:
     return c.relevance >= cfg.relevance_floor and fitness_score(c.fitness) >= 0.5 if c.modality == "image" \
         else True
@@ -222,9 +263,18 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
             tcover = float(c.meta.get("title_cover", 0) or 0)
             if c.source == "library" and tcover > 0:
                 c.relevance = max(c.relevance, tcover)
-        elif c.modality == "video" and c.source in ("clips_library", "transcript_lib", "transcript_frames") and ctx.video_relevance:
+        elif c.modality == "video" and ctx.video_relevance:
             # CULL CASCADE: cheap CLIP frame-relevance so off-topic library clips are dropped in _keep
             # (before the expensive VLM), and this real relevance also feeds the video score below.
+            #
+            # This used to run ONLY for the local tiers (clips_library / transcript_*), which made stock
+            # video structurally unable to win a beat: unscored, it sat at relevance 0.0 and scored
+            # `w_fitness * 0.6 = 0.30`, while ANY library clip that cleared its floor scored
+            # `relevance + 0.30` — so a barely-relevant 2s local snippet outranked a well-matched 20s
+            # stock shot every time, whatever the pixels showed. Observed live as "every stock-video
+            # relevance score came back 0.00" during a batch edit; the beat was starved of footage and
+            # the fix looked like a duration problem. It was a SCORING problem: the scorer is
+            # source-agnostic and every candidate has a local path by now, so score them all.
             try:
                 c.relevance = float(ctx.video_relevance(text, c.path))
             except Exception:
@@ -241,6 +291,8 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
             c.score = tier_bonus + 0.7 * c.relevance + cfg.w_fitness * fitness_score(c.fitness) - 0.02 * c.rank
         else:
             c.score = (cfg.w_relevance * c.relevance) + (cfg.w_fitness * fitness_score(c.fitness)) - 0.01 * c.rank
+        # …and dock a clip that cannot cover the beat's window without visible looping (see above).
+        c.score -= duration_penalty(c, float(need.get("min_duration") or 0), cfg)
 
     # relevance gates (only when CLIP is available). Two kinds of source lie about relevance:
     #   • the LIBRARY returns k-nearest for ANY query — an off-domain global store floods a beat at tier-0;

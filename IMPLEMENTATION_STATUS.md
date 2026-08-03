@@ -2,7 +2,84 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-08-01
+**Last Updated:** 2026-08-02
+
+## HF batch edit: the gate teaches, the review is one page, the pool survives (2026-08-02)
+
+A 25-comment batch edit ran end-to-end and the agent's retro named the costs. Nearly all of them
+were one shape: the proposal gate answers "is this a valid spec?" and nothing answered "is this
+edit TRUE?" — true to the narration, to what the block actually consumes, to the pool it writes.
+
+**The verify loop was unusable, and not for the reason anyone thought.** `_scaffold_preview` copied
+the WHOLE `assets/` tree on every snapshot / proposal-preview / frame-render call. Measured:
+diamond-v3 carries 856 MB of assets and had **7.5 GB** under `compositions/_preview`; a 25-proposal
+batch would copy ~21 GB before a pixel rendered. It now stages only the assets the frame REFERENCES
+(scanning the composed HTML *and* the spec, because a video ground composes to a transparent div and
+its path exists only in the spec), by hardlink where the filesystem allows. Same frame: 897 MB → 103 MB
+logical in 0.21s, 0.01s cached. `prune_previews` reclaimed **20.5 GB** across the lab.
+
+**The brief never carried the catalog.** `_catalog_brief` — purpose + the exact data fields per block —
+was passed to the single-note LLM path and not to the batch agent, which is why an agent had to read
+`compose.py:2849` to learn that `juxtaposition` takes `backdrop` (a colour) and not `ground`. It is in
+the brief now, alongside each scene's spoken NARRATION (so a re-anchor is copied, not retyped — the
+batch's one real regression was an anchor reading "someone taught it to you" against a VO that says
+"somebody") and the anchor/verify/acquisition contracts.
+
+**Phantom-GROUND gate + a capability-gap LEDGER.** `author.py` now refuses an image/paper `data.ground`
+on a block whose composer never paints it (sibling of the phantom-CUE gate; `block_registry.
+consumes_ground` is the authority). A VIDEO ground stays legal on any block — `collect_video_grounds`
+root-mounts it, which is how a `math` scene's Manim clip reaches the screen. The refusal carries a
+machine-readable `CAPABILITY-GAP` token, so the edit loop counts the ask in `.hf_gaps.jsonl` and
+`list_gaps()` rolls it up across comps: a refusal is now a feature request with a number on it, not a
+remark in a retro. That loop immediately closed once — 3 of 25 notes wanted a background on a
+`juxtaposition`, so it got `_data_ground` (~10 lines, flat `backdrop` still the default, unauthored
+scenes render unchanged).
+
+**`write_inventory` was a data-loss trap.** It wrote `pool.json` with the current run only; acquiring
+one asset from the edit loop would have replaced a finished essay's 150-entry catalogue. Merges on
+`file` now, carrying curation (`selected`/`caption`/`flags`/scene provenance) across a re-fetch.
+
+**Stock video was never scored.** `ctx.video_relevance` ran only for the local tiers, so stock video sat
+at relevance 0.0 and scored a flat 0.30 against any library clip's `relevance + 0.30` — structurally
+unable to win a beat whatever the pixels showed. That, not duration, is why 2.0-2.5s snippets filled
+4-19s holds. Duration is now a term too: remote video is FETCHED at the window (`clip_seconds`), and
+fixed-length clips are docked in proportion to the looping required (a penalty, not a floor — `ensure_
+grounds_fit` really does loop-fill 7.1s→15.7s).
+
+**`acquire_for_scene`** is the missing third door: one need, the FULL engine (all tiers, relevance,
+fitness, dedup, generation), the VLM usability floor, merged into the pool. It spends what only scene
+scope knows — the beat's window as `min_duration`, the narration as the query, and
+`asset_scene_usage` to dedup against what the essay already shows. The VLM floor moved out of
+`bridge/pool.py` (a CLI script, so only the whole-project build could reach it) into
+`nolan/acquire/vlm_floor.py`; the bridge delegates.
+
+**The review is one page.** `contact_sheet.build_sheet` / `write_markdown` put every touched scene in
+ESSAY order with before (an ffmpeg grab from the cached per-frame `clip.mp4` — the shipped pixels,
+free) ∥ after (`proposal_preview`, which now injects video grounds so footage scenes stop previewing
+blank), rationale, requirement coverage, gate findings and the ANCHOR DELTA resolved against the
+transcript. `accept_proposals` is one transaction returning a `rollback_token`; `rollback_batch` is the
+undo a 25-proposal review has to have and did not (git is not the safety net in a shared tree).
+`render_scene` is the tier between a still and a frame render, for the scenes a still cannot tell the
+truth about (a seeked `<video>` does not decode into a snapshot).
+
+**Parallelism, safely.** `get_gpu_lock()` was an in-process `asyncio.Lock` on the hub — invisible to a
+tmux fleet agent, which is a different process. It now also takes a machine-wide lockfile
+(`nolan.gpu_lock`), and `acquire.context.generate` takes it directly. Note `os.kill(pid, 0)` is NOT the
+liveness check on Windows (CPython maps it to TerminateProcess; it reported the calling process's own
+pid as dead) — `OpenProcess`/`GetExitCodeProcess` instead. With that in place `dispatch_batch_sharded`
+fans the changeset across agents by FRAME, the unit that is one spec file. Proposal ids are minted
+under a cross-process lock (`p{len+1}` collided and a concurrent write lost a whole proposal).
+
+Also: `batch --verify` is now the MANDATORY closing step (the timing / provenance / style gates live in
+the finish DAG and never ran at propose or accept time, so a fully-reviewed batch could still block);
+`deferred` is a real non-terminal comment state with a `retry` command; `_set_path` grows a `.+` append
+and RAISES on an out-of-range index instead of silently writing blanks; URLs survive requirement
+extraction. New skill `pipeline.hyperframes-edit` (harness `nolan-hf-edit`) carries the contract that
+used to live as a string literal inside `compile_batch_brief`.
+
+Tests: `test_hf_preview_staging`, `test_hf_phantom_ground`, `test_hf_batch_brief`, `test_hf_batch_accept`,
+`test_hf_acquire_scene`, `test_hf_contact_sheet`, `test_pool_inventory_merge`, `test_acquire_vlm_floor`,
+`test_acquire_video_scoring`, `test_gpu_lock` (+ the organ-skill binding). Suite 2685 passed, e2e smoke PASS.
 
 ## Visual Lib: a pipe-joined credit is several people, and the Artists tab (2026-08-01)
 

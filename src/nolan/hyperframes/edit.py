@@ -10,6 +10,7 @@ throwaway single-frame scaffold (self-contained headless Chrome), which also wor
 """
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
 import os
@@ -834,15 +835,42 @@ def catalog() -> Dict[str, Any]:
 
 # ------------------------------------------------------------------ patch helpers
 
+_APPEND = "+"
+
+
 def _set_path(obj: Any, path: str, value: Any) -> None:
-    """Set a dotted path (list indices allowed) into an existing structure — e.g. 'data.items.0.to'."""
+    """Set a dotted path (list indices allowed) into an existing structure — e.g. 'data.items.0.to'.
+
+    `+` as the final segment APPENDS to a list: `data.series.+`. "Add another bar / row / bullet" is one
+    of the commonest notes a human writes, and without this the only expression of it was re-sending the
+    whole array as one patch — which silently clobbers any concurrent edit to a sibling element.
+
+    An out-of-range index RAISES rather than growing the list. Silent growth would turn a typo
+    (`data.series.7` on a two-element list) into five nulls that validate and render as blanks, which is
+    strictly worse than the IndexError it replaced — and the message names the fix."""
     keys = path.split(".")
     cur = obj
-    for k in keys[:-1]:
-        cur = cur[int(k)] if isinstance(cur, list) else cur.setdefault(k, {})
+    for i, k in enumerate(keys[:-1]):
+        if isinstance(cur, list):
+            if k == _APPEND:
+                raise ValueError(f"{path!r}: '+' may only be the LAST segment (it appends a value)")
+            idx = int(k)
+            if not -len(cur) <= idx < len(cur):
+                raise IndexError(f"{path!r}: index {idx} is out of range for a {len(cur)}-item list "
+                                 f"at {'.'.join(keys[:i]) or '<root>'}")
+            cur = cur[idx]
+        else:
+            cur = cur.setdefault(k, {})
     last = keys[-1]
     if isinstance(cur, list):
-        cur[int(last)] = value
+        if last == _APPEND:
+            cur.append(value)
+            return
+        idx = int(last)
+        if not -len(cur) <= idx < len(cur):
+            raise IndexError(f"{path!r}: index {idx} is out of range for a {len(cur)}-item list — "
+                             f"use '{'.'.join(keys[:-1])}.+' to APPEND")
+        cur[idx] = value
     else:
         cur[last] = value
 
@@ -1677,39 +1705,74 @@ def stage_comment(comp: str, frame_id: str, text: str, scene_id: Optional[str] =
     return {**c, "frame_id": frame_id}
 
 
-def list_changeset(comp: str) -> List[Dict[str, Any]]:
-    """All OPEN per-frame comments across the comp — the pending batch-edit changeset (for #5 dispatch)."""
+def list_changeset(comp: str, include_deferred: bool = False) -> List[Dict[str, Any]]:
+    """All OPEN per-frame comments across the comp — the pending batch-edit changeset (for #5 dispatch).
+    `include_deferred=True` also picks up work parked on an external resource, so "the GPU is back,
+    re-run the batch" is one flag rather than a hand-written script."""
+    want = {"open", "deferred"} if include_deferred else {"open"}
     out = []
     for fr in list_frames(comp):
         fid = fr.get("id") if isinstance(fr, dict) else fr
         spec, info = load_frame_spec(comp, fid)
         for c in spec["frames"][info["i"]].get("meta", {}).get("comments", []):
-            if c.get("status", "open") == "open":
+            if c.get("status", "open") in want:
                 out.append({**c, "frame_id": fid})
     return out
 
 
+# A comment is resolvable until it reaches a TERMINAL state. "dispatched" is deliberately NOT terminal
+# (accepting an agent's proposal marks it applied; rejecting reopens it) — guarding on == "open" left
+# every dispatched comment stuck forever.
+#
+# `deferred` is also non-terminal, and it exists because the alternatives were both lies. An agent with
+# real work it could not do yet — ComfyUI down, a provider rate-limited, a render queued — could either
+# say `blocked` (which means "there is no landing spot for this", a capability judgement it had not
+# made) or leave the comment dispatched and write an activity line, which is invisible in the
+# changeset. The batch that prompted this chose the second and the work simply vanished from the
+# review. A state that means "real work, blocked on an external resource, retry HERE" keeps it visible
+# and re-dispatchable.
+COMMENT_STATES = ("open", "dispatched", "deferred", "applied", "blocked", "error")
+TERMINAL_COMMENT_STATES = frozenset({"applied", "blocked", "error"})
+
+
 def resolve_comment(comp: str, frame_id: str, comment_id: Optional[str] = None,
-                    status: str = "applied", reason: Optional[str] = None) -> Dict[str, Any]:
-    """Resolve staged comment(s): 'applied' | 'blocked' (no gated landing spot — give a `reason`) | 'error'.
-    comment_id=None resolves every open one in the frame. Records the outcome to the activity feed."""
+                    status: str = "applied", reason: Optional[str] = None,
+                    retry: Optional[str] = None) -> Dict[str, Any]:
+    """Resolve staged comment(s): 'applied' | 'blocked' (no gated landing spot — give a `reason`) |
+    'error' | 'deferred' (real work, waiting on an external resource — give a `reason` and a `retry`
+    command). comment_id=None resolves every open one in the frame. Records it to the activity feed."""
+    if status not in COMMENT_STATES:
+        raise ValueError(f"unknown comment status {status!r} — one of {list(COMMENT_STATES)}")
     spec, info = load_frame_spec(comp, frame_id)
     fr = spec["frames"][info["i"]]
     n = 0
-    # A comment is resolvable until it reaches a TERMINAL state — importantly this includes "dispatched"
-    # (sent to a fleet agent), so accepting that agent's proposal can mark it applied and rejecting can
-    # reopen it. Guarding on == "open" (the old bug) left every dispatched comment stuck forever.
-    _TERMINAL = {"applied", "blocked", "error"}
     for c in fr.get("meta", {}).get("comments", []):
-        if (comment_id is None or c.get("id") == comment_id) and c.get("status", "open") not in _TERMINAL:
+        if (comment_id is None or c.get("id") == comment_id) \
+                and c.get("status", "open") not in TERMINAL_COMMENT_STATES:
             c["status"] = status
             if reason:
                 c["reason"] = reason
+            if status == "deferred":
+                c["retry"] = retry or ""      # the command that resumes it — a deferral with no way
+                c.pop("_dispatched_to", None)  # back is just a different way of dropping the work
             n += 1
             log_activity(comp, "comment", f"{status}: {c.get('text', '')[:80]}", actor="agent",
                          frame_id=frame_id, scene_id=c.get("scene_id"), outcome=status, detail=reason)
     save_frame_spec(Path(info["spec_file"]), spec)
     return {"ok": True, "resolved": n}
+
+
+def list_deferred(comp: str) -> List[Dict[str, Any]]:
+    """Comments parked on an external resource, with the command that resumes each — the queue a human
+    (or the next batch) works through when the GPU is back / the provider is answering again."""
+    out = []
+    for fr in list_frames(comp):
+        fid = fr.get("id") if isinstance(fr, dict) else fr
+        spec, info = load_frame_spec(comp, fid)
+        for c in spec["frames"][info["i"]].get("meta", {}).get("comments", []):
+            if c.get("status") == "deferred":
+                out.append({**c, "frame_id": fid})
+    return out
 
 
 # ------------------------------------------------------------------ activity feed (edit / agent process log)
@@ -1730,6 +1793,66 @@ def log_activity(comp: str, kind: str, summary: str, *, actor: str = "human",
             fh.write(json.dumps(ev, ensure_ascii=False) + "\n")
     except Exception:
         pass
+
+
+# ------------------------------------------------------------------ capability-gap ledger
+# A gate refusal is two different things wearing one face: "you did it wrong" and "the thing you asked
+# for does not exist yet". The second is the more valuable signal and it used to evaporate — three of
+# twenty-five notes in one batch asked for a background on a `juxtaposition` (a block with no ground),
+# and that only became known because an agent happened to mention it in a retro. So a CAPABILITY-GAP
+# refusal is RECORDED: the gate names the gap, this counts it, and a recurring count is the argument for
+# building the capability instead of documenting the limitation.
+_GAP_RE = re.compile(r"CAPABILITY-GAP\s+(?P<field>[\w.\[\]]+)\s+—\s+the\s+(?P<block>[\w_]+)\s+block")
+
+
+def log_gap(comp: str, gate_out: str, *, frame_id: Optional[str] = None, scene_id: Optional[str] = None,
+            note: Optional[str] = None, agent: Optional[str] = None, workaround: Optional[str] = None) -> int:
+    """Record every CAPABILITY-GAP the gate reported in `gate_out`. Returns how many were logged.
+    Best-effort: ledger bookkeeping must never break a proposal."""
+    n = 0
+    try:
+        for m in _GAP_RE.finditer(gate_out or ""):
+            row = {"ts": round(time.time(), 3), "block": m.group("block"), "field": m.group("field"),
+                   "frame_id": frame_id, "scene_id": scene_id, "agent": agent,
+                   "note": (note or "")[:300] or None, "workaround": workaround}
+            with open(_comp_dir(comp) / ".hf_gaps.jsonl", "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+            n += 1
+    except Exception:
+        pass
+    return n
+
+
+def list_gaps(comp: Optional[str] = None, limit: int = 200) -> List[Dict[str, Any]]:
+    """Capability gaps recorded for one comp, or ROLLED UP across every comp when `comp` is None —
+    the cross-project count that turns 'an agent mentioned it' into 'N asks, M comps, build it'."""
+    comps = [comp] if comp else [c["name"] for c in discover_compositions()]
+    rows: List[Dict[str, Any]] = []
+    for c in comps:
+        try:
+            f = _comp_dir(c) / ".hf_gaps.jsonl"
+        except Exception:
+            continue
+        if not f.exists():
+            continue
+        for line in f.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line:
+                try:
+                    rows.append({**json.loads(line), "comp": c})
+                except json.JSONDecodeError:
+                    pass
+    tally: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for r in rows:
+        k = (r.get("block", "?"), r.get("field", "?"))
+        e = tally.setdefault(k, {"block": k[0], "field": k[1], "asks": 0, "comps": set(), "examples": []})
+        e["asks"] += 1
+        e["comps"].add(r.get("comp"))
+        if r.get("note") and len(e["examples"]) < 3:
+            e["examples"].append(r["note"])
+    out = [{**e, "comps": sorted(x for x in e["comps"] if x)} for e in tally.values()]
+    out.sort(key=lambda e: (-e["asks"], e["block"]))
+    return out[:limit]
 
 
 def list_activity(comp: str, limit: int = 100) -> List[Dict[str, Any]]:
@@ -1768,6 +1891,54 @@ def _load_proposals(comp: str) -> List[Dict[str, Any]]:
 
 def _save_proposals(comp: str, props: List[Dict[str, Any]]) -> None:
     _proposals_path(comp).write_text(json.dumps(props, indent=1, ensure_ascii=False), encoding="utf-8")
+
+
+@contextlib.contextmanager
+def _proposals_lock(comp: str, timeout: float = 20.0):
+    """Cross-PROCESS mutex around `.hf_proposals.json`.
+
+    Every proposal mutation is a read-modify-write of one JSON array, and the writers are separate
+    processes: the hub, each tmux fleet agent in a batch, the bespoke agent, the effect agent. Two
+    concurrent `propose_scene_edit` calls both read N entries, both append, both write N+1 — one
+    proposal is lost outright, and both are handed the id `p{N+1}` so even the survivor is ambiguous.
+    That is latent today (a batch agent works sequentially) and guaranteed the moment a batch is sharded
+    across agents, so the lock lands with the sharding it enables.
+
+    An O_CREAT|O_EXCL lockfile is the portable primitive here — `fcntl` is absent on Windows and this
+    tree is worked from both sides. A lock older than `timeout` is treated as abandoned (a killed agent
+    must not wedge the comp forever) and broken."""
+    lf = _comp_dir(comp) / ".hf_proposals.lock"
+    deadline = time.time() + timeout
+    fd = None
+    while fd is None:
+        try:
+            fd = os.open(str(lf), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                stale = (time.time() - lf.stat().st_mtime) > timeout
+            except OSError:
+                stale = False
+            if stale or time.time() > deadline:
+                lf.unlink(missing_ok=True)          # abandoned by a dead writer — take it
+                continue
+            time.sleep(0.05)
+    try:
+        os.write(fd, f"{os.getpid()}".encode())
+        os.close(fd)
+        yield
+    finally:
+        lf.unlink(missing_ok=True)
+
+
+def _next_proposal_id(props: List[Dict[str, Any]]) -> str:
+    """`p{max+1}`, derived from the ids PRESENT rather than from `len()` — a rejected-then-pruned entry,
+    or any gap, made `p{len+1}` collide with a live proposal."""
+    n = 0
+    for p in props:
+        m = re.match(r"p(\d+)$", str(p.get("id", "")))
+        if m:
+            n = max(n, int(m.group(1)))
+    return f"p{n + 1}"
 
 
 def _gate_validate_only(comp: str, spec: Dict[str, Any]) -> Tuple[bool, str]:
@@ -1829,8 +2000,7 @@ def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
     except Exception as e:
         err = f"ops error: {type(e).__name__}: {e}"
     gate_ok, gate_out = (False, err) if err else _gate_validate_only(comp, trial)
-    props = _load_proposals(comp)
-    prop = {"id": f"p{len(props) + 1}", "frame_id": frame_id, "scene_id": scene_id, "ops": ops,
+    prop = {"id": None, "frame_id": frame_id, "scene_id": scene_id, "ops": ops,
             "rationale": (rationale or "").strip(), "gate_ok": gate_ok,
             "gate_out": "" if gate_ok else (gate_out or "")[-600:],
             "provenance": {"agent": agent, "model": model, "ts": round(time.time(), 3), "comment_id": comment_id},
@@ -1842,8 +2012,15 @@ def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
         layout = _proposal_layout_lint(trial["frames"][info["i"]], scene_id)
         if layout:
             prop["layout"] = layout   # advisory composition-gate findings, shown at review
-    props.append(prop)
-    _save_proposals(comp, props)
+    if not gate_ok and log_gap(comp, gate_out or "", frame_id=frame_id, scene_id=scene_id,
+                               note=rationale, agent=agent):
+        prop["capability_gap"] = True   # this refusal is a feature request, not an agent mistake
+    # The id is minted INSIDE the lock, against the ids actually on disk — see `_proposals_lock`.
+    with _proposals_lock(comp):
+        props = _load_proposals(comp)
+        prop["id"] = _next_proposal_id(props)
+        props.append(prop)
+        _save_proposals(comp, props)
     log_activity(comp, "proposal", (rationale or f"proposal for {scene_id or frame_id}")[:80],
                  actor=agent or "agent", frame_id=frame_id, scene_id=scene_id,
                  outcome="proposed" if gate_ok else "blocked", detail=None if gate_ok else (gate_out or "")[-200:])
@@ -1858,12 +2035,15 @@ def list_proposals(comp: str, status: Optional[str] = None) -> List[Dict[str, An
 def accept_proposal(comp: str, proposal_id: str) -> Dict[str, Any]:
     """Accept a proposal → apply its ops to the CANONICAL spec through the gate (build + revert-on-reject),
     stamp provenance on the touched scene, resolve the linked comment, mark the proposal accepted."""
-    props = _load_proposals(comp)
-    p = next((x for x in props if x.get("id") == proposal_id), None)
-    if not p:
-        raise KeyError(f"proposal {proposal_id!r} not found")
-    if p.get("status") != "proposed":
-        return {"applied": False, "errors": f"proposal already {p.get('status')}", "proposal": p}
+    with _proposals_lock(comp):        # claim it under the lock: two accepts of one id must not both run
+        props = _load_proposals(comp)
+        p = next((x for x in props if x.get("id") == proposal_id), None)
+        if not p:
+            raise KeyError(f"proposal {proposal_id!r} not found")
+        if p.get("status") != "proposed":
+            return {"applied": False, "errors": f"proposal already {p.get('status')}", "proposal": p}
+        p["status"] = "accepting"
+        _save_proposals(comp, props)
     prov = p.get("provenance") or {}
 
     def mutate(fr):
@@ -1875,28 +2055,112 @@ def accept_proposal(comp: str, proposal_id: str) -> Dict[str, Any]:
 
     res = _edit(comp, p["frame_id"], mutate, kind="proposal-accept", scene_id=p.get("scene_id"),
                 summary=f"accept proposal {proposal_id}", actor=prov.get("agent") or "agent")
-    p["status"] = "accepted" if res.get("applied") else "accept-failed"
-    if not res.get("applied"):
-        p["gate_out"] = (res.get("errors") or "")[-600:]
-    elif prov.get("comment_id"):
+    if res.get("applied") and prov.get("comment_id"):
         try:
             resolve_comment(comp, p["frame_id"], prov["comment_id"], status="applied")
         except Exception:
             pass
-    _save_proposals(comp, props)
+    with _proposals_lock(comp):        # re-read: another writer may have appended while the gate ran
+        props = _load_proposals(comp)
+        p = next((x for x in props if x.get("id") == proposal_id), p)
+        p["status"] = "accepted" if res.get("applied") else "accept-failed"
+        if not res.get("applied"):
+            p["gate_out"] = (res.get("errors") or "")[-600:]
+        _save_proposals(comp, props)
     return {**res, "proposal": p}
+
+
+def _spec_snapshot(comp: str) -> Dict[str, str]:
+    """Every frame spec's bytes, right now. They are small JSON files; the whole essay is a few hundred
+    KB, which is a cheap price for being able to undo a batch."""
+    return {str(p): p.read_text(encoding="utf-8") for p in sorted(_frames_dir(comp).glob("*.spec.json"))}
+
+
+def _restore_snapshot(snap: Dict[str, str]) -> None:
+    for path, text in snap.items():
+        Path(path).write_text(text, encoding="utf-8")
+
+
+def accept_proposals(comp: str, proposal_ids: List[str], *, all_or_nothing: bool = False) -> Dict[str, Any]:
+    """Accept a SET of proposals — the operation the human is actually performing when they review a
+    batch of 25.
+
+    Two things one-at-a-time acceptance could not give:
+
+    * **Undo.** `_edit` reverts a single failed edit, but once N proposals are accepted there was no way
+      back, and git is not available as a safety net here (a shared working tree with concurrent agents,
+      and `git stash` is forbidden in this repo). Every accept run snapshots the frame specs first, so
+      `rollback_token` can put the essay back exactly as it was.
+    * **Atomicity when it is wanted.** `all_or_nothing=True` restores the snapshot if ANY proposal
+      fails to apply — for the case where the accepted set is one coherent change and half of it is
+      worse than none of it. Default stays permissive: a reviewer accepting 25 independent notes wants
+      the 24 that work.
+
+    Proposals are applied grouped by frame in their proposal order, so a frame is gated and rebuilt once
+    per contiguous run rather than once per proposal.
+    """
+    snap = _spec_snapshot(comp)
+    token = _comp_dir(comp) / f".hf_rollback.{int(time.time() * 1000)}.json"
+    token.write_text(json.dumps(snap, ensure_ascii=False), encoding="utf-8")
+    results, applied, failed = [], [], []
+    for pid in proposal_ids:
+        try:
+            r = accept_proposal(comp, pid)
+        except KeyError as e:
+            r = {"applied": False, "errors": str(e)}
+        results.append({"proposal_id": pid, **{k: r.get(k) for k in ("applied", "errors")}})
+        (applied if r.get("applied") else failed).append(pid)
+    rolled_back = False
+    if all_or_nothing and failed:
+        _restore_snapshot(snap)
+        for pid in applied:                     # the specs are back; the proposals must agree
+            try:
+                with _proposals_lock(comp):
+                    props = _load_proposals(comp)
+                    p = next((x for x in props if x.get("id") == pid), None)
+                    if p:
+                        p["status"] = "proposed"
+                    _save_proposals(comp, props)
+            except Exception:
+                pass
+        rolled_back = True
+    log_activity(comp, "batch", f"accepted {len(applied)}/{len(proposal_ids)} proposal(s)"
+                                + (" — ROLLED BACK" if rolled_back else ""),
+                 outcome="applied" if applied and not rolled_back else "rejected",
+                 detail=f"failed: {', '.join(failed)}" if failed else None)
+    return {"ok": not failed, "applied": applied, "failed": failed, "results": results,
+            "rolled_back": rolled_back, "rollback_token": str(token)}
+
+
+def rollback_batch(comp: str, rollback_token: str) -> Dict[str, Any]:
+    """Restore every frame spec to the snapshot taken before an `accept_proposals` run, and rebuild the
+    frames it touched. The undo that a 25-proposal review has to have and did not."""
+    snap = json.loads(Path(rollback_token).read_text(encoding="utf-8"))
+    _restore_snapshot(snap)
+    rebuilt, errors = [], []
+    for path in snap:
+        fid = Path(path).name[: -len(".spec.json")]
+        try:
+            ok, out = _gate_and_build(comp, Path(path))
+            (rebuilt if ok else errors).append(fid if ok else f"{fid}: {out[-160:]}")
+        except Exception as e:
+            errors.append(f"{fid}: {type(e).__name__}: {e}")
+    log_activity(comp, "batch", f"rolled back to {Path(rollback_token).name}",
+                 outcome="applied" if not errors else "error", detail="; ".join(errors)[:300] or None)
+    return {"ok": not errors, "restored": len(snap), "rebuilt": rebuilt, "errors": errors}
 
 
 def reject_proposal(comp: str, proposal_id: str, reason: str = "") -> Dict[str, Any]:
     """Reject a proposal (discard it) and REOPEN the linked comment so it can be re-dispatched."""
-    props = _load_proposals(comp)
-    p = next((x for x in props if x.get("id") == proposal_id), None)
-    if not p:
-        raise KeyError(f"proposal {proposal_id!r} not found")
-    p["status"] = "rejected"
-    if reason:
-        p["reject_reason"] = reason
-    _save_proposals(comp, props)
+    with _proposals_lock(comp):
+        props = _load_proposals(comp)
+        p = next((x for x in props if x.get("id") == proposal_id), None)
+        if not p:
+            raise KeyError(f"proposal {proposal_id!r} not found")
+        p["status"] = "rejected"
+        if reason:
+            p["reject_reason"] = reason
+        _save_proposals(comp, props)
     prov = p.get("provenance") or {}
     if prov.get("comment_id"):
         try:
@@ -1944,6 +2208,24 @@ def proposal_preview(comp: str, proposal_id: str, at: Optional[float] = None) ->
         at = (float(sc.get("start", 0)) + 0.6 * float(sc.get("dur", 5))) if sc else float(trial.get("dur", 5)) * 0.5
     html = _build_trial_html(comp, p["frame_id"], trial)
     pdir = _scaffold_preview(comp, p["frame_id"], html_text=html, preview_id=f"_prop_{proposal_id}")
+    # Inject the frame's VIDEO grounds, as `render_frame` does. A `media_ground` video composes to a
+    # TRANSPARENT div (the clip is meant to be root-mounted), so without this every footage-grounded
+    # scene previewed as an empty plate — i.e. the preview was blank on exactly the scenes a reviewer
+    # most needs to see. (A seeked <video> still may not decode into a snapshot; that is what
+    # `render_scene` is for. Injecting is what makes the difference visible when it can.)
+    try:
+        from nolan.hyperframes.incremental import inject_grounds
+        gs = []
+        for s in trial.get("scenes", []):
+            g = (s.get("data") or {}).get("ground") or {}
+            if g.get("kind") == "video" and g.get("src"):
+                gs.append({"src": g["src"], "start": round(float(s.get("start", 0) or 0), 3),
+                           "dur": round(float(s.get("dur", 0) or 0), 3)})
+        if gs:
+            idx = pdir / "index.html"
+            idx.write_text(inject_grounds(idx.read_text(encoding="utf-8"), gs), encoding="utf-8")
+    except Exception:
+        pass
     r = subprocess.run(["npx", "--yes", "hyperframes@latest", "snapshot", str(pdir),
                         "--at", f"{at:g}", "--no-end", "--describe", "false"],
                        cwd=str(pdir), capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -1955,8 +2237,86 @@ def proposal_preview(comp: str, proposal_id: str, at: Optional[float] = None) ->
 
 # ------------------------------------------------------------------ preview / render (npx scaffold)
 
+_ASSET_REF_RE = re.compile(r"assets/[A-Za-z0-9._\-/]+")
+
+
+def _referenced_assets(comp: str, frame_id: str, html_text: Optional[str]) -> List[str]:
+    """The `assets/…` paths ONE frame's preview actually needs, as comp-relative strings.
+
+    Scans the composed HTML *and* the frame SPEC: a video ground composes to a TRANSPARENT div (the clip
+    is root-injected later by `render_frame`/`incremental`), so its path appears only in the spec. The
+    frame's own voice wav is added from audio_meta because `_scaffold_preview` mounts it as a root <audio>.
+
+    Why this exists: the old staging copied `assets/**` wholesale on EVERY snapshot/preview/render call.
+    Measured on the-diamond-illusion-v3 — an 856 MB asset tree, 12 scratch dirs, 7.5 GB of `_preview` —
+    so the "cheap" verify loop cost minutes of file copying per still and was abandoned on exactly the
+    footage-heavy comps that most need it. Per frame the real requirement is 7-17 files (9-99 MB).
+    """
+    refs = set(_ASSET_REF_RE.findall(html_text or ""))
+    try:                                                  # the spec carries paths the HTML can't (video grounds)
+        spec, info = load_frame_spec(comp, frame_id)
+        refs |= set(_ASSET_REF_RE.findall(json.dumps(spec["frames"][info["i"]], default=str)))
+    except Exception:
+        pass
+    meta_f = _comp_dir(comp) / "audio_meta.json"
+    if meta_f.exists():
+        try:
+            meta = json.loads(meta_f.read_text(encoding="utf-8"))
+            m = re.match(r"(\d+)", str(frame_id))
+            voice = next((v for v in meta.get("voices", []) if v.get("frame") == (int(m.group(1)) if m else None)),
+                         None)
+            if voice and voice.get("path"):
+                refs.add(str(voice["path"]).replace("\\", "/"))
+        except (json.JSONDecodeError, OSError, ValueError):
+            pass
+    return sorted(r for r in refs if r.startswith("assets/") and not r.endswith("/"))
+
+
+def _stage_asset(src: Path, dest: Path) -> None:
+    """Materialise ONE asset into a scratch dir as cheaply as the filesystem allows: reuse an identical
+    existing file, else hardlink (NTFS + DrvFs both support it, and unlike a symlink it is not a reparse
+    point, so Windows and WSL can both stat it — see CLAUDE.md), else copy. Previews only ever READ these
+    files, so sharing the inode is safe; every asset EDIT path writes a new file under a new name."""
+    try:
+        s = src.stat()
+    except OSError:
+        return
+    if dest.exists():
+        d = dest.stat()
+        if d.st_size == s.st_size and (getattr(d, "st_ino", 0) == getattr(s, "st_ino", -1)
+                                       or int(d.st_mtime) == int(s.st_mtime)):
+            return                                        # already staged (same inode, or same size+mtime)
+        dest.unlink(missing_ok=True)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.link(src, dest)
+    except OSError:
+        dest.write_bytes(src.read_bytes())
+
+
+def prune_previews(comp: str) -> Dict[str, Any]:
+    """Delete the per-frame/per-proposal preview scratch under <comp>/compositions/_preview.
+
+    Scratch is disposable by construction (it is rebuilt from the spec on the next call), and comps built
+    before assets were staged by reference carry whole-tree copies — 7.5 GB on one measured comp. Returns
+    what was freed so the caller can report it rather than silently reclaiming disk."""
+    root = _comp_dir(comp) / "compositions" / "_preview"
+    if not root.is_dir():
+        return {"removed": 0, "bytes": 0}
+    import shutil
+    n = total = 0
+    for d in list(root.iterdir()):
+        try:
+            total += sum(f.stat().st_size for f in d.rglob("*") if f.is_file())
+            shutil.rmtree(d, ignore_errors=True)
+            n += 1
+        except OSError:
+            pass
+    return {"removed": n, "bytes": total}
+
+
 def _scaffold_preview(comp: str, frame_id: str, html_text: Optional[str] = None,
-                      preview_id: Optional[str] = None) -> Path:
+                      preview_id: Optional[str] = None, dur_override: Optional[float] = None) -> Path:
     """Build a throwaway single-frame hyperframes project so `npx hyperframes snapshot|render` can target
     ONE frame in isolation (cross-platform: self-contained headless Chrome). Copies the frame HTML (+ any
     vendor dir a geo/diagram scene needs) so relative paths resolve. `html_text` overrides the frame HTML
@@ -1966,7 +2326,7 @@ def _scaffold_preview(comp: str, frame_id: str, html_text: Optional[str] = None,
     if html_text is None and not html.exists():
         recompose_frame(comp, frame_id)
     spec, info = load_frame_spec(comp, frame_id)
-    dur = float(spec["frames"][info["i"]].get("dur", 5))
+    dur = float(dur_override if dur_override else spec["frames"][info["i"]].get("dur", 5))
     pdir = _comp_dir(comp) / "compositions" / "_preview" / (preview_id or frame_id)
     (pdir / "compositions" / "frames").mkdir(parents=True, exist_ok=True)
     (pdir / "compositions" / "frames" / f"{frame_id}.html").write_text(
@@ -1979,13 +2339,14 @@ def _scaffold_preview(comp: str, frame_id: str, html_text: Optional[str] = None,
         for f in vend.glob("*"):
             if f.is_file():
                 (pdir / "vendor" / f.name).write_bytes(f.read_bytes())
-    assets = _comp_dir(comp) / "assets"          # so a frame referencing assets/<f> previews correctly
-    if assets.is_dir():
-        for f in assets.rglob("*"):
-            if f.is_file():
-                dest = pdir / f.relative_to(_comp_dir(comp))
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes(f.read_bytes())
+    # Stage ONLY the assets this frame references (see `_referenced_assets`) — never the whole tree.
+    cdir = _comp_dir(comp)
+    for rel in _referenced_assets(comp, frame_id,
+                                  html_text if html_text is not None else
+                                  (html.read_text(encoding="utf-8") if html.exists() else "")):
+        src = cdir / rel
+        if src.is_file():
+            _stage_asset(src, pdir / rel)
     # narrated preview: mount this frame's NOLAN voice as a root <audio> track (if a VO was bridged in).
     # frame_id starts with its 1-based section number (NN-*), matching audio_meta.json voices[].frame.
     audio_tag = ""
@@ -2024,6 +2385,67 @@ def _scaffold_preview(comp: str, frame_id: str, html_text: Optional[str] = None,
         f'tl.to({{}},{{duration:{dur}}},0);window.__timelines["main"]=tl;</script></body></html>',
         encoding="utf-8")
     return pdir
+
+
+def scene_window_frame(fr: Dict[str, Any], scene_id: str, seconds: Optional[float] = None
+                       ) -> Tuple[Dict[str, Any], float]:
+    """PURE: a one-scene frame, retimed to start at 0 — the unit a scene-level render needs.
+
+    Why by RECOMPOSITION and not by windowing the frame's HTML: the composed frame carries its scene
+    times in two places, `data-start` attributes AND GSAP position parameters inside a generated
+    `<script>` (`tl.fromTo(…, 6.40)`), plus a `tl.to({}, {duration: N})` spacer. Shifting all three with
+    string surgery on generated JS is exactly the kind of second dialect that drifts. Re-composing a
+    frame that contains only this scene reuses the composer, which is the thing that knows.
+
+    `seconds` caps the window — a verify render wants 2-3 seconds of a 19-second hold, not the hold.
+    """
+    sc = next((s for s in fr.get("scenes", []) if s.get("id") == scene_id), None)
+    if sc is None:
+        raise KeyError(f"scene {scene_id!r} not in frame {fr.get('id')!r}")
+    sc = copy.deepcopy(sc)
+    dur = float(sc.get("dur", 5) or 5)
+    if seconds:
+        dur = min(dur, float(seconds))
+    sc["start"], sc["dur"] = 0, round(dur, 3)
+    return {**{k: v for k, v in fr.items() if k != "scenes"}, "dur": round(dur, 3), "scenes": [sc]}, dur
+
+
+def render_scene(comp: str, frame_id: str, scene_id: str, seconds: float = 3.0,
+                 out: Optional[str] = None) -> Dict[str, Any]:
+    """Render JUST one scene's window — the verify tier between a still and a full frame render.
+
+    A still answers most questions in seconds, but not the ones a still structurally cannot: a seeked
+    `<video>` does not decode into a snapshot, so every footage-grounded scene previews black, and a
+    note about MOTION has nothing to look at. Those were the cases that forced a full frame render
+    (minutes) to check one scene's geometry.
+
+    Use it exactly there — video ground, or a motion note. Everything else stays on `snapshot_frame`."""
+    spec, info = load_frame_spec(comp, frame_id)
+    trial, dur = scene_window_frame(spec["frames"][info["i"]], scene_id, seconds)
+    html = _build_trial_html(comp, frame_id, trial)
+    pdir = _scaffold_preview(comp, frame_id, html_text=html, preview_id=f"_scene_{scene_id}",
+                             dur_override=dur)
+    from nolan.hyperframes.incremental import inject_grounds
+    grounds = []
+    for s in trial["scenes"]:
+        d = s.get("data", {}) or {}
+        g = d.get("ground") or {}
+        src = g.get("src") if (g.get("kind") == "video" and g.get("src")) else None
+        if not src and isinstance(d.get("backdrop"), str) \
+                and d["backdrop"].lower().endswith((".mp4", ".mov", ".webm")):
+            src = d["backdrop"]
+        if src:
+            grounds.append({"src": src, "start": 0, "dur": round(dur, 3)})
+    idx = pdir / "index.html"
+    if grounds:
+        idx.write_text(inject_grounds(idx.read_text(encoding="utf-8"), grounds), encoding="utf-8")
+    outp = out or str(_frames_dir(comp) / f"{frame_id}.{scene_id}.scene.mp4")
+    r = subprocess.run(["npx", "--yes", "hyperframes@latest", "render", str(pdir), "--output", outp],
+                       cwd=str(pdir), capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       shell=(os.name == "nt"))
+    return {"ok": r.returncode == 0 and Path(outp).exists(),
+            "mp4": outp if Path(outp).exists() else None, "dur": round(dur, 3),
+            "grounds": len(grounds), "output": (r.stdout + r.stderr).strip()[-600:]}
 
 
 def snapshot_frame(comp: str, frame_id: str, at: Optional[float] = None) -> Dict[str, Any]:
