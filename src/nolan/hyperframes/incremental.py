@@ -189,9 +189,12 @@ def render_caption_overlay(comp: str, quality: str = "high") -> Optional[Path]:
     cap = cdir / "compositions" / "captions.html"
     if not cap.exists():
         return None
-    overlay = cdir / "renders" / "captions_overlay.webm"   # VP9 alpha: transparent + far smaller than ProRes
+    # In _work/ so the HF CLI's `.hf-transaction-*` scratch is created THERE and a killed composite
+    # can't leak a directory into the delivery folder (see concat_clips).
+    from .manifest import work_dir
+    overlay = work_dir(cdir) / "captions_overlay.webm"     # VP9 alpha: transparent + far smaller than ProRes
     sig = hashlib.sha1(cap.read_bytes()).hexdigest()[:16]
-    sig_f = cdir / "renders" / ".captions_overlay.sig"
+    sig_f = work_dir(cdir) / "captions_overlay.sig"
     if overlay.exists() and sig_f.exists() and sig_f.read_text(encoding="utf-8").strip() == sig:
         return overlay                                     # captions unchanged → reuse the cached overlay
     overlay.parent.mkdir(parents=True, exist_ok=True)
@@ -780,13 +783,20 @@ def splice_transitions(clips: List[Path], specs: List[Optional[Dict]], work: Pat
 def concat_clips(clips: List[Path], out: Path, comp_dir: Path, bgm: bool = True) -> bool:
     """Concat the per-frame clips → out, then (soft) re-lay the BGM bed under the concatenated voice."""
     ff = _ffmpeg()
-    listf = out.parent / "_concat.txt"
+    # Intermediates go to renders/_work/, never beside the deliverable. `_concat.txt` and the
+    # `.nobgm` stitch were landing in the delivery directory — and the HF CLI drops its
+    # `.hf-transaction-*` dir next to whatever it is writing, so a killed caption composite leaked a
+    # directory into renders/ that had to be cleared by hand before a retry would work. One of those
+    # sat there from 2026-07-27 and was never cleared.
+    from .manifest import work_dir
+    wd = work_dir(comp_dir)
+    listf = wd / "concat.txt"
     out.parent.mkdir(parents=True, exist_ok=True)
     # DEFENSIVE: a clip with NO audio stream makes the concat demuxer drop audio for the whole tail (and the
     # re-encode guard below can't recover audio that isn't there). Give any audio-less clip a silent track.
     clips = [_ensure_audio(Path(c), ff) for c in clips]
     listf.write_text("".join(f"file '{Path(c).resolve().as_posix()}'\n" for c in clips), encoding="utf-8")
-    stitched = out.with_name(out.stem + ".nobgm.mp4") if bgm else out
+    stitched = (wd / (out.stem + ".nobgm.mp4")) if bgm else out
     # STREAM-COPY the per-frame clips (same renderer → identical codec params) so the stitch adds ZERO
     # generational loss — the frame clips ARE high-quality, the concat must not re-encode them.
     subprocess.run([ff, "-y", "-f", "concat", "-safe", "0", "-i", str(listf), "-c", "copy", str(stitched)],
@@ -870,7 +880,12 @@ def render_incremental(comp: str, only: Optional[List[str]] = None, bgm: bool = 
         trans_specs.append(_frame_transition(comp, fid))       # frame-level clip transition INTO the next frame
     cache_f.parent.mkdir(parents=True, exist_ok=True)
     cache_f.write_text(json.dumps(cache, indent=1), encoding="utf-8")
-    out = Path(out) if out else (cdir / "renders" / f"{comp}.mp4")
+    # ONE deliverable name. This defaulted to `renders/<comp>.mp4` while finish.py passed
+    # `out=renders/video.mp4`, so the same function produced two differently-named files and nothing
+    # said which was the deliverable — which is what let the QA gates score a stray preview. Callers
+    # that pass `out` (a scratch stitch) still get exactly what they asked for.
+    from .manifest import DELIVERABLE, work_dir
+    out = Path(out) if out else (cdir / "renders" / DELIVERABLE)
     if any(trans_specs):                                        # clip-driven frame transitions → net-zero splice at the seams
         n_tr = sum(1 for t in trans_specs if t)
         _log(f"splicing {n_tr} frame transition(s) at the seams…")
@@ -881,7 +896,7 @@ def render_incremental(comp: str, only: Optional[List[str]] = None, bgm: bool = 
     if ok and captions:                                    # captions = ONE full-length transparent overlay
         overlay = render_caption_overlay(comp, quality=quality)
         if overlay:
-            capped = out.with_name(out.stem + ".capped.mp4")
+            capped = work_dir(cdir) / (out.stem + ".capped.mp4")
             if composite_captions(out, overlay, capped):
                 capped.replace(out)
                 cap_used = True

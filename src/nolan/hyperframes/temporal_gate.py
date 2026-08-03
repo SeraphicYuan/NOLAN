@@ -149,9 +149,11 @@ def scene_windows(comp_dir: Path) -> List[Dict]:
 
 
 def _render_mp4(comp_dir: Path) -> Optional[Path]:
-    rd = comp_dir / "renders"
-    vids = sorted(rd.glob("*.mp4")) if rd.is_dir() else []
-    return vids[0] if vids else None
+    """The deliverable, from the manifest — see `hyperframes.manifest.deliverable`. The old
+    `sorted(glob("*.mp4"))[0]` scored whichever mp4 sorted first, which was a preview or a stale
+    stitch on 4 of 5 comps."""
+    from .manifest import deliverable
+    return deliverable(comp_dir)
 
 
 def temporal_qa(comp_dir, mp4: Optional[Path] = None, k: int = 6, out_dir=None) -> Dict:

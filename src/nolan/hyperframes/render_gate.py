@@ -166,9 +166,13 @@ def scene_samples(comp_dir: Path) -> List[Dict]:
 
 
 def _render_mp4(comp_dir: Path) -> Optional[Path]:
-    rd = comp_dir / "renders"
-    vids = sorted(rd.glob("*.mp4")) if rd.is_dir() else []
-    return vids[0] if vids else None
+    """The deliverable, from the manifest — never `sorted(glob("*.mp4"))[0]`.
+
+    That glob is why this gate spent months scoring the wrong file: almost every composition id sorts
+    before "video", so a stray `<comp>.mp4` (or, on homer-hf, an SFX *preview*) always won. A gate
+    that reports on a file nobody ships is a false negative, which is worse than no gate."""
+    from .manifest import deliverable
+    return deliverable(comp_dir)
 
 
 def extract_still(mp4: Path, t: float, out: Path, ff: str) -> bool:

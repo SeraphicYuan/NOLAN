@@ -73,21 +73,35 @@ def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, sof
 # process/chrome death). We do NOT auto-kill the render's browser here — that is the external `hyperframes`
 # CLI's lifecycle, and a scoped-wrong `taskkill` has nuked a user's real browser before; leave it to the CLI.
 def _render_done_path(pdir: Path) -> Path:
-    return pdir / "renders" / ".done"
+    from .manifest import manifest_path
+    return manifest_path(pdir)
 
 
 def _clear_render_done(pdir: Path) -> None:
-    """Clear a stale completion sentinel before a fresh render so a detached watch can't false-fire on it."""
+    """Clear the completion signal before a fresh render so a detached watch can't false-fire on it."""
+    from .manifest import clear
     (pdir / "renders").mkdir(parents=True, exist_ok=True)
-    _render_done_path(pdir).unlink(missing_ok=True)
+    clear(pdir)
 
 
-def _mark_render_done(pdir: Path, comp: str) -> Path:
-    """Write renders/.done on a successful finish — the clean completion signal a detached hf-finish keys on."""
-    p = _render_done_path(pdir)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps({"comp": comp, "rendered": True}), encoding="utf-8")
-    return p
+def _mark_render_done(pdir: Path, comp: str, mode: str = "?") -> Path:
+    """Write renders/render.json on a successful finish.
+
+    Supersedes the old `.done` sentinel, which was `{"comp": ..., "rendered": true}` — a boolean where
+    a comparison is needed. The manifest records the deliverable's name and the per-frame `frame_sig`
+    values, so "does this file reflect the current specs?" stops being something you have to remember.
+    Its PRESENCE is still the completion signal a detached `hf-finish` keys on (R1)."""
+    from .manifest import write
+    dur = None
+    try:
+        from nolan.hf_qa import probe
+        from .manifest import deliverable
+        d = deliverable(pdir)
+        dur = probe(d).duration if d else None
+    except Exception:
+        pass
+    write(comp, pdir, mode=mode, duration_s=dur)
+    return _render_done_path(pdir)
 
 
 def resolve_render_mode(pdir: Path, requested: str) -> str:
@@ -399,7 +413,17 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     #     one-frame edit re-renders one frame, not the monolith). Both write renders/video.mp4.
     if not dry_run:
         _clear_render_done(pdir)                          # R1: stale-guard the detached-watch sentinel
+    # NOTE the order: `resolve_render_mode` decides incremental-vs-whole by whether a prior
+    # `video.mp4` exists, so the rotation MUST come after it or every render would fall back to
+    # `whole` (a ~25 min encode instead of a few changed frames).
     render_mode = resolve_render_mode(pdir, render_mode)
+    if not dry_run:
+        # Keep exactly ONE predecessor, so you can A/B the new cut against the last one before
+        # publishing. Not an unbounded history/: a past render is re-derivable from its specs (the
+        # manifest records them), so keeping every ~900 MB derivative would store what can be
+        # recomputed with nobody owning deletion. `--tag` promotes a cut you know you want to keep.
+        from .manifest import rotate_previous
+        rotate_previous(pdir)
     if render_mode == "incremental":
         if dry_run:
             print("  [render] incremental — window index.html per-frame + concat → renders/video.mp4")
@@ -450,7 +474,7 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     _run("temporal", py + ["-m", "nolan.hyperframes.temporal_gate", str(pdir)], dry=dry_run, soft=True)  # motion: frozen/static/dead-air
     _run("perceptual", py + ["-m", "nolan.hyperframes.render_gate", str(pdir)], dry=dry_run, soft=True)  # VLM: legibility + relevance
     if not dry_run:
-        _mark_render_done(pdir, comp)                     # R1: detached watchers key on renders/.done, not chrome-exit
+        _mark_render_done(pdir, comp, mode=render_mode)                     # R1: detached watchers key on renders/.done, not chrome-exit
     print("hf-finish: done → renders/video.mp4")
     return {"comp": comp, "rendered": True}
 
@@ -471,6 +495,9 @@ def main():
                          "whole = one npx render of index.html (canonical baseline); incremental = "
                          "per-frame windows of the SAME index + concat (cached; also emits the "
                          "compositions/frames/*.clip.mp4 the /hyperframes edit loop serves)")
+    ap.add_argument("--tag", help="after a successful finish, copy the deliverable to "
+                                  "renders/history/<TAG>.mp4 — the opt-in escape from keeping only "
+                                  "one predecessor (see renders/previous.mp4)")
     ap.add_argument("--burn-captions", action="store_true",
                     help="incremental mode: composite the caption overlay INTO the mp4 (slow, opt-in — "
                          "captions already play in the composition; reserve this for muted-autoplay social)")
@@ -478,6 +505,11 @@ def main():
     try:
         finish(a.comp, render=not a.no_render, sound=not a.no_sound, dry_run=a.dry_run,
                render_mode=a.render_mode, burn_captions=a.burn_captions, duck=a.duck)
+        if a.tag and not a.dry_run:
+            from .manifest import tag as _tag
+            from .edit import _comp_dir
+            kept = _tag(_comp_dir(a.comp), a.tag)
+            print(f"  tagged → {kept}" if kept else "  ⚠ --tag: no deliverable to tag")
     except RuntimeError as e:
         print(f"\n✗ {e}", file=sys.stderr)
         sys.exit(1)
