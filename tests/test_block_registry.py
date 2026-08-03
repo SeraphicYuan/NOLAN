@@ -138,3 +138,49 @@ def test_the_gate_refuses_a_cue_on_a_block_that_ignores_it():
     src = (BRIDGE / "author.py").read_text(encoding="utf-8")
     assert "consumes_cues" in src and "find_cue_fields" in src
     assert "INERT" in src, "the error must say WHY, not just that it is invalid"
+
+
+def test_an_sfx_cue_is_not_a_reveal_cue():
+    """INCIDENT (cold-agent batch on homer-hf): `data.sfx[].at` is an SFX cue time — written by
+    hyperframes/sfx_design.py, read by hyperframes/sound.py — but the cue walker matched ANY numeric
+    `at` anywhere in a scene's data, so on a `statement` the gate rejected the whole spec as carrying
+    an INERT reveal cue.
+
+    What it cost was not the false alarm: three unrelated proposals (an eyebrow, an asset swap) were
+    HARD-REFUSED because of a pre-existing field the agent never touched. WIRING_CHECKLIST #11 — a
+    check whose failures are false positives takes its true positives with it."""
+    from nolan.block_registry import find_cue_fields
+    sfx = {"lines": ["x"], "sfx": [{"cue": "whoosh", "at": 2.4, "why": "transition"}]}
+    assert find_cue_fields(sfx) == [], "an SFX cue is not an element reveal"
+
+
+def test_a_camera_arrival_time_is_not_a_reveal_cue():
+    """`ground.at` is when the camera MOVE arrives, per the camera schema — a different clock again."""
+    from nolan.block_registry import find_cue_fields
+    assert find_cue_fields({"ground": {"kind": "image", "src": "a.jpg", "at": 1.5}}) == []
+
+
+def test_real_reveal_cues_are_still_found():
+    """The gate must keep catching what it exists for: a phantom `at` on a block that ignores it."""
+    from nolan.block_registry import find_cue_fields
+    assert find_cue_fields({"events": [{"year": 1, "at": 3.0}]}) == ["data.events[0].at"]
+    assert find_cue_fields({"items": [{"label": "a"}, {"label": "b", "at": 2.0}]}) == ["data.items[1].at"]
+
+
+def test_a_statement_carrying_sfx_still_validates():
+    """End to end: the exact spec shape that blocked three homer proposals."""
+    import json
+    import subprocess
+    import sys
+    import tempfile
+    scene = {"id": "s2", "type": "statement", "start": 0, "dur": 5,
+             "data": {"lines": ["there is only one problem"],
+                      "sfx": [{"cue": "whoosh", "at": 0.3, "why": "beat turn"}]}}
+    with tempfile.TemporaryDirectory() as td:
+        f = Path(td) / "s.json"
+        f.write_text(json.dumps({"frames": [{"id": "f1", "dur": 8.0, "scenes": [scene]}]}), encoding="utf-8")
+        r = subprocess.run([sys.executable, "-X", "utf8", str(BRIDGE / "author.py"),
+                            "--spec", str(f), "--validate-only"],
+                           cwd=str(BRIDGE), capture_output=True, text=True, encoding="utf-8",
+                           errors="replace")
+    assert r.returncode == 0, f"a statement with SFX must validate:\n{r.stdout}{r.stderr}"

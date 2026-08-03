@@ -140,3 +140,22 @@ def test_markdown_reads_the_batch_as_prose(comp):
     assert "r1" in text and "partial" in text
     assert "render_scene(comp, '01-beat', 's2')" in text, "tell the reviewer how to check what a still can't"
     assert text.index("s1") < text.index("s2"), "scene order — this is how you read an essay"
+
+
+def test_a_proposal_preview_composes_in_the_essays_own_theme(comp):
+    """INCIDENT (cold-agent batch on homer-hf, `dark-botanical`): `author.resolve_theme` falls back to
+    reading hyperframes.json from `Path(out_dir).parents[1]`, which assumes `<comp>/compositions/
+    frames`. The trial build writes to `<comp>/compositions/_preview/_trial_build/frames`, so
+    `parents[1]` was `_preview` — no hyperframes.json — and EVERY preview composed in the default
+    theme. The agent reported one of its own edits as breaking the theme before realising the preview
+    was what was wrong.
+
+    A review artifact that lies about colour is worse than no preview: the reviewer believes it."""
+    import json as _json
+    (hfedit._comp_dir(comp) / "hyperframes.json").write_text(
+        _json.dumps({"theme": "kraft-paper"}), encoding="utf-8")
+    spec, info = hfedit.load_frame_spec(comp, "01-beat")
+    html = hfedit._build_trial_html(comp, "01-beat", spec["frames"][info["i"]])
+    assert "#eedfc7" in html or "kraft" in html.lower(), \
+        "the trial build must carry the comp's theme, not highlighter-editorial"
+    assert "#FFF200" not in html, "that yellow is the default theme's accent — the bug's signature"

@@ -360,7 +360,11 @@ def dispatch_batch_sharded(comp: str, sessions: List[str], agent: Optional[str] 
 
 def _kickoff_message(comp: str, session: str, kick: Path) -> str:
     return (f"You are fleet agent '{session}'. Read {kick} and execute the batch HyperFrames edit it "
-            f"describes. Load the `nolan-hf-edit` skill FIRST — it is the contract. For EACH requested "
+            # No backticks: the receiving TUI renders the dispatched line as markdown and HIDES a
+            # backticked span, so "Load the `nolan-hf-edit` skill" displayed as "Load the  skill".
+            # The agent still received it (the kickoff file names the skill too), but anyone reading
+            # the pane to debug a run saw an instruction with its object missing.
+            f"describes. Load the nolan-hf-edit skill FIRST — it is the contract. For EACH requested "
             f"edit record a PROPOSAL via nolan.hyperframes.propose_scene_edit(comp='{comp}', frame_id=…, "
             f"scene_id=…, ops=…, rationale=…, agent='{session}', comment_id=…) — do NOT edit canonical "
             f"specs or render. The human reviews + accepts each proposal. Report to "

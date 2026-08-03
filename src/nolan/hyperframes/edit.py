@@ -2271,10 +2271,27 @@ def _build_trial_html(comp: str, frame_id: str, trial_frame: Dict[str, Any]) -> 
     scratch = _comp_dir(comp) / "compositions" / "_preview" / "_trial_build"
     (scratch / "frames").mkdir(parents=True, exist_ok=True)
     tmp = scratch / f".{frame_id}.trial.spec.json"
-    tmp.write_text(json.dumps({"frames": [trial_frame]}), encoding="utf-8")
+    # PASS THE THEME EXPLICITLY. `author.resolve_theme` falls back to reading `hyperframes.json` from
+    # `Path(out_dir).parents[1]`, which assumes `<comp>/compositions/frames`. This scratch build is
+    # `<comp>/compositions/_preview/_trial_build/frames`, so `parents[1]` is `_preview` — no
+    # hyperframes.json — and every preview silently composed in the DEFAULT theme instead of the
+    # essay's. Found by a cold agent on homer-hf (`dark-botanical`): its previews came out
+    # highlighter-editorial yellow, and it reported a real edit as breaking the theme before realising
+    # the preview was the thing that was wrong. A review artifact that lies about colour is worse than
+    # no preview, because the reviewer believes it.
+    theme = None
+    try:
+        theme = json.loads((_comp_dir(comp) / "hyperframes.json").read_text(encoding="utf-8")).get("theme")
+    except (json.JSONDecodeError, OSError):
+        pass
+    spec_obj = {"frames": [trial_frame]}
+    if theme:
+        spec_obj["theme"] = theme            # survives even if --theme is ever dropped
+    tmp.write_text(json.dumps(spec_obj), encoding="utf-8")
     try:
         r = subprocess.run([sys.executable, "-X", "utf8", str(AUTHOR), "--spec", str(tmp),
-                            "--out-dir", str(scratch / "frames")],
+                            "--out-dir", str(scratch / "frames")]
+                           + (["--theme", theme] if theme else []),
                            cwd=str(BRIDGE), capture_output=True, text=True, encoding="utf-8", errors="replace")
     finally:
         tmp.unlink(missing_ok=True)

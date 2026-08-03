@@ -172,6 +172,23 @@ CUE_BLOCKS: FrozenSet[str] = frozenset({
 
 CUE_KEY = "at"
 
+# Subtrees that own their OWN `at` and must not be read as reveal cues.
+#
+# INCIDENT (found by a cold agent running a batch edit on homer-hf, 2026-08-03). `data.sfx[].at` is
+# an SFX cue time: written by `hyperframes/sfx_design.py` and read by `hyperframes/sound.py`
+# (`apply_scene_sfx`) — a fully wired field. But this walker looked for ANY numeric `at` anywhere in
+# a scene's data, so on a `statement` (not a CUE_BLOCK) it reported the scene's own SFX cue as an
+# INERT reveal cue and the gate HARD-REJECTED the spec.
+#
+# The cost was not the false alarm, it was what it blocked: three unrelated proposals — an eyebrow,
+# an asset swap — were refused because of a pre-existing field the agent had not touched and could
+# not have understood from the error. That is WIRING_CHECKLIST #11: a check whose failures are false
+# positives takes its true positives with it, because the next agent learns to route around the gate.
+#
+# `ground` is here for the same reason: `ground.at` is the camera-move arrival time (see the `camera`
+# schema — "at?(seconds — the move ARRIVES on that word)"), not an element reveal.
+NON_REVEAL_SUBTREES = frozenset({"sfx", "ground"})
+
 
 def consumes_cues(block: str) -> bool:
     """True iff the block schedules its elements from an author-supplied `at`."""
@@ -179,14 +196,17 @@ def consumes_cues(block: str) -> bool:
 
 
 def find_cue_fields(data, _path: str = "data") -> list:
-    """Every place an `at` cue is authored in a scene's data -> ["data.events[0].at", ...].
+    """Every place an ELEMENT REVEAL cue is authored in a scene's data -> ["data.events[0].at", ...].
 
     Walks nested element lists (events/items/steps/rows/slices/...) because that is where a cue is
-    actually written; a top-level check would miss all of them.
+    actually written; a top-level check would miss all of them. Skips `NON_REVEAL_SUBTREES`, whose
+    `at` means something else entirely.
     """
     out = []
     if isinstance(data, dict):
         for k, v in data.items():
+            if k in NON_REVEAL_SUBTREES:
+                continue                     # a different clock lives in here
             if k == CUE_KEY and isinstance(v, (int, float)) and not isinstance(v, bool):
                 out.append(f"{_path}.{k}")
             else:
