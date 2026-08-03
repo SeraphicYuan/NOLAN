@@ -2120,6 +2120,64 @@ def _gate_validate_only(comp: str, spec: Dict[str, Any]) -> Tuple[bool, str]:
         tmp.unlink(missing_ok=True)
 
 
+def frame_fit_error(fr: Dict[str, Any], tol: float = 0.05) -> Optional[str]:
+    """Do this frame's scenes still FIT inside it? None when they do.
+
+    Narration owns duration: `frame.dur` is set by the VO section, so scenes must fit it — a scene
+    that runs past the end is clipped, and everything after a mistimed one plays against the wrong
+    words. A batch agent asked to give a timeline "+6 seconds, taken from whatever else can spare it"
+    granted +8.7s and took back only 7.16s, leaving `03-maker` 1.56s over its 47.58s. It reported the
+    requirement `met` and the gate passed it, because the gate validates the SCHEMA and this is
+    arithmetic.
+
+    Measured before it was made blocking: 0 of 122 shipped frames overrun, so this has no false
+    positives to spend (WIRING_CHECKLIST #11).
+    """
+    scenes = [s for s in (fr.get("scenes") or []) if isinstance(s, dict)]
+    dur = float(fr.get("dur", 0) or 0)
+    if not scenes or dur <= 0:
+        return None
+    end = max(float(s.get("start", 0) or 0) + float(s.get("dur", 0) or 0) for s in scenes)
+    if end <= dur + tol:
+        return None
+    over = end - dur
+    last = max(scenes, key=lambda s: float(s.get("start", 0) or 0) + float(s.get("dur", 0) or 0))
+    return (f"frame {fr.get('id')!r} is {dur:.2f}s but its scenes run to {end:.2f}s "
+            f"(+{over:.2f}s, last out is {last.get('id')!r}). Narration owns duration — the VO section "
+            f"fixes the frame length, so time given to one scene must be taken from another. Retime a "
+            f"neighbour by {over:.2f}s, or shorten this scene.")
+
+
+def timing_advisories(before: Dict[str, Any], after: Dict[str, Any]) -> List[str]:
+    """Overlaps and gaps a retime INTRODUCED — reported at review, never gated.
+
+    Deliberately advisory. Same-track overlap is LEGAL in a frame composition (diamond-v2 post-mortem
+    item 5 was withdrawn for exactly this: two scenes on screen together is a real compositional
+    choice, and gating on it broke valid work). But an overlap that appears as the RESIDUE of an
+    unbalanced retime is not a choice, and the reviewer should see it.
+
+    Live example: asked to give a timeline "+6 seconds, taken from whatever else can spare it", an
+    agent freed 7.16s from one neighbour and spent 8.72s, leaving the last two shots stacked for
+    1.56s — and reported the requirement `met`. Nothing ran past the frame end, so no gate could
+    honestly refuse it; only a human comparing the before and after would notice."""
+    def seq(fr):
+        return [(s.get("id"), float(s.get("start", 0) or 0),
+                 float(s.get("start", 0) or 0) + float(s.get("dur", 0) or 0))
+                for s in (fr.get("scenes") or []) if isinstance(s, dict)]
+
+    def seams(rows):
+        return {(a[0], b[0]): round(b[1] - a[2], 2) for a, b in zip(rows, rows[1:])}
+    was, now = seams(seq(before)), seams(seq(after))
+    out = []
+    for k, delta in now.items():
+        if abs(delta) < 0.02 or abs(was.get(k, 0.0) - delta) < 0.02:
+            continue                                   # unchanged, or already there before the edit
+        kind = "OVERLAP" if delta < 0 else "GAP"
+        out.append(f"{kind} {abs(delta):.2f}s between {k[0]} and {k[1]} — introduced by this edit "
+                   f"(was {was.get(k, 0.0):+.2f}s). Legal, but check it was intended.")
+    return out
+
+
 def _proposal_layout_lint(fr: Dict[str, Any], scene_id: Optional[str]) -> List[Dict[str, Any]]:
     """Deterministic layout lint of the proposal's touched RAW scene(s) — the composition gate v2.
     ADVISORY: surfaced at review (like `requirements`), never blocks accept. Only raw scenes are
@@ -2165,6 +2223,10 @@ def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
         _apply_ops(trial["frames"][info["i"]], ops)
     except Exception as e:
         err = f"ops error: {type(e).__name__}: {e}"
+    # Arithmetic the schema gate cannot see — checked BEFORE shelling out, since it is free.
+    fit = None if err else frame_fit_error(trial["frames"][info["i"]])
+    if fit:
+        err = f"TIMING: {fit}"
     gate_ok, gate_out = (False, err) if err else _gate_validate_only(comp, trial)
     prop = {"id": None, "frame_id": frame_id, "scene_id": scene_id, "ops": ops,
             "rationale": (rationale or "").strip(), "gate_ok": gate_ok,
@@ -2178,6 +2240,9 @@ def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
         layout = _proposal_layout_lint(trial["frames"][info["i"]], scene_id)
         if layout:
             prop["layout"] = layout   # advisory composition-gate findings, shown at review
+        tim = timing_advisories(spec["frames"][info["i"]], trial["frames"][info["i"]])
+        if tim:
+            prop["timing"] = tim      # overlaps/gaps a retime introduced — legal, but worth a look
     if not gate_ok and log_gap(comp, gate_out or "", frame_id=frame_id, scene_id=scene_id,
                                note=rationale, agent=agent):
         prop["capability_gap"] = True   # this refusal is a feature request, not an agent mistake

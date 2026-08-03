@@ -226,3 +226,75 @@ def test_a_reported_gap_lands_in_the_ledger_without_a_gate_refusal(comp):
     row = next(g for g in gaps if g["block"] == "pie")
     assert row["field"] == "data.explode" and row["asks"] == 1
     assert row["examples"], "a counted gap must stay readable, not just tallied"
+
+
+# --- a frame's scenes must FIT it ---------------------------------------------------------------------
+
+def test_a_retime_that_overruns_the_frame_is_refused(comp):
+    """Narration owns duration: `frame.dur` comes from the VO section, so time given to one scene must
+    be TAKEN from another. Asked to give a timeline "+6s, from whatever else can spare it", an agent
+    granted +8.7s and took back 7.16s, leaving the frame 1.56s over — reported the requirement `met`,
+    and the gate passed it because the gate validates the schema and this is arithmetic.
+
+    Measured before making it blocking: 0 of 122 shipped frames overrun."""
+    p = hfedit.propose_scene_edit(
+        comp, "f1", "s1", ops=[{"op": "retime", "scene_id": "s1", "dur": 9.0}],
+        rationale="give s1 more room without taking it from anywhere", agent="pytest")
+    assert p["gate_ok"] is False
+    assert "TIMING" in p["gate_out"] and "Narration owns duration" in p["gate_out"]
+    # s1 now ends at 9.0 in an 8.0s frame — the overrun is 1.00s, and the refusal must say so
+    assert "+1.00s" in p["gate_out"], "the refusal must name how much to give back"
+
+
+def test_a_retime_that_balances_is_accepted(comp):
+    """s1 4s + s2 4s in an 8s frame: grow s1 to 6 and pull s2 back to 6.0/2.0 — total unchanged."""
+    p = hfedit.propose_scene_edit(
+        comp, "f1", "s1",
+        ops=[{"op": "retime", "scene_id": "s1", "dur": 6.0},
+             {"op": "retime", "scene_id": "s2", "start": 6.0, "dur": 2.0}],
+        rationale="borrow two seconds from s2", agent="pytest")
+    assert p["gate_ok"] is True, p["gate_out"]
+
+
+def test_the_fit_check_is_pure_and_tolerant_of_rounding():
+    fr = {"id": "f1", "dur": 10.0, "scenes": [{"id": "a", "start": 0, "dur": 5},
+                                              {"id": "b", "start": 5, "dur": 5.02}]}
+    assert hfedit.frame_fit_error(fr) is None, "2 centiseconds is rounding, not an overrun"
+    fr["scenes"][1]["dur"] = 6.0
+    assert "b" in hfedit.frame_fit_error(fr)
+    assert hfedit.frame_fit_error({"id": "f", "dur": 0, "scenes": []}) is None
+
+
+def test_an_introduced_overlap_is_reported_but_not_refused(comp):
+    """Same-track overlap is LEGAL in a frame comp — diamond-v2 post-mortem item 5 was withdrawn for
+    exactly this, and gating on it broke valid work. But an overlap that is the RESIDUE of an
+    unbalanced retime is not a compositional choice. Live: an agent freed 7.16s from a neighbour,
+    spent 8.72s, left the last two shots stacked for 1.56s — and reported the requirement `met`."""
+    p = hfedit.propose_scene_edit(
+        comp, "f1", "s1",
+        ops=[{"op": "retime", "scene_id": "s1", "dur": 5.5}],     # s1 now ends 1.5s into s2
+        rationale="stretch s1", agent="pytest")
+    assert p["gate_ok"] is True, "legal — it must not be refused"
+    assert p.get("timing") and "OVERLAP 1.50s" in p["timing"][0]
+    assert "check it was intended" in p["timing"][0]
+
+
+def test_a_balanced_retime_reports_no_timing_advisory(comp):
+    p = hfedit.propose_scene_edit(
+        comp, "f1", "s1",
+        ops=[{"op": "retime", "scene_id": "s1", "dur": 6.0},
+             {"op": "retime", "scene_id": "s2", "start": 6.0, "dur": 2.0}],
+        rationale="borrow cleanly", agent="pytest")
+    assert p["gate_ok"] is True and "timing" not in p
+
+
+def test_a_pre_existing_seam_is_not_reported_as_new(comp):
+    """Only what THIS edit introduced — otherwise every proposal on a comp with a deliberate overlap
+    would carry a permanent false advisory."""
+    spec, info = hfedit.load_frame_spec(comp, "f1")
+    spec["frames"][info["i"]]["scenes"][1]["start"] = 3.0        # a deliberate 1s overlap, pre-existing
+    hfedit.save_frame_spec(Path(info["spec_file"]), spec)
+    p = hfedit.propose_scene_edit(comp, "f1", "s1",
+                                  ops=[{"op": "patch", "scene_id": "s1", "patch": {"data.kicker": "K"}}],
+                                  rationale="unrelated", agent="pytest")
+    assert "timing" not in p
