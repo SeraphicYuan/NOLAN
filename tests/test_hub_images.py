@@ -258,15 +258,62 @@ def test_every_registered_adapter_is_describable_without_running_a_crawl():
     assert d["error"] and d["title"], "an unexpected failure must not erase the source"
 
 
-def test_source_coverage_never_mixes_measured_and_unmeasured_collections(tmp_path):
-    """"Unknown must read as unknown, never as full" has to survive AGGREGATION.
+def test_summing_collections_still_reports_what_the_ratio_excludes(tmp_path):
+    """The fallback path, for a source whose adapter CANNOT be asked how much exists (artvee).
 
-    `Collection.coverage` is honest per collection, but the Sources row summed EVERY collection's
-    rows over only the denominators that existed — two different populations in one ratio. Live:
-    artvee read 69,117/65,720 = 105% because 3 of its 480 collections publish no upstream count,
-    and PDIA read a flat 100% while 576 of its 577 collections, holding 9,523 of its 11,197 rows,
-    had no denominator at all. A source that is 40% measured must not render as fully indexed."""
-    from nolan.imagelib.catalog import Collection
+    There, collection denominators are all there is — and summing every collection's rows over only
+    the denominators that exist mixes two populations. Live: artvee read 69,117/65,720 = 105%,
+    because 3 of its 480 collections publish no upstream count. The numerator must cover the same
+    population as the denominator, and what is excluded has to be stated rather than folded in.
+
+    (A source that CAN be asked never reaches this path — see the source-denominator test below.)"""
+    from nolan.imagelib.catalog import Asset, Collection
+    root = tmp_path / "lib"
+
+    def fake_paths(scope="global", project=None):
+        return root / "global"
+
+    with patch.object(store_mod, "library_paths", side_effect=fake_paths),          patch.object(store_mod, "ClipEmbedder", FakeEmbedder):
+        lib = ImageLibrary(scope="global")
+        known = lib.catalog.upsert_collection(Collection(
+            slug="artvee-known", source="artvee", title="measured",
+            rights="PD", upstream_count=100))
+        blind = lib.catalog.upsert_collection(Collection(
+            slug="artvee-blind", source="artvee", title="no denominator", rights="PD"))
+        for col, n, tag in ((known, 40, "k"), (blind, 60, "b")):
+            for i in range(n):
+                lib.catalog.add(Asset(content_hash=f"{tag}{i}", path="", title=f"{tag}{i}",
+                                      source="artvee", source_ref=f"artvee:{tag}{i}",
+                                      collection_id=col.id, held=0, license="PD"))
+
+        # Seed the cache so the scenario is deterministic and offline: artvee HAS an
+        # upstream_count function but it answers None in practice, and a test must not depend on a
+        # live probe to decide which branch it is exercising.
+        import nolan.webui.routes.visual_lib as vl
+        vl._UPSTREAM_CACHE.clear()
+        vl._UPSTREAM_CACHE["artvee"] = None
+        client = TestClient(create_hub_app(db_path=None, projects_dir=None))
+        row = next(s for s in client.get("/api/visuallib/sources").json()["sources"]
+                   if s["id"] == "artvee")
+        vl._UPSTREAM_CACHE.clear()
+
+    assert row["upstream_scope"] == "collections", (
+        "an unanswerable source falls back to summing — that is the branch under test")
+    assert row["indexed"] == 100, "the row count is every row, unchanged"
+    assert row["upstream"] == 100, "the denominator covers only the measured collection"
+    assert row["rows_measured"] == 40, "so the numerator must too — 40/100, not 100/100"
+    assert row["collections_unmeasured"] == 1 and row["rows_unmeasured"] == 60, (
+        "what the ratio excludes has to be reported, or 40% reads as the whole story")
+
+
+def test_a_sources_denominator_comes_from_the_source_not_from_summing_its_parts(tmp_path):
+    """Summing collection denominators is only valid when they PARTITION the source and all carry a
+    count. For a `curated-collection` source neither holds: PDIA's upstream_count returns the SITE
+    total and harvest writes it onto the fallback bucket, so one collection carries a source-level
+    figure. Summing then divided 1,674 rows by 11,197 and reported 15% for a source that is
+    genuinely complete (11,197 indexed of 11,197 upstream) — a confidently wrong number replacing an
+    accidentally right one. Ask the source; sum only when it cannot be asked."""
+    from nolan.imagelib.catalog import Asset, Collection
     root = tmp_path / "lib"
 
     def fake_paths(scope="global", project=None):
@@ -275,23 +322,30 @@ def test_source_coverage_never_mixes_measured_and_unmeasured_collections(tmp_pat
     with patch.object(store_mod, "library_paths", side_effect=fake_paths), \
          patch.object(store_mod, "ClipEmbedder", FakeEmbedder):
         lib = ImageLibrary(scope="global")
-        known = lib.catalog.upsert_collection(Collection(
-            slug="known", source="artic", title="measured", rights="CC0", upstream_count=100))
-        blind = lib.catalog.upsert_collection(Collection(
-            slug="blind", source="artic", title="no denominator", rights="CC0"))
-        from nolan.imagelib.catalog import Asset
-        for col, n, tag in ((known, 40, "k"), (blind, 60, "b")):
+        # mimic PDIA: a fallback bucket holding a fraction, carrying the SOURCE's total
+        bucket = lib.catalog.upsert_collection(Collection(
+            slug="pdia-uncollected", source="pdia", title="uncollected",
+            rights="CC0", upstream_count=100))
+        themed = lib.catalog.upsert_collection(Collection(
+            slug="pdia-themed", source="pdia", title="themed", rights="CC0"))
+        for col, n, tag in ((bucket, 20, "u"), (themed, 80, "t")):
             for i in range(n):
                 lib.catalog.add(Asset(content_hash=f"{tag}{i}", path="", title=f"{tag}{i}",
-                                      source="artic", source_ref=f"artic:{tag}{i}",
+                                      source="pdia", source_ref=f"pdia:{tag}{i}",
                                       collection_id=col.id, held=0, license="CC0"))
 
-        client = TestClient(create_hub_app(db_path=None, projects_dir=None))
-        row = next(s for s in client.get("/api/visuallib/sources").json()["sources"]
-                   if s["id"] == "artic")
+        import nolan.webui.routes.visual_lib as vl
+        vl._UPSTREAM_CACHE.clear()
+        with patch.dict(__import__("nolan.imagelib.harvest", fromlist=["SOURCES"]).SOURCES, {}, clear=False):
+            client = TestClient(create_hub_app(db_path=None, projects_dir=None))
+            row = next(s for s in client.get("/api/visuallib/sources").json()["sources"]
+                       if s["id"] == "pdia")
+        vl._UPSTREAM_CACHE.clear()
 
-    assert row["indexed"] == 100, "the row count is every row, unchanged"
-    assert row["upstream"] == 100, "the denominator covers only the measured collection"
-    assert row["rows_measured"] == 40, "so the numerator must too — 40/100, not 100/100"
-    assert row["collections_unmeasured"] == 1 and row["rows_unmeasured"] == 60, (
-        "what the ratio excludes has to be reported, or 40% reads as the whole story")
+    assert row["indexed"] == 100
+    assert row["upstream_scope"] == "source", "the adapter can be asked, so it decides"
+    assert row["rows_measured"] == 100, (
+        "with a SOURCE denominator the numerator is every row — not the measured subset, which is "
+        "what produced 15% for a complete source")
+    assert row["collections_unmeasured"] == 0, (
+        "there is nothing to exclude when the denominator already covers the whole source")

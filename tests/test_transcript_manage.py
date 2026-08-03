@@ -1100,3 +1100,27 @@ def test_ingest_falls_back_to_the_browsed_source_not_just_a_collection(tmp_path,
     assert "or collection or source" in src, "the browsed source must be the final fallback"
     assert "source: str" in str(inspect.signature(operations.ingest_videos)) or \
            "source" in inspect.signature(operations.ingest_videos).parameters
+
+
+def test_a_broken_extractor_is_a_moment_not_a_property_of_the_video():
+    """The unusable ledger is one-way: nothing re-offers a row once it is in there.
+
+    yt-dlp's Vimeo support is broken upstream (#17271) and raises "Failed to fetch macos OAuth
+    token: HTTP Error 401: Unauthorized". That matched the 401 rule, so ingesting the 150
+    topdocumentaryfilms Vimeo rows would have blacklisted every one of them permanently — for a bug
+    that will be fixed upstream, with no way back short of hand-editing the ledger. The status code
+    there describes yt-dlp's own auth handshake, not the video."""
+    from nolan.webui.operations import _permanently_unusable
+
+    vimeo = Exception("ERROR: [vimeo] 58341318: Failed to fetch macos OAuth token: "
+                      "HTTP Error 401: Unauthorized")
+    assert _permanently_unusable(vimeo) is False, "a broken extractor must stay retryable"
+    assert _permanently_unusable(Exception("unable to fetch new OAuth tokens")) is False
+    assert _permanently_unusable(Exception("The web client only works when logged-in")) is False
+
+    # the real item-level failures must still be permanent, or the ledger stops doing its job
+    assert _permanently_unusable(Exception("HTTP Error 404: Not Found")) is True
+    assert _permanently_unusable(Exception("HTTP Error 403: Forbidden")) is True
+    assert _permanently_unusable(Exception("HTTP Error 401: Unauthorized")) is True
+    # ...and a transient one is still retried
+    assert _permanently_unusable(Exception("HTTP Error 503: Service Unavailable")) is False

@@ -35,6 +35,10 @@ def _bounded_limit(raw, *, default):
     return limit
 
 
+# One live call per source per process — `upstream_count()` is HTTP, and this route is user-facing.
+_UPSTREAM_CACHE: dict = {}
+
+
 def register(app, ctx):
     templates_dir = ctx.templates_dir
     job_manager = ctx.job_manager
@@ -100,6 +104,25 @@ def register(app, ctx):
             if c.last_crawled and (agg["last_crawled"] or "") < c.last_crawled:
                 agg["last_crawled"] = c.last_crawled
 
+        # A SOURCE'S DENOMINATOR COMES FROM THE SOURCE, not from summing its parts. Summing is only
+        # valid when the collections partition the source AND all carry a count, and for a
+        # `curated-collection` source neither holds: PDIA's `pdia_upstream_count` returns the SITE
+        # total (11,197) and harvest writes it onto the fallback bucket, so that one row carries a
+        # source-level figure. Summing then divided 1,674 rows by 11,197 and reported 15% for a
+        # source that is genuinely complete — a confidently wrong number replacing an accidentally
+        # right one. Ask the adapter first; sum only when it cannot be asked (artvee).
+        def _source_upstream(nm, adapter):
+            if nm in _UPSTREAM_CACHE:
+                return _UPSTREAM_CACHE[nm]
+            val = None
+            if adapter.upstream_count:
+                try:
+                    val = adapter.upstream_count()
+                except Exception:
+                    val = None                      # unaskable is unknown, never a guess
+            _UPSTREAM_CACHE[nm] = val
+            return val
+
         out = []
         for name, adapter in sorted(SOURCES.items()):
             # `describe()`, NOT `collection()`: building the menu used to run each crawl's
@@ -107,17 +130,22 @@ def register(app, ctx):
             # every source from the tab — artvee's 69,117 indexed rows included.
             d = adapter.describe()
             got = per_source.get(name, {})
+            src_up = _source_upstream(name, adapter)
             out.append({"id": name, "title": d["title"], "rights": got.get("rights") or d["rights"],
                         "description": d["description"],
                         "requires": d["requires"], "error": d["error"],
                         # what this source has ACTUALLY delivered, not what it could
                         "indexed": got.get("rows", 0),
                         "collections": got.get("collections", 0),
-                        "upstream": got.get("upstream"),
-                        # the honest numerator for `upstream`, plus what it deliberately excludes
-                        "rows_measured": got.get("rows_measured", 0),
-                        "collections_unmeasured": got.get("collections_unmeasured", 0),
-                        "rows_unmeasured": got.get("rows_unmeasured", 0),
+                        "upstream": src_up if src_up else got.get("upstream"),
+                        # When the denominator is the SOURCE's own, the numerator is every row it
+                        # holds. Only a summed denominator needs the measured-subset numerator.
+                        "rows_measured": (got.get("rows", 0) if src_up
+                                          else got.get("rows_measured", 0)),
+                        "upstream_scope": "source" if src_up else "collections",
+                        "collections_unmeasured": (0 if src_up
+                                                   else got.get("collections_unmeasured", 0)),
+                        "rows_unmeasured": (0 if src_up else got.get("rows_unmeasured", 0)),
                         "last_crawled": got.get("last_crawled"),
                         "gate_tier": adapter.gate_tier,
                         # How this source can be walked, and what that costs, straight from the

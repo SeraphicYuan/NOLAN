@@ -607,11 +607,28 @@ async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, f
             "length_skipped": too_long}
 
 
+# A failure that belongs to the EXTRACTOR, not to the video. yt-dlp's Vimeo support is broken
+# upstream — its macOS client was the only one able to fetch an anonymous OAuth token and Vimeo now
+# rejects it (yt-dlp #17271) — and the error it raises is literally
+# "Failed to fetch macos OAuth token: HTTP Error 401: Unauthorized". That matches the 401 rule
+# below, so EVERY Vimeo row would be written into the unusable ledger as permanently dead, and
+# nothing re-offers a row once it is there. 150 topdocumentaryfilms rows would have been blacklisted
+# by a bug that will be fixed upstream, invisibly, with no way back short of editing the ledger.
+_BROKEN_EXTRACTOR = ("oauth token", "unable to fetch new oauth", "only works when logged-in")
+
+
 def _permanently_unusable(err: Exception) -> bool:
-    """Is this failure a property of the ITEM rather than the moment? 401/403 (an access-restricted archive
-    derivative), 404 (gone) and a hard yt-dlp refusal will fail the same way forever, so the search must
-    stop offering it. Timeouts and 5xx are NOT — those get retried."""
+    """Is this failure a property of the ITEM rather than the moment?
+
+    401/403 (an access-restricted archive derivative), 404 (gone) and a hard yt-dlp refusal will
+    fail the same way forever, so the search must stop offering it. Timeouts and 5xx are NOT.
+
+    Neither is a BROKEN EXTRACTOR: the status code describes the tool's own auth handshake, not the
+    video. Marking those permanent records a moment as a property, which is the one mistake this
+    ledger cannot recover from on its own."""
     t = f"{type(err).__name__}: {err}".lower()
+    if any(k in t for k in _BROKEN_EXTRACTOR):
+        return False
     return any(k in t for k in ("401", "403", "unauthorized", "forbidden", "404", "not found",
                                 "unable to download webpage"))
 

@@ -279,6 +279,38 @@ from the registry, `author.py` delegation, `block_registry` / `style_contract` /
 classification, `skills/organ/math-animation.md`, UMBRELLA_WIRING + CATALOG_CONSUMERS, and 71
 honesty tests in `tests/test_mathanim.py`. Full suite: 2480 passed.
 
+## A moment recorded as a property, and a denominator I got backwards (2026-08-02)
+
+**A broken extractor would have blacklisted 150 rows forever.** `_permanently_unusable` decides
+whether a failure belongs to the ITEM or to the moment, and it matched on `401` / `unauthorized`.
+yt-dlp's Vimeo support is broken upstream (#17271) and raises "Failed to fetch macos OAuth token:
+HTTP Error 401: Unauthorized" — the tool's own auth handshake, not the video. So ingesting the 150
+topdocumentaryfilms Vimeo rows would have written every one into the unusable ledger as permanently
+dead, and nothing re-offers a row once it is there. When yt-dlp is fixed they would have stayed
+dead, invisibly, recoverable only by hand-editing the ledger. A known-broken extractor is now
+classified as transient. Nothing had been ingested yet, so the ledger was clean — the fix is
+preventive, which is the only time it could have been.
+
+**And a correction: the PDIA coverage change I made earlier was wrong.** It reported 15% for a
+source that is genuinely complete — 11,197 indexed of 11,197 upstream. The original 100% was right;
+I replaced an accidentally-correct number with a confidently-wrong one.
+
+The underlying defect was real, but I mis-identified it. `pdia_upstream_count` returns the SITE
+total, and `harvest()` writes it onto whichever collection row it creates, so `pdia-uncollected`
+(1,674 rows) carries a source-level figure. My fix then divided rows-in-measured-collections by
+that number. The rule that actually holds: **a source's denominator comes from the source, not from
+summing its parts.** Summing is valid only when the collections partition the source AND all carry
+a count — for a `curated-collection` source neither is true. The route now asks the adapter first
+and sums only when it cannot be asked, cached once per process because `upstream_count()` is HTTP.
+
+Both halves are now right for the source they describe: pdia 100% via the source, artvee 100% via
+summed collections plus "+3,397 rows in 3 unmeasured" because its adapter answers None. The earlier
+insight — state what a ratio excludes — was correct for artvee and only ever wrong for PDIA.
+
+The test moved with it. The version pinning the summing path used `artic`, which CAN be asked, so
+it was pinning behaviour that source should never reach; it now uses the unanswerable case and
+seeds the cache so it does not depend on a live probe to decide which branch it is exercising.
+
 ## Three pages that said "source" and never referred to each other (2026-08-02)
 
 `/sources` calls itself the control plane for every source. It described the image half and one
