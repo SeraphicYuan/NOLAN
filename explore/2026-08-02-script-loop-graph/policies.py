@@ -157,6 +157,65 @@ def semi_auto(st: LoopState) -> Decision:
                     "semi: floor reached — confirm?" if clean else f"semi: {r.high}h/{r.med}m open")
 
 
+# --- the composite the evidence asks for, with the operator's chosen constants ---------------
+#
+# THE FLOOR IS DELIBERATELY SET SO IT ALMOST NEVER FIRES — do not "fix" it upward without
+# reading this. The lowest round-1 weighted score across all six recorded runs is 17, so a floor
+# of 15 fires on NONE of them. That is the intended behaviour, chosen over a floor of 20 (which
+# would stop homer-auto at 17 and homer-braid at 20) for a specific reason:
+#
+#   with six runs and no quality labels, a floor tight enough to fire is a floor fitted to noise.
+#
+# So the floor is a SAFETY VALVE for a genuinely clean first draft, and `MIN_GAIN` is the real
+# terminator. The cost is stated rather than discovered: since a marginal-gain rule needs two
+# rounds to see a trend, every run now does at least two — where five of six historically did
+# one. That roughly doubles loop cost, and buys erring toward polish instead of toward shipping
+# early, which is the safer direction to be wrong in while the thresholds are this unproven.
+#
+# Revisit once there are runs with quality labels attached, not before.
+WEIGHTED_FLOOR = 15
+# A round must move weighted severity by MORE than this to justify another. Diamond Illusion's
+# round 3 moved it by 0 while adding 204 words — the case this exists for. n=1; treat as a first
+# guess.
+MIN_GAIN = 3
+
+
+def severity_floor(st: LoopState) -> Decision:
+    """STOP when nothing severe is open AND the residue is small; keep going while it pays.
+
+    Three rules in priority order, each earned from the recorded runs:
+
+    1. **A high-severity finding is never shippable.** Two runs promoted with one open
+       (attention-is-all-you-need, aidebate-braid). Whatever else is true, that is the one
+       verdict the judge is most likely to be right about.
+    2. **At round 1 there is no trend**, so the decision has to be absolute. This is where 5 of
+       6 runs actually end, so a policy that can only reason about trends is inert in the common
+       case — which is what rules out `weighted_falling` as the whole answer despite it being the
+       best diagnosis of the multi-round run.
+    3. **After round 1, judge the ROUND, not the draft.** If a revision cycle did not move the
+       weighted score by `MIN_GAIN`, another one probably will not either. Diamond's round 3
+       moved it by zero while adding 204 words.
+    """
+    if (hs := _hard_stop(st)):
+        return hs
+    r = st.last
+    if r is None:
+        return Decision(CONTINUE, "no rounds yet")
+    if r.high:
+        return Decision(CONTINUE, f"{r.high} high-severity finding(s) — never ship these")
+    w = r.weighted()
+    if len(st.rounds) >= 2:
+        gain = st.rounds[-2].weighted() - w
+        # STRICTLY greater — a round has to beat the bar, not tie it.
+        if gain <= MIN_GAIN:
+            return Decision(STOP, f"round {r.n} moved weighted severity by {gain} "
+                                  f"(not >{MIN_GAIN}) — further rounds are not paying")
+    if w <= WEIGHTED_FLOOR:
+        return Decision(STOP, f"no high, weighted {w} <= floor {WEIGHTED_FLOOR} "
+                              f"({r.med} med, {r.low} low)")
+    return Decision(CONTINUE, f"weighted {w} > floor {WEIGHTED_FLOOR} ({r.med} med, {r.low} low)")
+
+
 POLICIES: dict[str, Policy] = {
     "actual (baseline)": actual,
     "no_high": no_high,
@@ -165,4 +224,5 @@ POLICIES: dict[str, Policy] = {
     "weighted_falling": weighted_falling,
     "rubber_stamp_detector": rubber_stamp_detector,
     "semi_auto": semi_auto,
+    "severity_floor": severity_floor,
 }

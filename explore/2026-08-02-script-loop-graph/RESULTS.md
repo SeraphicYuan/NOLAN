@@ -77,10 +77,49 @@ Three genuinely different verdicts on the same evidence:
 - **`no_high_or_med` / `semi_auto` would still be running** — by their standard the real run
   shipped *early*, with 5 med open
 
+## DECIDED — `severity_floor`, 2026-08-02
+
+Chosen jointly after seeing the table below. Three rules, priority-ordered:
+
+1. **`high == 0`** — a high-severity finding is never shippable. Two runs promoted with one open.
+2. **weighted severity ≤ 15** at any round → stop.
+3. **a round must move weighted severity by MORE than 3** to justify another.
+
+**The floor is set so it almost never fires, and that is deliberate.** The lowest round-1 score
+in any recorded run is 17, so 15 fires on none of them. A floor tight enough to fire (20 would
+stop `homer-auto` at 17 and `homer-braid` at 20) is a floor fitted to six unlabelled points. So
+the floor is a safety valve for a genuinely clean first draft and **`MIN_GAIN` is the real
+terminator**.
+
+Cost, stated rather than discovered: a marginal-gain rule needs two rounds to see a trend, so
+**every run now does at least two** where five of six historically did one. That roughly doubles
+loop cost and buys erring toward polish rather than toward shipping early — the safer direction
+while the thresholds are this unproven. Revisit when runs carry quality labels.
+
+Behaviour on the recorded corpus:
+
+| run | r | h/m/l | wt | decision |
+|---|---|---|---|---|
+| aidebate-braid | 1 | 1/8/13 | 46 | cont — high open |
+| attention | 1 | 1/5/5 | 29 | cont — high open |
+| homer-auto | 1 | 0/4/5 | 17 | cont — above floor |
+| homer-braid | 1 | 0/5/5 | 20 | cont — above floor |
+| the-ai-debate-golden | 1 | 0/8/8 | 32 | cont — above floor |
+| the-diamond-illusion | 1 | 1/5/9 | 33 | cont — high open |
+| the-diamond-illusion | 2 | 0/4/6 | 18 | cont — above floor |
+| the-diamond-illusion | 3 | 0/5/3 | 18 | **STOP** — gain 0, not >3 |
+
+## Not a policy: promotion must require a human
+
+Round 3 promoted with no human review. **No stop rule can fix that** — it is a missing edge, not
+a wrong threshold. In the graph, promotion must be a node that cannot be routed past without an
+interrupt. Recorded here so it is built as an invariant in Phase 1/2 rather than encoded as a
+policy someone can swap out.
+
 ## Verdict
 
-**The replay does what it was built to do.** The loop's stop decision is currently unstated, and
-the candidate rules disagree materially — which means it is a real decision, not a formality.
+**The replay does what it was built to do.** The loop's stop decision was unstated, and the
+candidate rules disagree materially — which made it a real decision rather than a formality.
 
 Recommendation for the live loop (Phase 2), for a human to accept or reject:
 
