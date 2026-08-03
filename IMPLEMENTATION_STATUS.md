@@ -4,6 +4,65 @@
 **Status:** Complete
 **Last Updated:** 2026-08-02
 
+## Deliverable protocol + the ship stage (2026-08-03)
+
+Two halves that join at one point: packaging generates titles and thumbnails FROM a render, so if you
+cannot say whether that render reflects the current specs, you can package a video you are not
+shipping. Plan + the six things deliberately CUT: `docs/DELIVERABLE_AND_SHIP_PROGRAM.md`.
+
+**The QA gates were scoring a file nobody ships.** `render_incremental` defaulted to
+`renders/<comp>.mp4` while `finish.py` passed `out=renders/video.mp4` — one function, two names —
+leaving 2-4 top-level mp4s per comp. Both gates then resolved their input with
+`sorted(rd.glob("*.mp4"))[0]`, and almost every composition id sorts before "video": homer-hf was
+graded on `homer-hf-sfx-preview.mp4`, aeneid on `aeneid-essay.mp4`, v5 on `v46.mp4`. A silent FALSE
+NEGATIVE — a bad render passes because a good preview scored. **Existing perceptual/temporal results
+on multi-mp4 comps are not a baseline; re-run them.** `hyperframes/manifest.py` is now the one
+resolver; the gates ask it (pinned over the AST, because both modules now describe the old bug in
+prose and a substring check matched the documentation of its own fix).
+
+`renders/render.json` replaces `.done` (which was `{"comp", "rendered": true}` — a boolean where a
+comparison is needed) and records a PER-FRAME fingerprint, so staleness is "frames 04-invent and
+07-the-test are stale" rather than "N edits behind". The fingerprint combines `frame_sig` (composed
+HTML — the render cache key, untouched) with the spec bytes: a test caught that `frame_sig` alone
+reports `current` for a spec edited but not yet recomposed. Intermediates moved to `renders/_work/`
+(the HF CLI drops its `.hf-transaction-*` beside whatever it writes, and one had leaked into the
+delivery folder since 2026-07-27). `previous.mp4` keeps ONE predecessor — not an unbounded history,
+because a past render is re-derivable from its specs; `hf-finish --tag <name>` is the opt-in escape.
+
+**A derivation is a recorded fact, not a parsed filename.** `fit_ground_to_scene` recovered a clip's
+original with `re.sub(r"_fit\d+s...")` and looked in `assets/`; when only the derivative was staged
+there the fit silently no-op'd. Both halves fixed: `derived_from`/`op` on pool entries (walked by
+`pool_original`, which a filename could never express across two hops), and `_resolve_asset_path`
+falling back from the STAGE to the STORE. `hyperframes/provenance.py` reports where every on-screen
+asset came from — 91 on screen, 24 never recorded, 2 scraped-and-unchecked on diamond-v3. It REPORTS
+and does not gate: with 24 of 91 unknown a hard gate would be disabled within a week
+(WIRING_CHECKLIST #11). It nearly shipped useless — the first version read `asset_pool_meta`, a UI
+projection that drops `license`/`source_url`/`derived_from`, and reported 65 of 91 real Pexels
+licences as missing. `edit.pool_entries` now exposes the raw rows.
+
+**The ship stage.** `packaging.py` has built chapters/subtitles/titles/thumbnails since SOTA #6 and
+reads `scene_plan.json` — which HF comps do not have, so the dominant pipeline could not reach its
+own packaging organ. Built as a SIBLING, not the adapter the plan called for: `build_package` is
+bound to the Director path in four places and renders its thumb card through Remotion (LEGACY here),
+so faking a scene_plan would have been more code for the wrong artifact. `subtitles.py` exports
+srt/vtt from the shipped caption groups (479 cues, 0.00→815.14s against an 815.19s render) and is now
+a finish-DAG step; chapters come from the VO sections. YouTube's chapter format is NOT the subtitle
+format — a trimmed subtitle stamp produced `:00:00` and YouTube ignores the whole list, silently.
+
+`ship.py` runs both modes over ONE tree (`drafts/draft-NN` + `reviews/review-NN`, the script
+program's convention). Two design points earned their keep on the first real run: the judge sees the
+SCRIPT, so it correctly rejected "De Beers wrote the rule you still follow" — De Beers is not
+mentioned until 2:22, so the opening does not pay that title off; and the rubric's computable half
+(length, saturated-phrasing stoplist, promise-paid-off) is checked deterministically. Both
+convergence failures were found by running it: the model re-proposed a rejected title every round, so
+the revision now FILTERS its own output; and it never returns "ship", so its taste notes are advisory
+and the computable faults are what block. `thumbnail.py` composes in HyperFrames in the essay's own
+theme and judges at **168x94** — feed size, where thumbnails actually fail. Looking at the first
+render caught a layout whose type was half the size it needed.
+
+Tests: `test_hf_render_manifest`, `test_hf_provenance`, `test_hf_ship`, `test_render_done_marker`
+(re-pinned to the new sentinel). Suite 2735 passed.
+
 ## HF batch edit: the gate teaches, the review is one page, the pool survives (2026-08-02)
 
 A 25-comment batch edit ran end-to-end and the agent's retro named the costs. Nearly all of them

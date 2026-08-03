@@ -383,6 +383,17 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     _run("captions", ["node", str(SKILL_SCRIPTS / "captions.mjs"), "build", "--storyboard", "./STORYBOARD.md",
                       "--audio-meta", "./audio_meta.json", "--hyperframes", ".", "--out", "./caption_groups.json"],
          cwd=pdir, dry=dry_run, soft=True)
+    # 5b · subtitles.srt/.vtt — the uploadable files, exported from the caption groups just built (the
+    #      lines that actually ship, at the times they ship) rather than re-transcribed. Soft: a comp
+    #      with no captions still finishes; it just has no subtitle track to upload.
+    if not dry_run:
+        try:
+            from .subtitles import write as _write_subs
+            _s = _write_subs(comp)
+            print(f"▶ subtitles\n  {_s['cues']} cue(s) → subtitles.srt + .vtt" if _s.get("ok")
+                  else f"  ⚠ subtitles skipped: {_s.get('detail')}")
+        except Exception as e:
+            print(f"  ⚠ subtitles skipped ({type(e).__name__}: {e})")
     # 6 · mount all frames (+ bgm/sfx/voice tracks) into index.html
     _run("assemble-index", ["node", str(SKILL_SCRIPTS / "assemble-index.mjs"), "--storyboard", "./STORYBOARD.md",
                             "--hyperframes", "."], cwd=pdir, dry=dry_run)

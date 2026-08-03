@@ -193,6 +193,26 @@ only the first agent runs it — it covers the whole comp.
 - `list_gaps()` — what the essays keep asking for that the blocks cannot do.
 - `prune_previews(comp)` — reclaim preview scratch.
 
+## Shipping it — after the render is good
+
+| step | command |
+|---|---|
+| what IS the deliverable, is it current, what's loitering | `python -X utf8 -m nolan.hyperframes.manifest <comp> [--clean]` |
+| where every on-screen asset came from | `python -X utf8 -m nolan.hyperframes.provenance <comp> --write` |
+| build `package/` (chapters, subtitles, description, titles, provenance) | `python -X utf8 -m nolan.hyperframes.package <comp>` |
+| AUTO mode — judge → revise (`drafts/draft-NN` + `reviews/review-NN`) | `python -X utf8 -m nolan.hyperframes.ship <comp> --rounds 3` |
+| EXPORT mode — one paste-able brief for iterating elsewhere | `python -X utf8 -m nolan.hyperframes.ship <comp> --export` |
+| thumbnails, rendered in the essay's theme and judged at feed size | `python -X utf8 -m nolan.hyperframes.thumbnail <comp>` |
+
+`renders/` has ONE deliverable, `video.mp4`, recorded in `renders/render.json` with a per-frame
+fingerprint. Ask `manifest.deliverable(comp_dir)` for it — never glob for an mp4; that is how the QA
+gates spent months scoring an SFX preview. Intermediates live in `renders/_work/`, one predecessor in
+`previous.mp4`, and `hf-finish --tag <name>` keeps a cut you care about.
+
+**Packaging REFUSES a stale deliverable.** Titles and thumbnails are generated from a render; if the
+specs have moved since, you would be packaging a video you are not shipping. Re-run `hf-finish`, or
+pass `force=True` knowingly.
+
 ## Gotchas that cost real time
 
 - The proposal gate is a **spec** check. It does not know the VO, the assembled composition, or the
@@ -202,3 +222,6 @@ only the first agent runs it — it covers the whole comp.
 - `finish --no-sound` while iterating: the bgm step can wipe `voices[]`.
 - Render via `cmd.exe npx hyperframes render`, not a bare WSL `npx` (esbuild is win32).
 - Windows paths: use `D:/…` and `python -X utf8`.
+- A derivation is a RECORDED fact (`derived_from` on the pool entry), not a filename you can parse.
+  Ask `edit.pool_original(comp, name)`. And read provenance from `edit.pool_entries` (the raw rows) —
+  `asset_pool_meta` is a UI projection that drops `license`, `source_url` and `derived_from`.

@@ -22,6 +22,10 @@ from .edit import (
 from .acquire_scene import acquire_for_scene, derive_need
 from .contact_sheet import build_sheet, write_markdown, before_still
 from .batch import batch_verify, compile_batch_brief, dispatch_batch, dispatch_batch_sharded, shard_by_frame
+from . import manifest, provenance, ship, subtitles, thumbnail
+from .manifest import deliverable, staleness
+from .package import build as build_package
+from .package import check_fresh
 
 __all__ = [
     "discover_compositions", "list_frames", "load_frame_spec", "save_frame_spec", "frame_layers", "frame_transcripts",
@@ -40,4 +44,7 @@ __all__ = [
     "batch_verify", "compile_batch_brief", "dispatch_batch", "dispatch_batch_sharded", "shard_by_frame",
     # scene-scoped acquisition (the full engine at one beat) + the capability-gap ledger
     "acquire_for_scene", "derive_need", "log_gap", "list_gaps", "list_deferred", "COMMENT_STATES",
+    # deliverable protocol + the ship stage
+    "manifest", "deliverable", "staleness", "provenance",
+    "subtitles", "ship", "thumbnail", "build_package", "check_fresh",
 ]
