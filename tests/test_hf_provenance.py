@@ -80,16 +80,48 @@ def test_an_unrecorded_on_screen_asset_is_UNKNOWN_not_silently_omitted(comp):
     assert rep["summary"]["on_screen"] == 2 and rep["summary"]["in_pool"] == 1
 
 
+def _repool(comp, entry):
+    pool = json.loads((hfedit._comp_dir(comp) / "pool.json").read_text(encoding="utf-8"))
+    pool = [e for e in pool if e.get("file") != entry["file"]] + [entry]
+    (hfedit._comp_dir(comp) / "pool.json").write_text(json.dumps(pool), encoding="utf-8")
+
+
 def test_unknown_and_unchecked_are_separate_buckets(comp):
     """One means 'we never recorded this', the other 'we looked and could not confirm'. Collapsing
     them lets the first hide inside the second."""
-    pool = json.loads((hfedit._comp_dir(comp) / "pool.json").read_text(encoding="utf-8"))
-    pool.append({"id": "a2", "file": "ghost.jpg", "media_type": "image",
-                 "source": "transcript_lib (youtube)", "license": "", "source_url": ""})
-    (hfedit._comp_dir(comp) / "pool.json").write_text(json.dumps(pool), encoding="utf-8")
+    _repool(comp, {"id": "a2", "file": "ghost.jpg", "media_type": "image",
+                   "source": "transcript_lib (youtube)", "license": "CC BY 4.0", "source_url": "u"})
     rep = P.audit(comp)
     assert next(r for r in rep["rows"] if r["file"] == "ghost.jpg")["status"] == "UNCHECKED"
     assert "UNKNOWN" not in rep["summary"]["by_status"]
+
+
+def test_a_url_is_not_a_licence(comp):
+    """The report announced `{"OK": 22}` — 100% clean — on a comp with two ddgs-scraped stills whose
+    licence cell was empty, because the test was `not (license or source_url)`. In the one artifact
+    whose job is licence traceability, that is confidently wrong rather than merely silent."""
+    _repool(comp, {"id": "a3", "file": "ghost.jpg", "media_type": "image", "source": "ddgs",
+                   "license": "", "source_url": "https://example.test/found-it"})
+    row = next(r for r in P.audit(comp)["rows"] if r["file"] == "ghost.jpg")
+    assert row["status"] == "NO-LICENCE", "a link tells you where to look, not what you may use"
+
+
+def test_a_missing_licence_outranks_an_unchecked_origin(comp):
+    """Precedence is deliberate: 'you may not be allowed to use this' is more actionable than
+    'nobody has eyeballed the pixels yet'."""
+    _repool(comp, {"id": "a4", "file": "ghost.jpg", "media_type": "image", "source": "ddgs",
+                   "license": "", "source_url": ""})
+    assert next(r for r in P.audit(comp)["rows"] if r["file"] == "ghost.jpg")["status"] == "NO-LICENCE"
+
+
+def test_scraped_detection_covers_the_sources_the_pool_actually_records(comp):
+    """This imported `acquire.judge.is_scraped`, which answers a narrower question for the acquisition
+    cull and returns False for `ddgs`, `youtube` AND `archive.org` as they appear in pool.json — so
+    the UNCHECKED bucket was dead code and every scraped asset fell through to OK."""
+    for src in ("ddgs", "transcript_lib (youtube)", "archive.org", "youtube"):
+        assert P.is_scraped(src), f"{src!r} must count as scraped"
+    for src in ("pexels", "library", "krea2 (generated)"):
+        assert not P.is_scraped(src)
 
 
 def test_the_report_renders_and_names_what_needs_attention(comp):

@@ -32,13 +32,19 @@ from typing import Any, Dict, List
 from .edit import _comp_dir, asset_scene_usage, pool_entries, pool_original
 
 # Sources whose ORIGIN is unverified until the pixels are checked — a scraped upload's branding is
-# invisible to every cheap gate. Mirrors `nolan.acquire.judge.is_scraped`; imported when available so
-# the two cannot drift.
-try:                                                       # pragma: no cover - trivial import guard
-    from nolan.acquire.judge import is_scraped
-except Exception:                                          # pragma: no cover
-    def is_scraped(source: str) -> bool:
-        return any(k in (source or "").lower() for k in ("youtube", "archive", "ddgs", "transcript"))
+# invisible to every cheap gate.
+#
+# NOT `nolan.acquire.judge.is_scraped`. That one answers a narrower question for the acquisition cull
+# and returns False for `ddgs`, `youtube` AND `archive.org` as they appear in `pool.json`, which made
+# this module's UNCHECKED bucket dead code — every scraped asset fell through to OK. Importing it
+# "so the two cannot drift" was the wrong instinct: they are two different questions, and sharing one
+# answer silenced this one.
+_SCRAPED_MARKERS = ("ddgs", "youtube", "archive", "transcript", "scrape", "bing", "google")
+
+
+def is_scraped(source: str) -> bool:
+    """True for a source whose ORIGIN cannot be trusted from metadata alone."""
+    return any(k in (source or "").lower() for k in _SCRAPED_MARKERS)
 
 
 def audit(comp: str) -> Dict[str, Any]:
@@ -64,14 +70,20 @@ def audit(comp: str) -> Dict[str, Any]:
             "origin_verified": e.get("origin_verified"),
             "caption_verified": e.get("caption_verified"),
         }
+        # A LICENCE IS NOT A URL. This read `not (license or source_url)`, so an asset with a link
+        # and no licence counted as OK — and the report duly announced `{"OK": 22}`, 100% clean, on a
+        # comp with two ddgs-scraped stills carrying an empty licence cell. In the one artifact whose
+        # job is licence traceability, that is the worst possible failure: it is not silent, it is
+        # confidently wrong. The licence is now its own condition, and a URL only tells you where to
+        # go and look.
         if not known:
             row["status"] = "UNKNOWN"            # never recorded — not the same as "checked and unsure"
         elif e.get("origin_verified") is False:
             row["status"] = "UNVERIFIED-ORIGIN"
+        elif not e.get("license"):
+            row["status"] = "NO-LICENCE"
         elif is_scraped(src) and e.get("origin_verified") is None:
             row["status"] = "UNCHECKED"          # a scraped source nobody has looked at
-        elif not (e.get("license") or e.get("source_url")):
-            row["status"] = "NO-LICENCE"
         else:
             row["status"] = "OK"
         rows.append(row)

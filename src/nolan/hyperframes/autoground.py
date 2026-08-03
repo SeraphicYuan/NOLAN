@@ -207,9 +207,18 @@ def ground_data_scenes(comp, apply: bool = False, min_dur: float = None, use_llm
                     f = _keyword_pick(sc, pool_list, taken)
                 if f and f in assets:
                     a = assets[f]
+                    # `_auto` MARKS THE MACHINE'S CHOICE. Without it an auto-placed ground is
+                    # indistinguishable from one an author chose, so nobody can review the decisions
+                    # this step made — a reviewer had to diff a pre-run snapshot to discover that a
+                    # Met CC0 painting had been placed behind the closing thesis of an AI
+                    # data-centre essay, picked by FIT and not by meaning. The field is inert to the
+                    # composer (it reads `kind`/`src`/`kb`) and survives round-trips losslessly, so
+                    # it costs nothing and makes the choice answerable at review time.
                     sc.setdefault("data", {})["ground"] = (
-                        {"kind": "video", "src": a["src"]} if a["media_type"] == "video"
-                        else {"kind": "image", "src": a["src"], "kb": list(_KB)})   # 'kb' — the key compose reads
+                        {"kind": "video", "src": a["src"], "_auto": "autoground"}
+                        if a["media_type"] == "video"
+                        else {"kind": "image", "src": a["src"], "kb": list(_KB),   # 'kb' — the key compose reads
+                              "_auto": "autoground"})
                     taken.add(f)
                     grounded.append({"frame": fr.get("id"), "scene": sid, "block": sc.get("type"),
                                      "dur": dur, "src": a["src"], "kind": a["media_type"]})

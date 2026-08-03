@@ -219,7 +219,11 @@ _JUDGE_SYSTEM = (
     "You are a blunt packaging editor. You have the script, so you can tell whether a title promises "
     "something the video delivers. Reject anything the opening does not pay off, anything "
     "indistinguishable from the ten other videos on this subject, and any description whose first two "
-    "lines waste the only space that shows above the fold."
+    "lines waste the only space that shows above the fold.\n"
+    "EVIDENCE DISCIPLINE: you are shown the OPENING and the chapter list, not the whole script. Say "
+    "'the opening does not set this up' — never 'this figure does not appear in the video'. A judge "
+    "that asserts absence from evidence it was not given is worse than no judge: it dropped a correct "
+    "title for citing a number the video states at 1:45."
 )
 
 _JUDGE_PROMPT = """Critique this packaging draft. Be specific and hard to please; say what to CHANGE.
@@ -237,10 +241,10 @@ DETERMINISTIC FAULTS ALREADY FOUND (do not repeat these; judge the taste):
 DRAFT:
 {draft}
 
-OPENING 75 SECONDS:
+OPENING 75 SECONDS (this is ALL of the script you are being shown):
 {opening}
 
-CHAPTERS:
+CHAPTERS (the rest of the video — you cannot see its wording, only these beats):
 {chapters}
 """
 
@@ -289,18 +293,45 @@ def judge(comp: str, draft: Dict[str, Any], llm=None) -> Dict[str, Any]:
     return out
 
 
+def review_headline(review: Dict[str, Any]) -> str:
+    """What the top of a review must SAY.
+
+    It used to print the bare verdict, which is computed from the deterministic faults alone — so a
+    review whose body dropped four of five titles was headed **SHIP**. Someone skimming the file reads
+    the header and stops; the whole point of writing reviews to disk is that a human can skim them.
+    The header now carries the taste count too, and only says SHIP when there is nothing at all left
+    to act on."""
+    blocking = len(review.get("must_fix") or [])
+    notes = len(review.get("notes") or [])
+    dropped = sum(1 for t in (review.get("title_notes") or []) if not t.get("keep"))
+    if blocking:
+        return f"**REVISE** — {blocking} blocking fault(s)" + (f", {notes} editor's note(s)" if notes else "")
+    if notes or dropped:
+        bits = []
+        if dropped:
+            bits.append(f"{dropped} title(s) rejected")
+        if notes:
+            bits.append(f"{notes} editor's note(s)")
+        return "**SHIP with notes** — no blocking faults, but " + " and ".join(bits)
+    return "**SHIP** — nothing outstanding"
+
+
 def render_review(n: int, review: Dict[str, Any]) -> str:
-    L = [f"# Review {n:02d} — **{review.get('verdict', '?').upper()}**", ""]
+    L = [f"# Review {n:02d} — {review_headline(review)}", ""]
     if review.get("must_fix"):
         L += ["## Must fix (blocking — computable)", ""] + [f"- {m}" for m in review["must_fix"]] + [""]
     if review.get("notes"):
         L += ["## Editor's notes (advisory — taste)", ""] + [f"- {m}" for m in review["notes"]] + [""]
-    for tn in review.get("title_notes") or []:
-        L.append(f"- {'KEEP' if tn.get('keep') else 'DROP'} — {tn.get('title')!r}: {tn.get('note', '')}")
+    tn_all = review.get("title_notes") or []
+    if tn_all:
+        L += ["## Titles", ""]
+        for tn in tn_all:
+            L.append(f"- {'KEEP' if tn.get('keep') else 'DROP'} — {tn.get('title')!r}: {tn.get('note', '')}")
+        L.append("")
     if review.get("description_note"):
-        L += ["", "## Description", "", str(review["description_note"])]
+        L += ["## Description", "", str(review["description_note"]), ""]
     if review.get("thumbnail_notes"):
-        L += ["", "## Thumbnails", ""] + [f"- {t}" for t in review["thumbnail_notes"]]
+        L += ["## Thumbnails", ""] + [f"- {t}" for t in review["thumbnail_notes"]] + [""]
     return "\n".join(L) + "\n"
 
 
@@ -312,21 +343,33 @@ def revise(comp: str, rounds: int = 2, llm=None) -> Dict[str, Any]:
         write_draft(comp, initial_draft(comp, script=_script_text(comp), llm=llm), 1)
         n = 1
     history, applied_notes = [], False
-    for _ in range(max(1, rounds)):
+    # OFF BY ONE. This judged draft-N, wrote review-N, and then broke — so the LAST review written was
+    # never applied to anything: `--rounds 2` gave one round of improvement plus a critique nobody
+    # acted on, and the newest review on disk disagreed with the newest draft. Observed live: review-02
+    # rejected four of draft-02's five titles and draft-02 was the shipped answer.
+    #
+    # Now a round is judge -> apply. If the last round produced notes we apply them and re-judge, so
+    # the final review on disk is always ABOUT the final draft.
+    for i in range(max(1, rounds)):
         draft = load_draft(comp, n) or {}
         rev = judge(comp, draft, llm=llm)
         (reviews_dir(comp) / f"review-{n:02d}.md").write_text(render_review(n, rev), encoding="utf-8")
-        history.append({"n": n, "verdict": rev.get("verdict"),
+        history.append({"n": n, "verdict": rev.get("verdict"), "headline": review_headline(rev),
                         "must_fix": rev.get("must_fix"), "notes": rev.get("notes")})
-        # Stop when the computable rubric is clean AND the editor's taste notes have been applied at
-        # least once — otherwise a first draft that happens to pass the checks never gets polished.
-        if rev.get("verdict") == "ship" and (applied_notes or not rev.get("notes")):
-            break
-        applied_notes = True
+        actionable = bool(rev.get("must_fix")) or bool(rev.get("notes")) or \
+            any(not t.get("keep") for t in (rev.get("title_notes") or []))
+        if not actionable:
+            break                                   # nothing left to act on — this review IS final
+        if i == rounds - 1:
+            break                                   # budget spent; the review above stands as advice
         nxt = _apply_review(comp, draft, rev, llm=llm)
+        applied_notes = True
         n += 1
         write_draft(comp, nxt, n)
-    return {"current": n, "draft": load_draft(comp, n), "history": history}
+    else:
+        pass
+    return {"current": n, "draft": load_draft(comp, n), "history": history,
+            "final_review_applies_to_current": history[-1]["n"] == n if history else False}
 
 
 _REVISE_PROMPT = """Revise this packaging draft against the review. Keep what the review kept, and

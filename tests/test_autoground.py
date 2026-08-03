@@ -42,8 +42,15 @@ def test_autoground_fills_text_and_video_leaves_clean(tmp_path):
     # the written spec carries the CORRECT ground shape (kb for image — the key compose reads — video by kind)
     spec = json.loads((tmp_path / "compositions" / "frames" / "01.spec.json").read_text(encoding="utf-8"))
     scenes = {s["id"]: s for s in spec["frames"][0]["scenes"]}
-    assert scenes["s1"]["data"]["ground"] == {"kind": "image", "src": "assets/mine.jpg", "kb": [1.0, 1.08]}
-    assert scenes["s2"]["data"]["ground"] == {"kind": "video", "src": "assets/videos/lock.mp4"}
+    # `_auto` MARKS THE MACHINE'S CHOICE. Without it an auto-placed ground is indistinguishable from
+    # one an author chose, so nobody can review what this step decided — a reviewer had to diff a
+    # pre-run snapshot to discover a Met CC0 painting had been placed behind an essay's closing thesis,
+    # picked by fit and not by meaning. Inert to the composer, lossless through round-trips.
+    assert scenes["s1"]["data"]["ground"] == {"kind": "image", "src": "assets/mine.jpg",
+                                              "kb": [1.0, 1.08], "_auto": "autoground"}
+    assert scenes["s2"]["data"]["ground"].get("_auto") == "autoground"
+    assert scenes["s2"]["data"]["ground"] == {"kind": "video", "src": "assets/videos/lock.mp4",
+                                              "_auto": "autoground"}
     assert "ground" not in scenes["s3"]["data"]               # left clean, no phantom ground
 
 

@@ -87,6 +87,17 @@ def cues(comp: str) -> List[Tuple[float, float, str]]:
     cd = _comp_dir(comp)
     raw = _from_groups(cd) or _from_audio_meta(cd)
     raw.sort(key=lambda c: c[0])
+    # A cue must not OPEN on the tail of a number. The caption grouper splits on token boundaries, so
+    # "roughly 49,000" became "roughly 49" / ",000" — two cues, the second of which reads as noise and
+    # the first of which states the wrong figure. Merge a continuation back into its predecessor.
+    merged: List[Tuple[float, float, str]] = []
+    for s_, e_, t_ in raw:
+        if merged and re.match(r"^[,.\d]", t_) and re.search(r"\d\s*$", merged[-1][2]):
+            p = merged[-1]
+            merged[-1] = (p[0], max(p[1], e_), (p[2] + t_).replace(" ,", ","))
+        else:
+            merged.append((s_, e_, t_))
+    raw = merged
     out: List[Tuple[float, float, str]] = []
     for i, (s, e, t) in enumerate(raw):
         if i + 1 < len(raw):
@@ -130,6 +141,26 @@ def chapter_title(frame_id: str) -> str:
     return (s[:1].upper() + s[1:]) if s else str(frame_id)
 
 
+def script_headings(comp: str) -> List[str]:
+    """The script's own `## ` section headings, in order.
+
+    Preferred over the frame slug because the slug is a FILENAME: `06-bothsides` becomes "Bothsides",
+    `04-bill` becomes "Bill". Those were shipping straight into the YouTube description as chapter
+    labels. The script wrote real headings; use them."""
+    for name in ("SOURCE.md", "SCRIPT.md", "STORYBOARD.md"):
+        f = _comp_dir(comp) / name
+        if not f.exists():
+            continue
+        try:
+            heads = re.findall(r"^##\s+(.+?)\s*(?:\[\d|$)", f.read_text(encoding="utf-8"), re.M)
+        except OSError:
+            continue
+        heads = [h.strip().rstrip("*_ ") for h in heads if h.strip()]
+        if heads:
+            return heads
+    return []
+
+
 def chapters(comp: str) -> List[Dict[str, Any]]:
     """Cumulative VO-section starts — narration owns duration, so the sections ARE the chapters."""
     cd = _comp_dir(comp)
@@ -139,10 +170,14 @@ def chapters(comp: str) -> List[Dict[str, Any]]:
         return []
     from .edit import list_frames
     ids = [(f.get("id") if isinstance(f, dict) else f) for f in list_frames(comp)]
+    voices = sorted(meta.get("voices") or [], key=lambda v: v.get("frame") or 0)
+    heads = script_headings(comp)
+    heads = heads if len(heads) == len(voices) else []      # only trust a 1:1 match
     out, t = [], 0.0
-    for i, v in enumerate(sorted(meta.get("voices") or [], key=lambda v: v.get("frame") or 0)):
+    for i, v in enumerate(voices):
         fid = ids[i] if i < len(ids) else f"chapter-{i + 1}"
-        out.append({"t": round(t, 2), "title": v.get("title") or chapter_title(fid), "frame": fid})
+        title = v.get("title") or (heads[i] if i < len(heads) else None) or chapter_title(fid)
+        out.append({"t": round(t, 2), "title": title, "frame": fid})
         t += float(v.get("duration_s", 0) or 0)
     return out
 

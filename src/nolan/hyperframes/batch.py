@@ -274,7 +274,12 @@ def batch_verify(comp: str, sound: bool = False, timeout: int = 1800) -> Dict:
     the pipeline skill already prescribes, made a step of the batch loop instead of something an agent
     might remember. `--no-sound` by default because the bgm step can wipe `voices[]` while iterating.
     """
-    cmd = [sys.executable, "-X", "utf8", "-m", "nolan.hyperframes.finish", comp, "--no-render"]
+    # `--no-autoground`: a VERIFY must not change the video. auto-ground picks a picture for a long
+    # hold by fit and writes it to the canonical spec — during one review pass it placed grounds on 6
+    # scenes, including a Met CC0 painting behind the closing thesis of an AI data-centre essay. It
+    # still REPORTS what it would place, so the information is not lost, only the silent write is.
+    cmd = [sys.executable, "-X", "utf8", "-m", "nolan.hyperframes.finish", comp,
+           "--no-render", "--no-autoground"]
     if not sound:
         cmd.append("--no-sound")
     try:

@@ -277,3 +277,68 @@ def test_the_judge_looks_at_the_feed_size_not_the_render(tmp_path):
     assert small and Image.open(small).size == (THUMB.FEED_W, THUMB.FEED_H)
     import inspect
     assert "feed_preview" in inspect.getsource(THUMB.score)
+
+
+# --- defects a cold agent found on ai-datacenter-debate-v5 -------------------------------------------
+
+def test_the_review_header_cannot_say_ship_while_the_body_rejects_titles():
+    """It printed the bare verdict, which is computed from the DETERMINISTIC faults alone — so a review
+    whose body dropped four of five titles was headed **SHIP**. The whole point of writing reviews to
+    disk is that a human can skim them, and a skimmer reads the header and stops."""
+    rev = {"must_fix": [], "notes": ["make it punchier"],
+           "title_notes": [{"keep": False, "title": "a", "note": "n"}] * 4}
+    head = SHIP.review_headline(rev)
+    assert "SHIP with notes" in head and "4 title(s) rejected" in head
+    assert SHIP.review_headline({"must_fix": [], "notes": [], "title_notes": []}).startswith("**SHIP**")
+    assert SHIP.review_headline({"must_fix": ["too long"]}).startswith("**REVISE**")
+    assert "4 title(s) rejected" in SHIP.render_review(1, rev).splitlines()[0]
+
+
+def test_the_final_review_is_about_the_final_draft(comp):
+    """Off-by-one: it judged draft-N, wrote review-N, then broke — so the newest review on disk was
+    never applied and disagreed with the newest draft. `--rounds 2` gave one improvement plus a
+    critique nobody acted on."""
+    SHIP.write_draft(comp, {"titles": ["Take the ring back to the jeweler"], "description": "d",
+                            "thumbnail_briefs": []}, 1)
+
+    class _Clean:
+        async def generate(self, prompt, system_prompt=None):
+            return json.dumps({"verdict": "ship", "must_fix": [], "title_notes": [], "notes": []})
+    res = SHIP.revise(comp, rounds=3, llm=_Clean())
+    assert res["final_review_applies_to_current"] is True
+    assert res["history"][-1]["n"] == res["current"]
+
+
+def test_the_judge_is_told_it_cannot_see_the_whole_script():
+    """It dropped a correct title for citing a figure "not supported by the opening" — the figure is
+    stated at 1:45. A judge that asserts absence from evidence it was not given is worse than none."""
+    assert "EVIDENCE DISCIPLINE" in SHIP._JUDGE_SYSTEM
+    assert "never" in SHIP._JUDGE_SYSTEM.lower() and "does not appear in the video" in SHIP._JUDGE_SYSTEM
+    assert "ALL of the script you are being shown" in SHIP._JUDGE_PROMPT
+
+
+def test_chapters_prefer_the_scripts_own_headings(comp):
+    """`06-bothsides` became "Bothsides" and shipped straight into the YouTube description."""
+    (VIDEOS / comp / "SOURCE.md").write_text(
+        "# Video Script\n\n## Try to sell it back\n\ntext\n\n## The rock was never rare\n\ntext\n\n"
+        "## And nobody really voted on it\n\ntext\n", encoding="utf-8")
+    titles = [c["title"] for c in SUBS.chapters(comp)]
+    assert titles == ["Try to sell it back", "The rock was never rare", "And nobody really voted on it"]
+
+
+def test_chapter_headings_are_only_trusted_on_a_one_to_one_match(comp):
+    """A script with a different number of sections than VO frames must fall back to the slug rather
+    than mislabel every chapter by an off-by-one."""
+    (VIDEOS / comp / "SOURCE.md").write_text("# S\n\n## Only one heading\n\ntext\n", encoding="utf-8")
+    assert SUBS.chapters(comp)[0]["title"] == "Try to sell it back"   # from the frame slug
+
+
+def test_a_cue_never_opens_on_a_numbers_tail(comp):
+    """The grouper split "roughly 49,000" into "roughly 49" / ",000" — the second reads as noise and
+    the first states the wrong figure."""
+    (VIDEOS / comp / "caption_groups.json").write_text(json.dumps({"groups": [
+        {"start": 0.0, "end": 1.0, "text": "roughly 49"},
+        {"start": 1.0, "end": 2.0, "text": ",000 homes"},
+        {"start": 2.5, "end": 3.5, "text": "and rising"}]}), encoding="utf-8")
+    texts = [t for _s, _e, t in SUBS.cues(comp)]
+    assert texts == ["roughly 49,000 homes", "and rising"]

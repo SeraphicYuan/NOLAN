@@ -169,3 +169,60 @@ def test_an_unknown_state_is_refused(comp):
     hfedit.stage_comment(comp, "f1", "x", scene_id="s1")
     with pytest.raises(ValueError):
         hfedit.resolve_comment(comp, "f1", status="probably-fine")
+
+
+# --- the seam a human actually means -----------------------------------------------------------------
+
+def test_a_transition_on_a_frames_last_scene_is_refused(comp):
+    """A SCENE's transition_out is a within-frame GSAP seam; on the last scene it fires at exactly
+    frame.dur and plays for zero visible frames. A batch agent composed a trial and caught this before
+    proposing it — which is the only reason it wasn't shipped as an inert edit."""
+    p = hfedit.propose_scene_edit(
+        comp, "f1", "s2", ops=[{"op": "transition", "scene_id": "s2", "kind": "crossfade"}],
+        rationale="soften the seam", agent="pytest")
+    assert p["gate_ok"] is False
+    assert "frame_transition" in p["gate_out"], "the refusal must name the op that DOES work"
+
+
+def test_a_transition_on_a_non_final_scene_still_works(comp):
+    p = hfedit.propose_scene_edit(
+        comp, "f1", "s1", ops=[{"op": "transition", "scene_id": "s1", "kind": "crossfade"}],
+        rationale="within-frame seam", agent="pytest")
+    assert p["gate_ok"] is True, p["gate_out"]
+
+
+def test_the_frame_level_seam_is_reachable_from_the_ops_grammar(comp):
+    """`frame.transition_out` is the frame→frame clip wipe. It had NO op at all, so the one thing a
+    batch agent needed for "the cut into the next section is harsh" was unreachable and the fix was
+    "a one-liner you run yourself"."""
+    from nolan.hyperframes.transitions import transition_kinds
+    kind = sorted(transition_kinds())[0]          # a STOCKED CLIP transition, not a GSAP one
+    p = hfedit.propose_scene_edit(
+        comp, "f1", None, ops=[{"op": "frame_transition", "kind": kind, "dur": 1.0}],
+        rationale="soften the frame seam", agent="pytest")
+    assert p["gate_ok"] is True, p["gate_out"]
+    hfedit.accept_proposal(comp, p["id"])
+    spec, info = hfedit.load_frame_spec(comp, "f1")
+    assert spec["frames"][info["i"]]["transition_out"] == {"kind": kind, "dur": 1.0}
+
+
+def test_the_two_transition_vocabularies_are_not_interchangeable(comp):
+    """A scene seam is a GSAP kind (`crossfade`); a frame seam is a STOCKED CLIP wipe (`ink-wipe`).
+    Using one where the other belongs is a gate failure, and the refusal says which is which."""
+    p = hfedit.propose_scene_edit(
+        comp, "f1", None, ops=[{"op": "frame_transition", "kind": "crossfade"}],
+        rationale="wrong vocabulary", agent="pytest")
+    assert p["gate_ok"] is False and "not a stocked clip transition" in p["gate_out"]
+
+
+def test_a_reported_gap_lands_in_the_ledger_without_a_gate_refusal(comp):
+    """`log_gap` only matched gate TEXT, so the ledger was circular — it could count gaps we had
+    already implemented a refusal for and was blind to every new one. An agent asked for a 3D exploded
+    donut on a `pie`; `data.explode/depth/shadow` all validate rc=0 as unknown keys, so nothing was
+    refused and nothing was logged."""
+    hfedit.report_gap(comp, "pie", "data.explode", "asked for a 3D exploded donut with a drop shadow",
+                      frame_id="f1", scene_id="s1", agent="pytest", workaround="left flat")
+    gaps = hfedit.list_gaps(comp)
+    row = next(g for g in gaps if g["block"] == "pie")
+    assert row["field"] == "data.explode" and row["asks"] == 1
+    assert row["examples"], "a counted gap must stay readable, not just tallied"

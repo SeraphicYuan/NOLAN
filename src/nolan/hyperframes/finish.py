@@ -165,7 +165,8 @@ def _style_gate(pdir: Path) -> None:
 
 
 def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool = False,
-           render_mode: str = "auto", burn_captions: bool = False, duck: bool = False) -> dict:
+           render_mode: str = "auto", burn_captions: bool = False, duck: bool = False,
+           autoground: bool = True) -> dict:
     """Run the compose-first finish DAG for a comp. Returns a summary dict.
 
     `burn_captions` (default OFF): incremental mode composites captions as a SEPARATE full-length
@@ -310,15 +311,26 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                 f"block. Knowing exception: set HF_ALLOW_UNSOURCED=1.")
     # 2.9 · S3 AUTO-GROUND long ungrounded holds from the pool (relevance-gated; never forces). Runs AFTER
     #        word-sync (durations known) and BEFORE recompose (which rebuilds the HTML from the specs it writes).
+    #
+    #        `autoground=False` REPORTS without writing. It exists because this step makes an EDITORIAL
+    #        choice — which picture sits behind a beat — by fit rather than by meaning, and writes it
+    #        straight to canonical specs. That is fine in a build the author asked for; it is not fine
+    #        inside a review pass, which is how a Met CC0 painting arrived behind the closing thesis of
+    #        an AI data-centre essay while a human was reading proposals. `batch --verify` passes False.
     if not dry_run:
         try:
             from .autoground import ground_data_scenes
-            ag = ground_data_scenes(comp, apply=True, use_llm=True, recompose=False)   # DAG recompose runs next
+            ag = ground_data_scenes(comp, apply=autoground, use_llm=True, recompose=False)  # DAG recompose runs next
             if ag.get("grounded") or ag.get("left_clean"):
-                print(f"▶ auto-ground: filled {len(ag['grounded'])} long hold(s) from the pool, "
+                verb = "filled" if autoground else "WOULD fill (report only)"
+                print(f"▶ auto-ground: {verb} {len(ag['grounded'])} long hold(s) from the pool, "
                       f"left {len(ag['left_clean'])} as clean type (nothing fit)")
                 for g in ag["grounded"][:12]:
-                    print(f"    ✓ {g['frame']}/{g['scene']} ({g['dur']}s) → {g['src']} [{g['kind']}]")
+                    print(f"    {'✓' if autoground else '·'} {g['frame']}/{g['scene']} ({g['dur']}s) "
+                          f"→ {g['src']} [{g['kind']}]")
+                if not autoground and ag.get("grounded"):
+                    print("    (not applied — run `nolan hf-finish` to place these, and review them: "
+                          "auto-placed grounds are marked `_auto` in the spec)")
         except Exception as e:
             print(f"  (auto-ground skipped: {type(e).__name__}: {e})")
     # 3 · recompose every frame's HTML from its (now retimed) spec, in the comp's theme
@@ -506,6 +518,8 @@ def main():
                          "whole = one npx render of index.html (canonical baseline); incremental = "
                          "per-frame windows of the SAME index + concat (cached; also emits the "
                          "compositions/frames/*.clip.mp4 the /hyperframes edit loop serves)")
+    ap.add_argument("--no-autoground", action="store_true",
+                    help="report the long ungrounded holds instead of filling them — auto-ground's\n                         choice is editorial (fit, not meaning) and it writes canonical specs")
     ap.add_argument("--tag", help="after a successful finish, copy the deliverable to "
                                   "renders/history/<TAG>.mp4 — the opt-in escape from keeping only "
                                   "one predecessor (see renders/previous.mp4)")
@@ -515,7 +529,8 @@ def main():
     a = ap.parse_args()
     try:
         finish(a.comp, render=not a.no_render, sound=not a.no_sound, dry_run=a.dry_run,
-               render_mode=a.render_mode, burn_captions=a.burn_captions, duck=a.duck)
+               render_mode=a.render_mode, burn_captions=a.burn_captions, duck=a.duck,
+               autoground=not a.no_autoground)
         if a.tag and not a.dry_run:
             from .manifest import tag as _tag
             from .edit import _comp_dir

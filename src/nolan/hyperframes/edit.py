@@ -1197,7 +1197,31 @@ def _apply_ops(fr: Dict[str, Any], ops: List[Dict[str, Any]]) -> None:
             if op.get("dur") is not None:
                 s["dur"] = float(op["dur"])
         elif kind == "transition":
-            find(op["scene_id"])["transition_out"] = {"kind": op["kind"], "dur": float(op.get("dur", 0.6))}
+            # A SCENE's transition_out is a within-frame GSAP seam. On the frame's LAST scene it emits
+            # its tween at exactly `frame.dur`, so it plays for zero visible frames — a batch agent
+            # composed a trial and found this before proposing it, which is the only reason it wasn't
+            # shipped as an inert edit. The seam a human means when they say "the cut into the next
+            # section is harsh" is the FRAME-level one, so refuse and name the op that does it.
+            s = find(op["scene_id"])
+            if scenes and scenes[-1] is s:
+                kinds = []
+                try:
+                    from nolan.hyperframes.transitions import transition_kinds
+                    kinds = sorted(transition_kinds())
+                except Exception:
+                    pass
+                raise ValueError(
+                    f"scene {op['scene_id']!r} is the LAST in its frame: a scene `transition_out` fires "
+                    f"at the frame boundary and is invisible. Use {{'op':'frame_transition','kind':…}} "
+                    f"for the frame→frame seam — and note it takes a STOCKED CLIP transition"
+                    + (f" ({', '.join(kinds)})" if kinds else "")
+                    + ", not a within-frame GSAP kind like 'crossfade'.")
+            s["transition_out"] = {"kind": op["kind"], "dur": float(op.get("dur", 0.6))}
+        elif kind == "frame_transition":
+            # The FRAME→FRAME clip wipe (`frame.transition_out`), spliced net-zero at the concat seam.
+            # It had no op at all, so the one thing a batch agent needed for a seam note was
+            # unreachable from the ops grammar and the fix was "a one-liner you run yourself".
+            fr["transition_out"] = {"kind": op["kind"], "dur": float(op.get("dur", 1.2))}
         else:
             raise ValueError(f"unknown op {kind!r}")
 
@@ -1916,6 +1940,32 @@ def log_gap(comp: str, gate_out: str, *, frame_id: Optional[str] = None, scene_i
     return n
 
 
+def report_gap(comp: str, block: str, field: str, note: str, *, frame_id: Optional[str] = None,
+               scene_id: Optional[str] = None, agent: Optional[str] = None,
+               workaround: Optional[str] = None) -> Dict[str, Any]:
+    """File a capability gap the GATE could not have caught.
+
+    `log_gap` only records what a refusal already named, which makes the ledger circular: it can count
+    gaps we have already implemented a refusal for, and is blind to every new one. An agent asked for a
+    3D exploded donut with a drop shadow on a `pie`; `data.explode/depth/shadow` all validate rc=0
+    because they are simply unknown keys, so nothing was refused and nothing was logged — the agent had
+    to write the row by hand for it to exist at all.
+
+    So the ledger has two writers: the gate files what it refuses, and whoever discovers a gap files it
+    directly. A count is only useful if the things it cannot see are few."""
+    row = {"ts": round(time.time(), 3), "block": block, "field": field, "frame_id": frame_id,
+           "scene_id": scene_id, "agent": agent, "note": (note or "")[:300] or None,
+           "workaround": workaround, "source": "reported"}
+    try:
+        with open(_comp_dir(comp) / ".hf_gaps.jsonl", "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    log_activity(comp, "gap", f"{block}.{field}: {(note or '')[:70]}", actor=agent or "agent",
+                 frame_id=frame_id, scene_id=scene_id, outcome="blocked")
+    return row
+
+
 def list_gaps(comp: Optional[str] = None, limit: int = 200) -> List[Dict[str, Any]]:
     """Capability gaps recorded for one comp, or ROLLED UP across every comp when `comp` is None —
     the cross-project count that turns 'an agent mentioned it' into 'N asks, M comps, build it'."""
@@ -2034,13 +2084,36 @@ def _next_proposal_id(props: List[Dict[str, Any]]) -> str:
     return f"p{n + 1}"
 
 
+def _comp_theme(comp: str) -> Optional[str]:
+    """The comp's theme, from its hyperframes.json.
+
+    Exists because `author.resolve_theme`'s fallback (read hyperframes.json from
+    `Path(out_dir).parents[1]`) only works when out_dir is literally `<comp>/compositions/frames`.
+    Both the proposal GATE (no out_dir at all) and the trial BUILD (a scratch dir two levels deeper)
+    silently fell through to the default theme. Two call sites, one fixed and one missed for a day —
+    so the answer lives here and both ask it."""
+    try:
+        return json.loads((_comp_dir(comp) / "hyperframes.json").read_text(encoding="utf-8")).get("theme")
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def _gate_validate_only(comp: str, spec: Dict[str, Any]) -> Tuple[bool, str]:
     """Run author.py --validate-only on a spec dict WITHOUT building/saving anything — the proposal gate.
     Written to a NON-*.spec.json temp under the comp dir so list_frames' glob never picks it up."""
     tmp = _comp_dir(comp) / f".proposal_gate.{int(time.time() * 1000)}.tmp.json"
+    # GATE IN THE ESSAY'S OWN THEME. `--validate-only` passes no `--out-dir`, so `resolve_theme`'s
+    # hyperframes.json fallback never fires and every proposal was validated as the DEFAULT theme.
+    # That is not cosmetic here: variant resolution is theme-CONSTRAINED (`_resolve_variant` only
+    # allows arrangements in `theme.allowed`), so the gate could accept a layout the real theme
+    # forbids — and then the accept, which builds with the right theme, silently resolves something
+    # else. Found by a cold agent on `swiss-ikb`; the sibling of the preview theme-drop fixed earlier
+    # the same day, which is the tell that this needed a shared resolver rather than two call sites.
+    theme = _comp_theme(comp)
     try:
         tmp.write_text(json.dumps(spec), encoding="utf-8")
-        r = subprocess.run([sys.executable, "-X", "utf8", str(AUTHOR), "--spec", str(tmp), "--validate-only"],
+        r = subprocess.run([sys.executable, "-X", "utf8", str(AUTHOR), "--spec", str(tmp), "--validate-only"]
+                           + (["--theme", theme] if theme else []),
                            cwd=str(BRIDGE), capture_output=True, text=True, encoding="utf-8", errors="replace")
         return r.returncode == 0, (r.stdout + r.stderr).strip()
     finally:
@@ -2279,11 +2352,7 @@ def _build_trial_html(comp: str, frame_id: str, trial_frame: Dict[str, Any]) -> 
     # highlighter-editorial yellow, and it reported a real edit as breaking the theme before realising
     # the preview was the thing that was wrong. A review artifact that lies about colour is worse than
     # no preview, because the reviewer believes it.
-    theme = None
-    try:
-        theme = json.loads((_comp_dir(comp) / "hyperframes.json").read_text(encoding="utf-8")).get("theme")
-    except (json.JSONDecodeError, OSError):
-        pass
+    theme = _comp_theme(comp)
     spec_obj = {"frames": [trial_frame]}
     if theme:
         spec_obj["theme"] = theme            # survives even if --theme is ever dropped
