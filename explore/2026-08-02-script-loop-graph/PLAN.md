@@ -1,6 +1,6 @@
 # Phase 3 — plan and outcome
 
-> **Status: P1–P6 implemented and committed. P8 BLOCKED on the environment, not on the code.**
+> **Status: P1–P8 all done. P8 ran clean and FOUND A POLICY INVERSION — see below.**
 >
 > | | landed | tests |
 > |---|---|---|
@@ -13,7 +13,35 @@
 >
 > Full suite after P1–P6: **2,827 passed, 5 skipped.**
 >
-> ### P8 could not run — WSL's `/mnt/d` is a dead 9p mount
+> ### P8 RESULT — 3/3 verdicts in 270s, and the routing is wrong on every one of them
+>
+> | project | style | archetype | verdict | regressions | routed to |
+> |---|---|---|---|---|---|
+> | homer-braid | great-books-explained | general | **better** | 1 | `REVERT` |
+> | ai-data-center-debate | stickman-talks | long-form-argument | **better** | 5 | `REVERT` |
+> | the-ai-debate-golden | lufei-wang-eng | long-form-argument | **better** | 5 | `REVERT` |
+>
+> The machinery works: three styles, two archetypes, provenance stamped, verdicts parsed, gate
+> consulted, all three agents concurrent under the ceiling of 3, finished in 4½ minutes.
+>
+> **And the policy inverts on all three.** Every draft was judged BETTER and every one routed to
+> `REVERT` — the loop would throw away a net improvement in 100% of real cases. `decide()` acts on
+> `v.regressed` at rule 2, before it ever reads the verdict, and `regressed` is true on *any*
+> broken beat. The single Homer script could not show this; three drafts do, immediately.
+>
+> This is **the same shape as the Phase 2 finding-count bug**: a rule that is defensible in the
+> abstract and backwards on contact with data. Real revisions almost always break something while
+> improving more. `ai-data-center-debate` deleted a 90-word sponsor read and swapped a rhetorical
+> hook for a dated, checkable event — then lost its place in the cost ladder, and for that the
+> whole draft would be discarded.
+>
+> **The fix that P8 argues for** (not yet applied — it is a policy call): split rule 2 by verdict.
+> `worse` + regressions → `REVERT` as now. `better` + regressions → `CONTINUE`, carrying the
+> regressions forward as the next round's targeted change set. That keeps P6's real insight — a
+> broken beat is cheapest to fix while it is known, located and recent — without paying for it by
+> discarding the gains that came with it.
+>
+> ### The environment failure that blocked the first attempt — WSL's `/mnt/d` was a dead 9p mount
 >
 > The first attempt staged 3 projects across 3 styles, reserved 3 agents (the ceiling held), and
 > produced **0 verdicts in 25 minutes**. Not a judge problem and not a concurrency problem: every
