@@ -5,7 +5,7 @@ the rubric below and record a **located** critique. **Do NOT edit the draft in t
 diagnosis only; a separate revise pass applies the fixes the producer approves.
 
 ## Context — read the SAME material the writer had, plus the draft
-- **Draft under review:** `explore/2026-08-02-script-loop-graph/_runs/homer-cal/scriptgen/drafts/draft-01.md`  (draft #1)
+- **Draft under review:** `explore/2026-08-02-script-loop-graph/_runs/homer-cal/scriptgen/drafts/draft-02.md`  (draft #2)
 - **Style guide (voice constitution):** `script_styles/channel-great-books-explained/style_guide.md`
 - **Brief:** `explore/2026-08-02-script-loop-graph/_runs/homer-cal/scriptgen/brief.md`
 - **Grounded facts:** `explore/2026-08-02-script-loop-graph/_runs/homer-cal/scriptgen/facts.md`
@@ -48,8 +48,8 @@ _Reads: draft._
 Read for drag. Flag any mid-script sag, any point made more than once, any sentence or beat that could be cut with no loss, and any refrain used so often it deadens. A long script earns its length only if every beat pulls. Propose specific cuts and tightenings.
 
 
-## Output → `explore/2026-08-02-script-loop-graph/_runs/homer-cal/scriptgen/reviews/review-01.findings.json` (machine-readable findings — this is the deliverable)
-Emit `explore/2026-08-02-script-loop-graph/_runs/homer-cal/scriptgen/reviews/review-01.findings.json` — a JSON array, one object per finding:
+## Output → `explore/2026-08-02-script-loop-graph/_runs/homer-cal/scriptgen/reviews/review-02.findings.json` (machine-readable findings — this is the deliverable)
+Emit `explore/2026-08-02-script-loop-graph/_runs/homer-cal/scriptgen/reviews/review-02.findings.json` — a JSON array, one object per finding:
 `{"id":"f1","dim":"<dim-id>","severity":"high|med|low","beat":"<name>","quote":"<phrase>","problem":"<...>","fix":"<...>"}`
 Be specific and quote the draft; a vague critique can't be applied. (Unattended run — the prose write-up is skipped.)
 

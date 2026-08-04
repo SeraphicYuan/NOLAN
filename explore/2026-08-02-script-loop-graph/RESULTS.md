@@ -1,5 +1,46 @@
 # Results
 
+## ⭐ THE HEADLINE (Phase 2, closed loop) — the loop does not converge, it REGRESSES
+
+One full cycle on a sandbox copy of `homer-auto`, **same judge version, same output contract,
+back to back** — so unlike everything below, these two numbers are comparable by construction.
+
+| | findings | h/m/l | weighted | body words | at 145 wpm |
+|---|---|---|---|---|---|
+| draft-01 | 23 | 6/14/3 | **99** | 1,316 | 9.08 min |
+| draft-02 — after applying all 23 | 25 | **8**/14/3 | **117** | 1,508 | 10.40 min |
+
+Declared duration is **8:20**. The revision was told pacing was a `high` finding and made it
+worse.
+
+**The mechanism, from diffing the two findings sets:**
+
+```
+23 findings in  ->   7 fixed  ·  11 persisted  ·  8 NEW
+```
+
+It fixed under a third, left **6 of the 7 high-severity findings untouched**, and introduced eight
+fresh problems. This is not judge noise — it is one judge, one sitting, scoring two drafts.
+
+**Why, most likely:** every finding says *add evidence*, *show don't tell*, *strengthen the
+example*. Twenty-three of those applied at once is not surgery, it is expansion — +192 words —
+and the brief's own instruction ("change ONLY what the approved findings call for, preserve
+everything that already works") cannot hold when the findings touch every beat.
+
+**And auto-approval is implicated.** This run had no human gate by design. The one recorded human
+who actually filtered approved **9 of 22** (`aidebate-braid`); the rest waved through 100%. Auto
+mode reproduces the rubber stamp and then acts on it.
+
+### What this means for the graph
+
+1. **A stop policy is not enough — the graph needs ROLLBACK.** `severity_floor` says CONTINUE here
+   (8 highs open) and would loop again into a probably-worse draft. `weighted_falling` says STOP,
+   which at least halts the bleeding but ships the regression. Neither can say *"revert to
+   draft-01 and try a smaller change set"*, which is the correct move. **The replay could never
+   have found this** — recorded runs only ever contained improving rounds.
+2. **Cap the change set per round.** Highs only, or top-N, rather than everything approved.
+3. **The human gate is load-bearing, not ceremony.** Removing it is what let 23 findings through.
+
 > ## ⚠ CORRECTION (Phase 2, 2026-08-02) — the Phase 0 trend analysis below is INVALID
 >
 > Phase 2 ran a calibration: **the same draft, judged twice.**

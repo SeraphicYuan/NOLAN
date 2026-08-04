@@ -44,19 +44,23 @@ RUN_ROOT_REL = RUNS.relative_to(REPO).as_posix()            # explore/<slug>/_ru
 SLUG = "homer-auto"       # overridable with --slug, for the calibration run
 
 
-def retarget(prompt: str, slug: str) -> str:
-    """Point every path in a generated task at the RUN copy instead of production.
+def assert_sandboxed(prompt: str) -> str:
+    """Refuse to dispatch a brief that names production.
 
-    Not cosmetic — without it the agent writes `review-02.findings.json` into
-    `projects/homer-auto/`, corrupting the very run this experiment measures against. The
-    assertion is part of the shim: silently missing one path is worse than not shimming at all,
-    because the damage would land in production and look like a successful experiment.
+    THIS USED TO BE A REWRITE. `tasks.py` built every path from an `f"projects/{slug}"` literal,
+    so a brief generated against a sandbox store still sent the agent into `projects/` — and this
+    function had to patch the text before dispatch. That defect is now fixed at the source
+    (`tasks.project_paths` derives from `store.root`), so there is nothing left to rewrite.
+
+    The CHECK stays. It is one line, it is what caught the defect in the first place, and a guard
+    is worth most precisely when it has stopped finding anything.
     """
-    out = prompt.replace(f"projects/{slug}/", f"{RUN_ROOT_REL}/{slug}/")
-    leaked = sorted(set(re.findall(r"projects/[\w\-./]+", out)))
+    leaked = sorted(set(re.findall(r"(?<![\w/])projects/[\w\-./]+", prompt)))
     if leaked:
-        raise AssertionError(f"retarget missed {len(leaked)} production path(s): {leaked[:5]}")
-    return out
+        raise AssertionError(
+            f"refusing to dispatch: brief names {len(leaked)} production path(s) {leaked[:4]} — "
+            f"the store root is not reaching tasks.py")
+    return prompt
 
 
 def wsl(p: Path) -> str:
@@ -70,6 +74,7 @@ def main() -> int:
                     help="build and verify the prompt; spawn nothing, spend nothing")
     ap.add_argument("--timeout", type=float, default=1200)
     ap.add_argument("--slug", default=SLUG)
+    ap.add_argument("--phase", choices=["review", "revise"], default="review")
     args = ap.parse_args()
 
     from nolan.scriptwriter import ScriptProjectStore, tasks
@@ -83,11 +88,19 @@ def main() -> int:
     print(f"project  : {meta['name']}  style={meta['style_id']}  mode={meta.get('mode')}")
     print(f"reviewing: draft-{num:02d} ({len(draft.read_text(encoding='utf-8').split())} words)")
 
-    findings = RUNS / slug / "scriptgen" / "reviews" / f"review-{num:02d}.findings.json"
-    if findings.exists():
-        findings.unlink()                     # a stale artifact would satisfy the wait instantly
+    sg = RUNS / slug / "scriptgen"
+    if args.phase == "review":
+        want = sg / "reviews" / f"review-{num:02d}.findings.json"
+        prompt = tasks.review_task(slug, store, unattended=True)
+    else:
+        # The revise pass writes the NEXT draft. Its completion signal is that draft appearing.
+        want = sg / "drafts" / f"draft-{num + 1:02d}.md"
+        prompt = tasks.revise_task(slug, store, unattended=True)
+    if want.exists():
+        want.unlink()                         # a stale artifact would satisfy the wait instantly
 
-    prompt = retarget(tasks.review_task(slug, store, unattended=True), slug)
+    prompt = assert_sandboxed(prompt)
+    print(f"phase    : {args.phase} -> {want.name}")
     print(f"prompt   : {len(prompt)} chars, 0 production paths (verified)")
 
     if args.dry_run:
@@ -109,11 +122,11 @@ def main() -> int:
         pf.write_text(prompt, encoding="utf-8")
         fk.dispatch(res, f"Read {wsl(pf)} and do exactly what it says. "
                          f"Work only under {RUN_ROOT_REL}/ — never touch projects/.")
-        print(f"dispatched; waiting for {findings.name} (timeout {args.timeout:.0f}s)")
+        print(f"dispatched; waiting for {want.name} (timeout {args.timeout:.0f}s)")
 
         t0 = time.time()
         verdict = fk.await_done(
-            res, lambda: findings.exists() and findings.stat().st_size > 2,
+            res, lambda: want.exists() and want.stat().st_size > 2,
             timeout_s=args.timeout, poll_s=5,
             progress=lambda left: print(f"   ...{int(time.time()-t0)}s elapsed, "
                                         f"{int(left)}s left", flush=True)
