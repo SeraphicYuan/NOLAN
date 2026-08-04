@@ -9,3 +9,8 @@ _out/*
 !_out/vecfigs/
 _out/vecfigs/*
 !_out/vecfigs/p13_v0.png
+_shot.mjs
+# Generated bundle: cards are rebuilt by ds_seed.py. The adherence config IS tracked — it is the
+# deliverable, and it must be diffable when author.py's rule set changes.
+_ds/components/
+_ds/readme.md
