@@ -231,11 +231,41 @@ _BUSY_PATTERNS = [r"esc to interrupt", r"⏳", r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
                   r"tokens\)"]
 _PERMISSION_PATTERNS = [r"Do you want to", r"❯ \d\. Yes", r"\[y/n\]", r"Allow\b.*Deny"]
 
+# How long a cold WSL VM boot may take before the first tmux call gives up. Generous on purpose:
+# the cost of waiting is a slow first call, the cost of being too tight is an intermittent failure
+# that only ever bites the first caller after an idle machine.
+_WSL_COLD_START_S = 90
+
+
+# Has WSL been woken in this process yet? The FIRST `wsl.exe` call after the machine has been
+# idle boots the whole VM; every call after it talks to a running one.
+_wsl_warm = False
+
 
 def _tmux(args: List[str], timeout: int = 8) -> subprocess.CompletedProcess:
-    """Run a tmux command, routing through wsl.exe on Windows."""
-    base = ["tmux"] if shutil.which("tmux") else ["wsl.exe", "tmux"]
-    return subprocess.run(base + args, capture_output=True, text=True, timeout=timeout)
+    """Run a tmux command, routing through wsl.exe on Windows.
+
+    THE FIRST CALL GETS A LONGER LEASH, and it is not a guess. Measured on this host,
+    `wsl.exe tmux -V` costs 0.09-0.58s once the VM is warm — but a COLD boot exceeds the 8-second
+    budget, so the first fleet call after an idle machine raised `TimeoutExpired` and every call
+    after it succeeded. An intermittent that self-conceals on retry is the worst shape of failure
+    for an unattended loop: it fails once, nobody reproduces it, and it is written off as a flake.
+
+    Native tmux (Linux/WSL-side callers) never pays this, so the allowance is scoped to the
+    `wsl.exe` hop and to the first call only.
+    """
+    global _wsl_warm
+    native = bool(shutil.which("tmux"))
+    base = ["tmux"] if native else ["wsl.exe", "tmux"]
+    if not native and not _wsl_warm:
+        timeout = max(timeout, _WSL_COLD_START_S)
+    try:
+        r = subprocess.run(base + args, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise
+    if not native:
+        _wsl_warm = True
+    return r
 
 
 def _sanitize(name: str) -> str:
@@ -402,6 +432,36 @@ def reap_run_agents() -> List[str]:
             reg.pop(name, None)
     _write_run_registry(reg)
     return killed
+
+
+def clear_ghosts(prefix: str = AGENT_PREFIX, *, older_than_s: float = 86400) -> List[str]:
+    """Remove status files whose tmux session is long gone. Returns what was cleared.
+
+    NOTHING IS KILLED HERE — a ghost has no session left to kill. It is a `.nolan/agents/<n>.json`
+    left behind by an agent that finished days ago, and `fleet()` faithfully renders it with
+    `session_alive: False` so the board can be honest. That is right for a few minutes and wrong
+    after a week: six such files currently sit on the board carrying results from July, which
+    makes a glance at the fleet show six agents that do not exist.
+
+    Deliberately conservative, because a status file is the ONLY record of what an agent
+    concluded — `reap_run_agents` may kill a session, but throwing away its report is a different
+    and less reversible act. So: a full day old by default, and only when the session is really
+    gone. A live session's status is never touched however old it looks.
+    """
+    if not FLEET_DIR.exists():
+        return []
+    live = set(_live_sessions())
+    now = time.time()
+    cleared = []
+    for f in sorted(FLEET_DIR.glob(f"{prefix}*.json")):
+        if f.stem in live:
+            continue                               # alive: its status is current by definition
+        st = read_status(f.stem) or {}
+        age = now - float(st.get("updated_at") or f.stat().st_mtime)
+        if age >= older_than_s:
+            f.unlink(missing_ok=True)
+            cleared.append(f"{f.stem} ({int(age / 3600)}h old, session gone)")
+    return cleared
 
 
 def fleet_detailed(prefix: str = AGENT_PREFIX) -> List[dict]:

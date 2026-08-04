@@ -7,8 +7,38 @@ the Director-ready ``script.md`` output contract.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from .store import ScriptProjectStore
 from .spine_structures import render_structures_menu, render_structure_guidance
+
+_REPO = Path(__file__).resolve().parents[3]   # src/nolan/scriptwriter/tasks.py -> repo root
+
+
+def project_paths(slug: str, store: ScriptProjectStore) -> "tuple[str, str]":
+    """`(base, scriptgen)` for a project — DERIVED FROM THE STORE'S ROOT, never hardcoded.
+
+    Every brief in this module tells an agent which files to read and which to write, so these
+    strings decide where the work lands. They used to be `f"projects/{slug}"` literals, which made
+    `ScriptProjectStore(root=...)` only HALF a parameter: the store honoured the root — it would
+    find a project under a sandbox root and correctly identify its current draft — while the brief
+    it produced still pointed the agent at `projects/`.
+
+    The consequence was not cosmetic. A run isolated to a scratch root would read production
+    inputs and WRITE ITS FINDINGS BACK INTO PRODUCTION, corrupting the very project it was copied
+    from, while every log said it was sandboxed. Caught by an assertion in an experiment harness
+    before it did damage; the assertion should not have needed to exist.
+
+    Paths are repo-relative POSIX where possible, because the agent runs with the repo as its
+    working directory; an out-of-tree root falls back to an absolute path, which still works.
+    """
+    root = Path(store.root)
+    try:
+        rel = root.resolve().relative_to(_REPO).as_posix()
+    except ValueError:
+        rel = root.resolve().as_posix()
+    base = f"{rel}/{slug}"
+    return base, f"{base}/scriptgen"
 
 # Context-parity contract (docs/SCRIPT_REVIEW_PROGRAM.md §1.1): the critic must judge a
 # draft on the SAME material the writer had, plus the draft itself. The review inputs are a
@@ -30,8 +60,7 @@ def sentinel_block(sg: str, phase: str) -> str:
 def write_script_task(slug: str, store: ScriptProjectStore) -> str:
     """Build the markdown task brief for writing one project's script."""
     meta = store.get(slug)
-    base = f"projects/{slug}"
-    sg = f"{base}/scriptgen"
+    base, sg = project_paths(slug, store)
     style_id = meta["style_id"]
     target_words = int(meta.get("target_minutes", 8.0) * 150)
 
@@ -212,7 +241,7 @@ everything (facts, angles, drafts, report) — never clobber a prior artifact.""
 def prep_task(slug: str, store: "ScriptProjectStore", unattended: bool = False) -> str:
     """Semi-auto STEP 1 (and the front half of auto): fetch → ground → propose angles."""
     meta = store.get(slug)
-    base, sg = f"projects/{slug}", f"projects/{slug}/scriptgen"
+    base, sg = project_paths(slug, store)
     pending = [s for s in meta.get("sources", []) if s.get("status") == "pending"]
     pending_lines = "\n".join(f"  - [{s['id']}] {s.get('url') or s.get('title')}"
                               for s in pending) or "  - (none)"
@@ -243,7 +272,7 @@ When done, `{sg}/facts.md` and `{sg}/angles.md` exist and you STOP. Do not draft
 def draft_task(slug: str, store: "ScriptProjectStore", unattended: bool = False) -> str:
     """Semi-auto STEP 2 (v3): beat-map the chosen angle onto the guide → draft → fact-check → report."""
     meta = store.get(slug)
-    base, sg = f"projects/{slug}", f"projects/{slug}/scriptgen"
+    base, sg = project_paths(slug, store)
     style_id = meta["style_id"]
     minutes = meta.get("target_minutes", 8)
     tw = int(float(minutes) * 150)
@@ -396,7 +425,7 @@ def v3_task(slug: str, store: "ScriptProjectStore", unattended: bool = False) ->
     report (report.md). Semi/manual runs keep them.
     """
     meta = store.get(slug)
-    base, sg = f"projects/{slug}", f"projects/{slug}/scriptgen"
+    base, sg = project_paths(slug, store)
     style_id = meta["style_id"]
     minutes = meta.get("target_minutes", 8)
     tw = int(float(minutes) * 150)
@@ -475,7 +504,7 @@ def review_task(slug: str, store: "ScriptProjectStore", unattended: bool = False
     from .rubrics import get_rubric, render_review_md
 
     meta = store.get(slug)
-    sg = f"projects/{slug}/scriptgen"
+    _, sg = project_paths(slug, store)
     style_id = meta["style_id"]
     archetype = store.resolve_archetype(slug)
     ad_hoc = meta.get("ad_hoc_questions") or []
@@ -537,7 +566,7 @@ def revise_task(slug: str, store: "ScriptProjectStore", unattended: bool = False
     from .rubrics import get_rubric, render_coherence_md
 
     meta = store.get(slug)
-    base, sg = f"projects/{slug}", f"projects/{slug}/scriptgen"
+    base, sg = project_paths(slug, store)
     style_id = meta["style_id"]
     archetype = store.resolve_archetype(slug)
     rubric = get_rubric(archetype)
