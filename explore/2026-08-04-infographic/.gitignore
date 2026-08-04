@@ -25,3 +25,4 @@ _testD/assets/
 _testD/voice/
 _testD/*.html
 !_testD/narration.json
+_p2f/
