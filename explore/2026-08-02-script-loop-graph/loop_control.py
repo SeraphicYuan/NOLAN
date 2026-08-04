@@ -51,7 +51,8 @@ RETRY_SEVERITY = "high"
 class Action:
     action: str
     why: str
-    # Populated on REVERT: the change set the retry should apply, already narrowed.
+    # The change set the NEXT pass should apply, already narrowed. Populated on REVERT (retry the
+    # reverted round with less) and on a fix-forward CONTINUE (the beats this round broke).
     retry_with: List[dict] = field(default_factory=list)
 
 
@@ -100,7 +101,10 @@ def decide(v: Optional[Verdict], *, round_n: int, rounds: List[List[dict]],
     1. **A failing deterministic gate is not a judgement call.** Collapsed timecodes and a
        declared duration 30% out are arithmetic; there is nothing for a human to weigh and no
        reason to ask a judge. Fix and continue.
-    2. **A regression reverts.** Cheapest to act on while the change is recent and located.
+    2. **A regression is acted on immediately — but the verdict decides how.** Worse, and it
+       reverts. Better, and the break is carried forward as the next pass's change set rather
+       than paid for with the gains. Cheapest to act on either way, while it is recent and
+       located; P8 is why the two cases are no longer the same case.
     3. **A stuck blocker escalates.** Two passes aimed at it and still there means the loop is not
        the thing that can fix it.
     4. **Then the verdict**, which is a comparison and not a score.
@@ -120,14 +124,35 @@ def decide(v: Optional[Verdict], *, round_n: int, rounds: List[List[dict]],
         return Action(ASK, "no verdict was produced — nothing to route on")
 
     if v.regressed:
-        keep = [b for b in v.blockers
-                if str(b.get("severity")) == RETRY_SEVERITY] or v.blockers[:2]
         broke = ", ".join(str(r.get("beat"))[:20] for r in v.regressions[:3]) or "overall"
-        return Action(REVERT,
-                      f"the round made it worse ({broke}) — revert and retry with "
-                      f"{len(keep)} {RETRY_SEVERITY}-severity item(s) instead of "
-                      f"{len(v.blockers)}",
-                      retry_with=keep)
+        if not v.improved:
+            keep = [b for b in v.blockers
+                    if str(b.get("severity")) == RETRY_SEVERITY] or v.blockers[:2]
+            return Action(REVERT,
+                          f"the round made it worse ({broke}) — revert and retry with "
+                          f"{len(keep)} {RETRY_SEVERITY}-severity item(s) instead of "
+                          f"{len(v.blockers)}",
+                          retry_with=keep)
+        # BETTER, but it broke a beat. P8 is the reason this is not a revert: across three
+        # drafts in three styles, EVERY ONE was judged better with something broken, so
+        # reverting on any regression discarded a net improvement 100% of the time. The
+        # starkest was a single `low` regression throwing away a whole draft; the costliest
+        # discarded seven gains — a deleted 90-word sponsor read, a rhetorical hook swapped
+        # for a dated checkable event — to avoid one break in a cost ladder.
+        #
+        # Severity alone does not fix it: it rescues the `low` case, but the other two carry
+        # genuine `high` regressions and would still revert while being better. What is wrong
+        # is acting on `regressed` before reading the verdict, so the verdict decides here and
+        # the break is carried forward as the next pass's change set instead of being paid for
+        # with the gains that came with it. P6's insight survives intact — a broken beat is
+        # cheapest to fix while it is known, located and recent — it just no longer costs the
+        # rest of the round.
+        carry = [r for r in v.regressions
+                 if str(r.get("severity")) == RETRY_SEVERITY] or list(v.regressions)
+        return Action(CONTINUE,
+                      f"better overall but broke {len(v.regressions)} beat(s) ({broke}) — "
+                      f"keep the gains and fix forward, targeting {len(carry)} of them",
+                      retry_with=carry)
 
     if (st := stuck(rounds)):
         names = ", ".join(f"{d}@{b}"[:28] for d, b in st[:3])
