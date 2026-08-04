@@ -1,0 +1,11 @@
+node_modules/
+package-lock.json
+_dbg.mjs
+_probe.mjs
+# Render output is reproducible from cases.py; only the two stills the verdict was READ from are
+# tracked (see RESULTS.md), because a visual verdict without its evidence is an assertion.
+_out/*
+!_out/sheet-highlighter.png
+!_out/vecfigs/
+_out/vecfigs/*
+!_out/vecfigs/p13_v0.png
