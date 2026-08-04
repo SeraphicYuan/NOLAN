@@ -123,7 +123,7 @@ def _paths(slug: str, store):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--executor", choices=("fleet", "api"), required=True)
+    ap.add_argument("--executor", choices=("fleet", "api", "win"), required=True)
     ap.add_argument("--rounds", type=int, default=2)
     ap.add_argument("--model", default=None, help="api only; defaults to config.llm.model")
     ap.add_argument("--timeout", type=float, default=900)
@@ -146,6 +146,11 @@ def main() -> int:
         print(f"preflight: WSL can read {detail}")
         runner = ex.FleetExecutor(timeout_s=args.timeout)
         model_label = "claude (agent)"
+    elif args.executor == "win":
+        # No preflight and no tmux: a Windows subprocess reads D:\ directly, which is the
+        # entire point — none of the transport failures that plagued the WSL fleet can occur.
+        runner = ex.WinHeadlessExecutor(timeout_s=args.timeout)
+        model_label = "claude (headless windows agent)"
     else:
         runner = ex.ApiExecutor(model=args.model)
         model_label = runner.model
@@ -224,7 +229,7 @@ def main() -> int:
                 j["rounds"].append({"round": rnd, "error": f"revise: {r2.detail}"}); break
         return {"job": j, "out": out}
 
-    if runner.name == "fleet":
+    if runner.name in ("fleet", "win"):
         # THE MOUNT DIES ROUGHLY HOURLY, so wall-clock is a correctness concern and not just
         # comfort: three projects in sequence is ~3x the window in which drvfs can drop out
         # mid-run. The fleet ceiling is 3, which is exactly this job's width.

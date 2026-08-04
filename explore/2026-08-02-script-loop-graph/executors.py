@@ -119,6 +119,78 @@ class FleetExecutor:
             fk.release(res)
 
 
+class WinHeadlessExecutor:
+    """A Claude Code worker as a plain Windows subprocess — no WSL, no tmux, no terminal.
+
+    THIS EXISTS BECAUSE THE TRANSPORT WAS THE PROBLEM, NOT THE AGENT. The fleet's failures this
+    session were never about judgement quality: the drvfs `/mnt/d` mount died three times (agents
+    boot by cd-ing into it), a settings dialog blocked boot because that same mount made the files
+    unreadable, and a dispatch race left two briefs sitting unsubmitted in an input box. Every one
+    of those is a property of driving an interactive TUI inside WSL.
+
+    Running the same agent Windows-native and headless deletes the whole class:
+
+      - reads `D:\\` directly, so drvfs cannot break it
+      - no TUI, so no settings dialog and no `await_ready` pane-watching
+      - the prompt is an argv, not keystrokes, so the Enter race cannot exist
+      - completion is process exit and an exit code, not a guess from pane text
+
+    It is also the SIMPLEST of the three executors, which is the tell that the tmux machinery was
+    accidental complexity for this workload rather than essential.
+
+    `CLAUDECODE` is stripped from the child's environment: Claude Code refuses to launch inside
+    another session, and a headless subprocess is exactly the automation case that guard is not
+    aimed at. Only the child's environment is touched, never this process's.
+    """
+
+    name = "win"
+
+    NODE = r"C:\Program Files\nodejs\node.exe"
+    CLI = (r"C:\Users\yuanp\AppData\Roaming\npm\node_modules"
+           r"\@anthropic-ai\claude-code\cli.js")
+
+    def __init__(self, timeout_s: float = 900):
+        self.timeout_s = timeout_s
+        missing = [p for p in (self.NODE, self.CLI) if not Path(p).is_file()]
+        if missing:
+            raise FileNotFoundError(f"headless worker needs {missing}")
+
+    def _env(self) -> dict:
+        import os
+        env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+        env.pop("CLAUDE_CODE_ENTRYPOINT", None)
+        return env
+
+    def run(self, *, brief: str, want: Path, slug: str, store, label: str,
+            expect: str = "json") -> RunResult:
+        import subprocess
+        t0 = time.time()
+        pf = HERE / f"_brief_{slug}_{label}.md"
+        pf.write_text(brief, encoding="utf-8")
+        prompt = (f"Read {pf} and do exactly what it says. Work only under "
+                  f"{(HERE / '_runs_win')} — never touch the projects/ directory.")
+        try:
+            p = subprocess.run(
+                [self.NODE, self.CLI, "-p", prompt,
+                 "--permission-mode", "bypassPermissions"],
+                cwd=str(REPO), env=self._env(), capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=self.timeout_s)
+        except subprocess.TimeoutExpired:
+            return RunResult(False, time.time() - t0,
+                             f"worker exceeded {self.timeout_s:.0f}s")
+        except Exception as e:                                    # noqa: BLE001
+            return RunResult(False, time.time() - t0, f"{type(e).__name__}: {e}"[:200])
+        secs = time.time() - t0
+        tail = ((p.stdout or "").strip() or (p.stderr or "").strip())[-200:]
+        if p.returncode != 0:
+            return RunResult(False, secs, f"exit {p.returncode}: {tail}")
+        if not (want.exists() and want.stat().st_size > 2):
+            # Exit 0 with no artifact is a REAL failure, not a pass — the whole point of judging
+            # completion by artifact rather than by the worker's own account of itself.
+            return RunResult(False, secs, f"exit 0 but {want.name} was not written: {tail}")
+        return RunResult(True, secs, want.name, [f"stdout: {len(p.stdout or '')} ch"])
+
+
 class ApiExecutor:
     """One completion. Everything the model may see is inlined; there is no second look."""
 
