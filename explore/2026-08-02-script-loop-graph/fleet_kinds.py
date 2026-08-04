@@ -22,13 +22,28 @@ What it does not have, and what a second kind of worker needs:
 EPHEMERAL BY DEFAULT: reserve → dispatch → await the artifact → release. Warm pooling across
 rounds is deliberately not built; the loop's state lives in files, so a warm agent buys less than
 it looks and costs a lifecycle that can leak.
+
+TWO SAFETY INVARIANTS, because NOLAN will grow more agent loops and they must not collide with
+each other or with a human's own sessions:
+
+  **1. NAMES ARE UNIQUE BY CONSTRUCTION, NOT BY SEARCH.** No enumeration of the live list, no
+  "lowest unused index", no retry-on-collision. `nfleet-<kind>-<8 hex>` cannot collide, so there
+  is no race to lose and no dependence on reading tmux correctly.
+
+  **2. WE NEVER TOUCH A SESSION WE DID NOT CREATE.** `nolan1..6` are a human's, made by hand for
+  other work, and `nolan.fleet.fleet()` selects with `startswith(prefix)` — which means anything
+  named `nolan*` lands on the scene-edit board and in any loop iterating it. An earlier draft of
+  this module used the prefix `nolan-probe-` and its throwaway test agents duly appeared on that
+  board. So: everything we create lives under `nfleet-`, which `startswith("nolan")` does not
+  match, and `release()`/`reap()` REFUSE any session absent from our own registry. Prefix
+  matching is never sufficient authority to kill.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
@@ -37,8 +52,25 @@ from nolan import fleet as _f
 
 REPO = Path(__file__).resolve().parents[2]
 # Reservations live beside the existing per-agent status files so one reaper can see everything,
-# but in their own file so this experiment cannot corrupt the scene-edit board.
+# but in their own directory so this experiment cannot corrupt the scene-edit board.
 RESV_DIR = REPO / ".nolan" / "reservations"
+
+# EVERY session this module creates begins with this, and NOTHING ELSE MAY. Deliberately not
+# "nolan": `nolan.fleet.fleet()` selects sessions with `startswith(prefix)` and is normally called
+# with "nolan", so a `nolan-*` name of ours would appear on the human's scene-edit board and in
+# anything iterating it. `nfleet-` is invisible to that filter.
+OWNED_ROOT = "nfleet-"
+
+
+def _new_name(kind: "FleetKind") -> str:
+    """`nfleet-<kind>-<8 hex>` — unique by CONSTRUCTION.
+
+    The alternative (scan the live list, take the lowest unused index) is what the existing fleet
+    does, and it is wrong twice over: it races two callers onto one name, and it depends on
+    reading tmux correctly at exactly the wrong moment. A random suffix needs neither. 8 hex is
+    2^32 of room against a fleet that will never hold more than single digits.
+    """
+    return f"{OWNED_ROOT}{kind.name}-{uuid.uuid4().hex[:8]}"
 
 
 def ensure_tmux(timeout_s: int = 90) -> bool:
@@ -66,10 +98,13 @@ def ensure_tmux(timeout_s: int = 90) -> bool:
 @dataclass(frozen=True)
 class FleetKind:
     """One species of worker. Everything that differs between fleets lives here rather than as a
-    module constant, which is what makes a second fleet possible at all."""
+    module constant, which is what makes a second fleet possible at all.
 
-    name: str
-    prefix: str                      # tmux session prefix, e.g. "nolan-script-"
+    There is no `prefix` field: the session name is derived from `name` under `OWNED_ROOT`, so a
+    kind cannot be given a prefix that collides with a human's sessions or another loop's.
+    """
+
+    name: str                        # short slug; becomes `nfleet-<name>-<hex>`
     ttl_s: int = 2700                # older than this with no heartbeat ⇒ stale ⇒ reapable
     max_concurrent: int = 4          # refuse the N+1th — every agent is a billing session
     # What to launch. Pluggable so the LIFECYCLE can be tested with `sh -c 'sleep 2; touch x'`
@@ -78,12 +113,41 @@ class FleetKind:
     launch: str = "claude --dangerously-skip-permissions"
 
 
-SCRIPT_LOOP = FleetKind(name="script-loop", prefix="nolan-script-", ttl_s=1800, max_concurrent=3)
+SCRIPT_LOOP = FleetKind(name="script", ttl_s=1800, max_concurrent=3)
 # For testing the lifecycle itself. `launch=""` because `tmux new-session` ALREADY starts a
 # shell — giving it a command instead occupies the pane, and dispatched keystrokes then go to a
 # process that is not reading them. (Found the hard way: a probe that launched `sleep 600` sat
 # there while every dispatch vanished and `await_done` correctly reported a timeout.)
-PROBE = FleetKind(name="probe", prefix="nolan-probe-", ttl_s=120, max_concurrent=4, launch="")
+PROBE = FleetKind(name="probe", ttl_s=120, max_concurrent=4, launch="")
+
+
+class NotOurs(RuntimeError):
+    """Refusing to act on a session this module did not create.
+
+    The failure it prevents: `nolan1`..`nolan6` are a human's, made by hand for other work. A
+    reaper that selects by prefix — or a config typo that widens one — would kill them silently
+    and the operator would find their work gone with no error anywhere. So authority to kill comes
+    from OUR OWN REGISTRY, never from the shape of a name, and the refusal is loud.
+    """
+
+
+def _owned(session: str) -> bool:
+    """Did we create this? Both conditions, and neither alone is sufficient.
+
+    The registry is the real authority; the `OWNED_ROOT` check is a second lock so that a corrupt
+    or hand-edited reservation file still cannot point us at `nolan3`.
+    """
+    if not session.startswith(OWNED_ROOT):
+        return False
+    return (RESV_DIR / f"{session}.json").exists()
+
+
+def _require_ours(session: str) -> None:
+    if not _owned(session):
+        raise NotOurs(
+            f"refusing to touch tmux session {session!r}: not created by this fleet "
+            f"(needs the {OWNED_ROOT!r} prefix AND a reservation on disk). "
+            f"Sessions like nolan1..nolan6 belong to a human and are never ours to kill.")
 
 
 @dataclass
@@ -132,40 +196,40 @@ def live(kind: FleetKind) -> List[Reservation]:
     return [r for r in roster(kind) if r.session in sessions]
 
 
-def reserve(kind: FleetKind, *, meta: Optional[Dict] = None,
-            tries: int = 8) -> Optional[Reservation]:
-    """Atomically claim a session of `kind`, or None if the ceiling is reached.
+def reserve(kind: FleetKind, *, meta: Optional[Dict] = None) -> Optional[Reservation]:
+    """Claim a session of `kind`, or None if the ceiling is reached.
 
-    TMUX IS THE LOCK. `new-session -d -s <name>` fails when the name is taken, so creating the
-    session IS the reservation — there is no check-then-act window for a second caller to slip
-    through. `nolan.fleet.next_session_name` + `spawn` has exactly that window.
+    NO SEARCH, NO RETRY. The name comes from `_new_name` and cannot collide, so there is nothing
+    to enumerate and no race to lose. The reservation is written BEFORE the session is created:
+    if `new-session` then fails, the stale reservation is cleaned up here rather than left to a
+    reaper — and if this process dies between the two, the reaper sees a reservation with no
+    session and clears it as an orphan. Writing it after would leave the opposite: a live session
+    nothing owns, which by these rules nothing may ever kill.
     """
     if len(live(kind)) >= kind.max_concurrent:
         return None
-    existing = set(_f._live_sessions())
-    n = 1
-    for _ in range(tries):
-        while f"{kind.prefix}{n}" in existing:
-            n += 1
-        name = f"{kind.prefix}{n}"
-        r = _f._tmux(["new-session", "-d", "-s", name, "-c", _f._wsl_repo_dir()])
-        if r.returncode == 0:
-            res = Reservation(kind=kind.name, session=name, started_at=time.time(),
-                              meta=dict(meta or {}))
-            _write(res)
-            if kind.launch:
-                _f._tmux(["send-keys", "-t", name, "-l", kind.launch])
-                time.sleep(0.3)                  # the TUI debounces PTY input
-                _f._tmux(["send-keys", "-t", name, "Enter"])
-            return res
-        n += 1                                   # lost the race (or a bad name) — take the next
-        existing.add(name)
-    return None
+    name = _new_name(kind)
+    res = Reservation(kind=kind.name, session=name, started_at=time.time(),
+                      meta=dict(meta or {}))
+    _write(res)
+    r = _f._tmux(["new-session", "-d", "-s", name, "-c", _f._wsl_repo_dir()])
+    if r.returncode != 0:
+        res.path.unlink(missing_ok=True)
+        return None
+    if kind.launch:
+        _f._tmux(["send-keys", "-t", name, "-l", kind.launch])
+        time.sleep(0.3)                          # the TUI debounces PTY input
+        _f._tmux(["send-keys", "-t", name, "Enter"])
+    return res
 
 
 def release(res: Reservation) -> bool:
-    """Kill the session and clear the reservation. Safe to call twice — releasing an agent that
-    already died is the NORMAL path, not an error."""
+    """Kill the session and clear the reservation.
+
+    REFUSES anything not ours (`NotOurs`). Safe to call twice — releasing an agent that already
+    died is the NORMAL path, not an error, so a missing session is success rather than failure.
+    """
+    _require_ours(res.session)
     ok = _f.kill(res.session)
     res.path.unlink(missing_ok=True)
     return ok
@@ -183,7 +247,12 @@ def reap(kind: FleetKind) -> List[str]:
     now = time.time()
     sessions = set(_f._live_sessions())
     killed = []
+    # ITERATES OUR REGISTRY, never the live session list. A reaper that walked tmux and matched on
+    # a prefix is one config typo away from killing a human's `nolan3` — so the only sessions it
+    # can even see are ones we recorded creating.
     for r in roster(kind):
+        if not _owned(r.session):
+            continue                             # belt and braces; `roster` only reads our dir
         if r.session not in sessions:
             r.path.unlink(missing_ok=True)
             killed.append(f"{r.session} (orphaned reservation)")

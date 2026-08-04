@@ -79,6 +79,36 @@ def main() -> int:
     print(f"5. reap -> {killed}")
     ok &= any("stale" in k for k in killed)
 
+    # --- 6. THE SAFETY INVARIANT: never touch a session we did not create ---------------------
+    # nolan1..nolan6 are a human's, made by hand for other work. This is the test that says so.
+    forged = fk.Reservation(kind=fk.PROBE.name, session="nolan3", started_at=0)
+    try:
+        fk.release(forged)
+        print("6. FAILED — released a foreign session 'nolan3'")
+        ok = False
+    except fk.NotOurs as e:
+        print(f"6. refused to kill 'nolan3': {str(e)[:72]}...")
+
+    # ...and the second lock: a forged reservation FILE cannot grant authority either.
+    fk.RESV_DIR.mkdir(parents=True, exist_ok=True)
+    (fk.RESV_DIR / "nolan4.json").write_text(
+        '{"kind":"probe","session":"nolan4","started_at":0,"meta":{}}', encoding="utf-8")
+    try:
+        fk.release(fk.Reservation(kind=fk.PROBE.name, session="nolan4", started_at=0))
+        print("6b. FAILED — a forged reservation file granted authority over 'nolan4'")
+        ok = False
+    except fk.NotOurs:
+        print("6b. refused 'nolan4' even WITH a reservation file (prefix lock held)")
+    (fk.RESV_DIR / "nolan4.json").unlink(missing_ok=True)
+
+    # --- 7. our names are invisible to the human's fleet board ---------------------------------
+    d = fk.reserve(fk.PROBE)
+    board = [a["agent"] for a in _f.fleet("nolan")]
+    print(f"7. our session {d.session} on the nolan board? {d.session in board}  "
+          f"(board: {board or 'empty'})")
+    ok &= d.session not in board
+    fk.release(d)
+
     _cleanup()
     print(f"\nlifecycle: {'PASS' if ok else 'FAIL'}")
     return 0 if ok else 1
