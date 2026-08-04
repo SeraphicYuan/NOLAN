@@ -1,0 +1,8 @@
+# Run OUTPUT is not source. Code and verdicts live in git; what a run produces does not —
+# same rule as HERMES keeping experiment data out of the data root.
+#
+# Drafts and reviews are markdown + JSON, so a script-only loop stays small. If a run ever pulls
+# assets or voiceover, this directory should move OUT of the repo entirely (the HERMES analogue
+# is a separate volume) rather than growing here.
+*
+!.gitignore

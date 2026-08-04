@@ -1,4 +1,44 @@
-# Results — Phase 0 replay
+# Results
+
+> ## ⚠ CORRECTION (Phase 2, 2026-08-02) — the Phase 0 trend analysis below is INVALID
+>
+> Phase 2 ran a calibration: **the same draft, judged twice.**
+>
+> | draft-01, 1,364 words | findings | h/m/l | weighted |
+> |---|---|---|---|
+> | judged in the original run | 9 | 0/4/5 | **17** |
+> | judged fresh today | 23 | 6/14/3 | **99** |
+>
+> **5.8× on weighted severity. Zero high findings versus six.** The gap is uniform across all six
+> dimensions (throughline-payoff 1→5, voice-ownership 0→2, evidential-sufficiency 1→4), which
+> rules out any explanation about the draft and leaves only one: **an LLM judge's absolute scores
+> are not comparable across sessions.**
+>
+> What that breaks, specifically:
+>
+> - **The headline finding below** — "Diamond Illusion round 3 did no work severity can see,
+>   18 → 18" — compared three readings from three different judges. It is not evidence of a
+>   stalled round. I stated it as a measurement; it was noise.
+> - **`weighted_falling`** and **`MIN_GAIN`** both compare scores across rounds. Unusable as built.
+> - **The absolute floor** (15 or 20) is meaningless when the same draft reads 17 or 99.
+> - **Even `high == 0`** — the rule I was most confident in — flipped from 0 to 6 on one draft.
+>
+> So the agreed policy (`0 high · floor 15 · gain > 3`) rests on an unsound measurement basis and
+> **should not be promoted.** Nothing was built on it, which is the point of having found this for
+> the price of two agent runs (~15 minutes) rather than after wiring a graph around it.
+>
+> **Where this points.** Absolute scoring is the wrong instrument. The candidates:
+> 1. **Pairwise, in ONE session** — show the judge draft N-1 and draft N and ask "did this improve,
+>    and what still blocks?" A comparison inside one context needs no cross-session calibration.
+>    Cheapest and most promising.
+> 2. **`gate.py`** — the deterministic checks (format, word-count, beat-grounding, needs-check,
+>    beat-continuity) are stable by construction and already exist. Untapped as a routing signal.
+> 3. Multi-judge median, or an anchor set for normalising a session. Both expensive.
+>
+> The replay harness, the state model and the fleet lifecycle all stand — only the severity metric
+> is discredited. Re-run the comparison once a stable metric exists.
+
+# Phase 0 replay
 
 Run: `D:\env\nolan\python.exe -X utf8 explore/2026-08-02-script-loop-graph/replay.py`
 Read-only over `projects/*/scriptgen/`. No LLM calls, no fleet, deterministic, re-runnable.

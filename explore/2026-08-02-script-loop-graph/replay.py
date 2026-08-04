@@ -45,9 +45,14 @@ def _findings(obj) -> list:
     return []
 
 
-def load_run(slug: str) -> LoopState | None:
-    """One recorded run, reduced to `LoopState`. Returns None if it never reached a review."""
-    sg = PROJECTS / slug / "scriptgen"
+def load_run(slug: str, root: Path | None = None) -> LoopState | None:
+    """One recorded run, reduced to `LoopState`. Returns None if it never reached a review.
+
+    `root` defaults to `projects/`. The live loop passes its sandbox root so a fresh round is
+    scored by EXACTLY the code that produced the benchmark — if scoring diverged between replay
+    and live, every comparison between them would be meaningless.
+    """
+    sg = (root or PROJECTS) / slug / "scriptgen"
     meta = _load_json(sg / "meta.json") or {}
     reviews = sorted((sg / "reviews").glob("review-*.findings.json"))
     if not reviews:
