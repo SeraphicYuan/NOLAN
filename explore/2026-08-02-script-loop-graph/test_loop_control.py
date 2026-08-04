@@ -155,3 +155,49 @@ def test_nothing_here_routes_on_a_count_of_blockers():
     one_high = _v("better", blockers=[_b("d", "b", "high")])
     assert lc.decide(many_low, round_n=1, rounds=[]).action == lc.STOP
     assert lc.decide(one_high, round_n=1, rounds=[]).action == lc.CONTINUE
+
+
+# --- the three bugs the two-round runs exposed ------------------------------------------------
+
+def test_a_stuck_blocker_escalates_even_when_the_round_also_regressed():
+    """THE UNREACHABLE RULE. `stuck` used to sit AFTER the regression branch, so the one case it
+    was built for — a blocker surviving passes while the draft keeps churning — returned
+    CONTINUE/REVERT and never reached it.
+
+    Measured on homer: a high `style-fidelity` blocker at "The recognition" appeared in two
+    consecutive rounds with identical beat and severity. `stuck()` would have flagged it; the
+    regression branch returned first, both times. Escalation outranks retry — two passes aimed at
+    something that did not move means more passes are not the answer.
+    """
+    b = _b("style-fidelity", "the recognition", "high")
+    v = _v("better", regressions=[{"beat": "x", "what": "broke", "severity": "high"}],
+           blockers=[b])
+    a = lc.decide(v, round_n=2, rounds=[[b], [b]])
+    assert a.action == lc.ASK and "survived 2 passes" in a.why
+
+
+def test_fix_forward_carries_standing_high_blockers_not_only_what_broke():
+    """A high blocker that predates the round was never handed to anyone, so it came back verbatim
+    round after round — nothing in the loop had asked for it to be fixed."""
+    reg = {"beat": "close", "what": "lost the callback", "severity": "high"}
+    standing = _b("style-fidelity", "the recognition", "high")
+    a = lc.decide(_v("better", regressions=[reg], blockers=[standing]), round_n=1, rounds=[])
+    assert a.action == lc.CONTINUE
+    beats = {str(c.get("beat")).lower() for c in a.retry_with}
+    assert "close" in beats and "the recognition" in beats
+    assert "standing high blocker" in a.why
+
+
+def test_the_carried_set_is_capped():
+    """P6's hypothesis is that a big change set is a rewrite, and a rewrite regresses. The measured
+    version of that was a pass that cut 23% of a script in one go."""
+    regs = [{"beat": f"r{i}", "what": "x", "severity": "high"} for i in range(5)]
+    blk = [_b("d", f"b{i}", "high") for i in range(5)]
+    a = lc.decide(_v("better", regressions=regs, blockers=blk), round_n=1, rounds=[])
+    assert len(a.retry_with) == lc.MAX_CARRY
+
+
+def test_a_standing_blocker_already_in_the_regressions_is_not_carried_twice():
+    same = {"beat": "close", "dim": "d", "what": "broke", "severity": "high"}
+    a = lc.decide(_v("better", regressions=[same], blockers=[same]), round_n=1, rounds=[])
+    assert len(a.retry_with) == 1

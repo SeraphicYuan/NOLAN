@@ -66,15 +66,27 @@ def stage(src_slug: str, dst_slug: str, root: Path) -> bool:
     return True
 
 
-def revise_brief(slug: str, store, carry: list, next_n: int, why: str) -> str:
+def revise_brief(slug: str, store, carry: list, next_n: int, why: str,
+                 cur_words: int = 0) -> str:
     """The revise pass, aimed at the change set the router carried forward.
 
     This is NOT `tasks.revise_task`, which applies an approved `findings.json`. The loop's change
     set comes from the pairwise verdict — the beats this round broke — and the whole point of
     fix-forward is that the next pass targets exactly those and leaves the gains alone.
 
-    The word budget is anchored on the project TARGET (P4), never on the draft in hand, so an
-    overrun cannot ratchet upward round after round.
+    ONE PASS, ONE JOB — and an earlier version of this brief broke that rule badly enough to
+    invalidate a run. It said "leave everything else byte-identical" AND "length budget: ~2900
+    words (±5%), anchored on the project target" to an agent holding a 3,756-word draft. Those
+    are not both satisfiable. The agent obeyed the specific, checkable one, cut 876 words (23%)
+    to land within 1% of the budget, and the judge correctly called the result WORSE: the cuts
+    took discourse markers, tag-questions and spoken-cadence asides — the exact texture that
+    channel's guide protects with a [5/5] "read like talking, not writing" rule.
+
+    So surgery does not resize. The length constraint here is HOLD, not hit-a-target: whatever
+    the draft currently weighs, come back at about the same weight. Being over the project's
+    budget is real, but it is a separate job with its own brief — one that knows cutting is the
+    point and can be judged on whether it cut fat or muscle — and it is the gate's business to
+    say so, not a sentence buried in a surgical instruction.
     """
     base, sg = _paths(slug, store)
     meta = store.get(slug)
@@ -101,10 +113,13 @@ listed below, and those — and only those — are this pass's job.
   A diff of your output against the current draft should touch only what is listed.
 - **Do not fix other things you notice.** A large change set is what caused the regression this
   pass exists to repair; if you spot something else, ignore it this round.
-- **Length budget:** ~{target_words} narration words (±{int(_TOL * 100)}%), anchored on the
-  project's {target_min:.0f}-minute target — NOT on the current draft's length.
+- **HOLD THE LENGTH. Do not resize the script.** The current draft is {cur_words} narration
+  words; come back within ±2% of that. This pass is surgery, and surgery does not resize.
+  {_length_note(cur_words, target_words, target_min)}
 - **Style guide:** `{guide.relative_to(REPO).as_posix()}` — the voice is the channel's, and
   style fidelity is a scored dimension. Do not drift toward generic-essay register while fixing.
+  In particular, discourse markers, tag-questions and spoken-cadence asides are LOAD-BEARING
+  texture, not filler — cutting them to save words is a regression, not a tightening.
 
 ## Read
 - current draft: `{sg}/drafts/draft-{next_n - 1:02d}.md`
@@ -114,6 +129,23 @@ listed below, and those — and only those — are this pass's job.
 `{sg}/drafts/draft-{next_n:02d}.md` — the COMPLETE revised draft, same beat headings and
 timecode format as the current one.
 """
+
+
+def _length_note(cur_words: int, target_words: int, target_min: float) -> str:
+    """Say that the draft is over budget WITHOUT asking this pass to fix it.
+
+    Naming the overrun and then demanding surgery in the same breath is what produced a 23% cut.
+    An over-budget draft is a real problem and a DIFFERENT job — one whose whole purpose is to
+    cut, which can therefore be judged on whether it cut fat or muscle. Here it is stated as a
+    fact the writer should not act on, so the next pass inherits an accurate picture instead of
+    a silently trimmed script.
+    """
+    if not cur_words or cur_words <= target_words * (1 + _TOL):
+        return ""
+    over = 100 * (cur_words - target_words) / target_words
+    return (f"(FYI only — this draft is ~{over:.0f}% over the project's {target_min:.0f}-minute "
+            f"budget of ~{target_words} words. **Do not fix that here.** Trimming to budget is a "
+            f"separate pass; cutting while doing surgery is what damaged the previous attempt.)")
 
 
 def _paths(slug: str, store):
@@ -220,7 +252,11 @@ def main() -> int:
             nxt = store.next_draft_number(slug)
             _, sg_rel = _paths(slug, store)
             dpath = root / slug / "scriptgen" / "drafts" / f"draft-{nxt:02d}.md"
-            rb = revise_brief(slug, store, carry, nxt, act.why)
+            from nolan.scriptwriter.tasks import _narration_words
+            cur_txt = (root / slug / "scriptgen" / "drafts" /
+                       f"draft-{nxt - 1:02d}.md").read_text(encoding="utf-8")
+            rb = revise_brief(slug, store, carry, nxt, act.why,
+                              cur_words=_narration_words(cur_txt))
             r2 = runner.run(brief=rb, want=dpath, slug=slug, store=store,
                             label=f"revise{rnd}", expect="text")
             say(f"  R{rnd} revise -> draft-{nxt:02d}  {r2.seconds:6.1f}s  "

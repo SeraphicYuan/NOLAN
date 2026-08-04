@@ -45,6 +45,10 @@ PERSIST_ESCALATE = 2
 # What "retry smaller" narrows to. The hypothesis for the regression is that a large change set
 # is a rewrite rather than surgery, so the retry applies only what is unambiguously severe.
 RETRY_SEVERITY = "high"
+# Ceiling on the fix-forward change set. Small on purpose: the measured failure of a big change
+# set is a rewrite that regresses (23% of a script cut in one pass), so the loop hands over a
+# few located items and lets the next round judge the result.
+MAX_CARRY = 4
 
 
 @dataclass(frozen=True)
@@ -123,6 +127,19 @@ def decide(v: Optional[Verdict], *, round_n: int, rounds: List[List[dict]],
     if v is None:
         return Action(ASK, "no verdict was produced — nothing to route on")
 
+    # ESCALATION OUTRANKS RETRY, so this is tested BEFORE the regression branch. It used to sit
+    # after it, which made it unreachable in the exact case it was built for: a round that both
+    # regresses and carries a stuck blocker returned CONTINUE/REVERT and never looked. Measured —
+    # homer's `style-fidelity` blocker at "The recognition" appeared in two consecutive rounds,
+    # identical beat and severity, and `stuck()` would have flagged it; the regression branch
+    # returned first, both times. A draft that keeps regressing could ride to max_rounds with a
+    # high blocker nothing ever escalated.
+    if (st := stuck(rounds)):
+        names = ", ".join(f"{d}@{b}"[:28] for d, b in st[:3])
+        return Action(ASK,
+                      f"{len(st)} blocker(s) survived {PERSIST_ESCALATE} passes aimed at them "
+                      f"({names}) — the loop is not what fixes these")
+
     if v.regressed:
         broke = ", ".join(str(r.get("beat"))[:20] for r in v.regressions[:3]) or "overall"
         if not v.improved:
@@ -147,18 +164,24 @@ def decide(v: Optional[Verdict], *, round_n: int, rounds: List[List[dict]],
         # with the gains that came with it. P6's insight survives intact — a broken beat is
         # cheapest to fix while it is known, located and recent — it just no longer costs the
         # rest of the round.
-        carry = [r for r in v.regressions
-                 if str(r.get("severity")) == RETRY_SEVERITY] or list(v.regressions)
+        # The carry is what this round BROKE plus what is still badly broken. Regressions alone
+        # left standing high blockers permanently unaddressed: the revise pass was never asked to
+        # touch them, so they returned verbatim round after round — homer's style blocker came
+        # back with identical wording and severity because nothing ever handed it to anyone.
+        #
+        # Capped, because P6's hypothesis is that a large change set is a rewrite rather than
+        # surgery, and that is what causes regressions in the first place. One targeted attempt is
+        # enough: survive a second consecutive round and `stuck()` now escalates to a human above.
+        broke_it = [r for r in v.regressions
+                    if str(r.get("severity")) == RETRY_SEVERITY] or list(v.regressions)
+        standing = [b for b in v.blocking(min_severity=RETRY_SEVERITY)
+                    if _key(b) not in {_key(r) for r in broke_it}]
+        carry = (broke_it + standing)[:MAX_CARRY]
+        extra = f" + {len(standing)} standing high blocker(s)" if standing else ""
         return Action(CONTINUE,
                       f"better overall but broke {len(v.regressions)} beat(s) ({broke}) — "
-                      f"keep the gains and fix forward, targeting {len(carry)} of them",
+                      f"keep the gains and fix forward, targeting {len(carry)}{extra}",
                       retry_with=carry)
-
-    if (st := stuck(rounds)):
-        names = ", ".join(f"{d}@{b}"[:28] for d, b in st[:3])
-        return Action(ASK,
-                      f"{len(st)} blocker(s) survived {PERSIST_ESCALATE} passes aimed at them "
-                      f"({names}) — the loop is not what fixes these")
 
     high = v.blocking(min_severity="high")
     if high:
