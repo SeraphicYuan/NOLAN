@@ -9,8 +9,19 @@ _out/*
 !_out/vecfigs/
 _out/vecfigs/*
 !_out/vecfigs/p13_v0.png
+!_out/baseline-final.png
+!_out/cutouts.png
 _shot.mjs
 # Generated bundle: cards are rebuilt by ds_seed.py. The adherence config IS tracked — it is the
 # deliverable, and it must be diffable when author.py's rule set changes.
 _ds/components/
 _ds/readme.md
+_b.mjs
+_cut_sheet.mjs
+# Test D working set: cutouts + VO are regenerable (prep_assets.py, make_vo.py) and heavy.
+# narration.json IS tracked — the aligner times are the ground truth every anchor check compares
+# against, and a re-synthesis would silently move the bar.
+_testD/assets/
+_testD/voice/
+_testD/*.html
+!_testD/narration.json

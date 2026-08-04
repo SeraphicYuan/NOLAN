@@ -80,18 +80,29 @@ try {
   const ink = await page.evaluate(() => {
     // Cheap emptiness check: a card that is blank is worse than no card, and nothing else in the
     // pipeline can see it (hf-qa looks for a STUCK frame, the temporal gate for absent MOTION).
+    // Text alone is NOT the measure — a `collage` is entirely images and has zero innerText, so an
+    // innerText-only guard reports a perfectly good tableau as empty.
     const r = document.getElementById('root');
-    return r ? r.innerText.replace(/\s+/g, '').length : 0;
+    if (!r) return { chars: 0, imageArea: 0 };
+    let imageArea = 0;
+    for (const im of r.querySelectorAll('img, svg, canvas')) {
+      const cs = getComputedStyle(im);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.02) continue;
+      const b = im.getBoundingClientRect();
+      imageArea += (b.width * b.height) / (1920 * 1080);
+    }
+    return { chars: r.innerText.replace(/\s+/g, '').length, imageArea };
   });
-  if (ink < 3) {
-    console.error(`frame is visually EMPTY at t=${seek}s (innerText ${ink} chars) — pick a later seek`);
+  if (ink.chars < 3 && ink.imageArea < 0.02) {
+    console.error(`frame is visually EMPTY at t=${seek}s ` +
+                  `(${ink.chars} chars, ${(ink.imageArea * 100).toFixed(1)}% image area) — pick a later seek`);
     process.exit(1);
   }
 
   writeFileSync(outPath,
     `<!doctype html><meta charset="utf-8">\n<style>\nhtml,body{margin:0}\n${frozen.style}\n</style>\n${frozen.root}\n`,
     'utf-8');
-  console.error(`ok ${outPath} (seek ${seek}s of ${seeked.duration}s, ${ink} chars of ink)`);
+  console.error(`ok ${outPath} (seek ${seek}s of ${seeked.duration}s, ${ink.chars} chars, ${(ink.imageArea*100).toFixed(1)}% image)`);
 } finally {
   await browser.close();
 }

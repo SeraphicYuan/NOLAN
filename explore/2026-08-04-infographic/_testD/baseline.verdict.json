@@ -1,0 +1,84 @@
+{
+ "frame": "D:\\ClaudeProjects\\NOLAN\\explore\\2026-08-04-infographic\\_testD\\testD-baseline.html",
+ "frameId": "testD-baseline",
+ "duration": 9.04,
+ "samples": 227,
+ "step_s": 0.04,
+ "checks": {
+  "anchor": {
+   "pass": true,
+   "tolerance_s": 0.15,
+   "rows": [
+    {
+     "asset": "smart_meter_00",
+     "noun": "meter",
+     "expected": 3.4,
+     "actual": 3.44,
+     "delta": 0.04,
+     "ok": true,
+     "absent": false
+    },
+    {
+     "asset": "water_glass_00",
+     "noun": "water",
+     "expected": 4.18,
+     "actual": 4.2,
+     "delta": 0.02,
+     "ok": true,
+     "absent": false
+    },
+    {
+     "asset": "gavel_01",
+     "noun": "zoning",
+     "expected": 5.36,
+     "actual": 5.4,
+     "delta": 0.04,
+     "ok": true,
+     "absent": false
+    },
+    {
+     "asset": "gpu_card_00",
+     "noun": "chips",
+     "expected": 7.26,
+     "actual": 7.28,
+     "delta": 0.02,
+     "ok": true,
+     "absent": false
+    },
+    {
+     "asset": "cash_stack_00",
+     "noun": "back",
+     "expected": 8.4,
+     "actual": 8.44,
+     "delta": 0.04,
+     "ok": true,
+     "absent": false
+    }
+   ]
+  },
+  "no_exit": {
+   "pass": true,
+   "worst_drop": 0,
+   "at_s": null
+  },
+  "keep_out": {
+   "pass": true,
+   "frames_with_content_below_83pct": 0,
+   "offenders": []
+  },
+  "never_blank": {
+   "pass": true,
+   "min_ink_after_first_entry": 2.0407
+  },
+  "all_present_at_end": {
+   "pass": true,
+   "missing": []
+  },
+  "seek_safe": {
+   "pass": true,
+   "max_ink_drift_between_passes": 0
+  }
+ },
+ "score": 6,
+ "total": 6
+}
