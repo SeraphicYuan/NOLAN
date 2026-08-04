@@ -136,6 +136,10 @@ def build_sheet(comp: str, proposal_ids: Optional[List[str]] = None, *, previews
             "rationale": p.get("rationale", ""), "ops": _ops_summary(p.get("ops")),
             "requirements": p.get("requirements") or [],
             "layout": p.get("layout") or [],
+            # Seam changes and non-durable retimes. Written by the gate since e9d558e and read by
+            # NOBODY until now — an advisory nothing renders is worse than none, because the review
+            # then reads as "checked" (the phantom-field lesson, and this was one).
+            "timing": p.get("timing") or [],
             "capability_gap": bool(p.get("capability_gap")),
             "gate_out": p.get("gate_out", ""),
             "agent": (p.get("provenance") or {}).get("agent"),
@@ -178,7 +182,8 @@ def build_sheet(comp: str, proposal_ids: Optional[List[str]] = None, *, previews
                         "unresolved_anchors": sum(1 for r in rows
                                                   if (r.get("anchor") or {}).get("resolved_at") is None
                                                   and r.get("anchor")),
-                        "needs_motion_check": sum(1 for r in rows if r.get("needs_motion_check"))}}
+                        "needs_motion_check": sum(1 for r in rows if r.get("needs_motion_check")),
+                        "timing_notes": sum(len(r.get("timing") or []) for r in rows)}}
 
 
 def write_markdown(comp: str, sheet: Optional[Dict[str, Any]] = None, out: Optional[Path] = None) -> Path:
@@ -194,7 +199,8 @@ def write_markdown(comp: str, sheet: Optional[Dict[str, Any]] = None, out: Optio
          f"{s['blocked']} blocked · {s['capability_gaps']} capability gap(s) · "
          f"{s['unmet_requirements']} unmet/partial requirement(s) · "
          f"{s['unresolved_anchors']} unresolved anchor(s) · "
-         f"{s['needs_motion_check']} scene(s) a still cannot verify", ""]
+         f"{s['needs_motion_check']} scene(s) a still cannot verify · "
+         f"{s.get('timing_notes', 0)} timing note(s)", ""]
     frame = None
     for r in sheet["rows"]:
         if r["frame_id"] != frame:
@@ -222,6 +228,8 @@ def write_markdown(comp: str, sheet: Optional[Dict[str, Any]] = None, out: Optio
                      f"`render_scene(comp, '{r['frame_id']}', '{r['scene_id']}')`")
         for v in r["layout"][:4]:
             L.append(f"- layout: {v}")
+        for v in (r.get("timing") or [])[:4]:
+            L.append(f"- **timing**: {v}")
         if r.get("before") or r.get("after"):
             L.append(f"- before: `{r.get('before')}` · after: `{r.get('after')}`")
         L.append("")

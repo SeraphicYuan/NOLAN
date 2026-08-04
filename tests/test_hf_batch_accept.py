@@ -285,7 +285,9 @@ def test_a_balanced_retime_reports_no_timing_advisory(comp):
         ops=[{"op": "retime", "scene_id": "s1", "dur": 6.0},
              {"op": "retime", "scene_id": "s2", "start": 6.0, "dur": 2.0}],
         rationale="borrow cleanly", agent="pytest")
-    assert p["gate_ok"] is True and "timing" not in p
+    assert p["gate_ok"] is True
+    seams = [n for n in p.get("timing", []) if "OVERLAP" in n or "GAP" in n]
+    assert seams == [], seams        # the arithmetic balances — no seam was introduced
 
 
 def test_a_pre_existing_seam_is_not_reported_as_new(comp):
@@ -298,3 +300,88 @@ def test_a_pre_existing_seam_is_not_reported_as_new(comp):
                                   ops=[{"op": "patch", "scene_id": "s1", "patch": {"data.kicker": "K"}}],
                                   rationale="unrelated", agent="pytest")
     assert "timing" not in p
+
+
+# --- a hand-typed timing number is a PREVIEW, not an instruction ------------------------------------
+
+def _fr(scenes, dur=8.0):
+    return {"id": "f1", "dur": dur, "scenes": scenes}
+
+
+def test_a_retime_whose_anchor_did_not_move_is_reported_as_transient():
+    """`place_scenes` rewrites start/dur for every scene on every finish, from the anchors. A July
+    retime on 06-dido/c1 was found already back at its pre-edit values — the edit applied, the render
+    honoured it, and the next hf-finish silently put it back. Nobody was told, at either end."""
+    before = _fr([{"id": "s1", "start": 0, "dur": 4, "data": {"anchor": "the ships burn"}},
+                  {"id": "s2", "start": 4, "dur": 4, "data": {"anchor": "he sails on"}}])
+    after = _fr([{"id": "s1", "start": 0, "dur": 4, "data": {"anchor": "the ships burn"}},
+                 {"id": "s2", "start": 5.5, "dur": 2.5, "data": {"anchor": "he sails on"}}])
+    notes = hfedit.retime_durability(before, after)
+    assert any("TRANSIENT" in n and "s2" in n and "anchor" in n for n in notes)
+
+
+def test_a_retime_that_moves_the_anchor_is_not_flagged():
+    """Moving the anchor is the SANCTIONED way to move a shot — the hand numbers then merely preview
+    what sync will compute. Flagging it would train agents to ignore the advisory."""
+    before = _fr([{"id": "s1", "start": 0, "dur": 4, "data": {"anchor": "the ships burn"}},
+                  {"id": "s2", "start": 4, "dur": 4, "data": {"anchor": "he sails on"}}])
+    after = _fr([{"id": "s1", "start": 0, "dur": 4, "data": {"anchor": "the ships burn"}},
+                 {"id": "s2", "start": 5.5, "dur": 2.5, "data": {"anchor": "Augustus himself"}}])
+    assert hfedit.retime_durability(before, after) == []
+
+
+def test_lengthening_a_scene_names_the_NEXT_scenes_anchor():
+    """dur is derived as the next scene's start minus this one's, so the lever for "hold it longer"
+    is the NEXT anchor. An agent told only "it reverts" would move the wrong one."""
+    before = _fr([{"id": "s1", "start": 0, "dur": 4, "data": {"anchor": "the ships burn"}},
+                  {"id": "s2", "start": 4, "dur": 4, "data": {"anchor": "he sails on"}}])
+    after = _fr([{"id": "s1", "start": 0, "dur": 6, "data": {"anchor": "the ships burn"}},
+                 {"id": "s2", "start": 6, "dur": 2, "data": {"anchor": "he sails on"}}])
+    notes = hfedit.retime_durability(before, after)
+    assert any("s1" in n and "s2's anchor" in n for n in notes), notes
+
+
+def test_a_structural_edit_is_exempt():
+    """v5's p5/p6 hand-compute a timeline around a scene they ADD with its own anchor — sync then
+    recomputes it correctly. Measured: a blocking rule scored 0 true positives and these 2 false ones
+    across 59 proposals, which is why this is advisory AND structurally exempt."""
+    before = _fr([{"id": "s1", "start": 0, "dur": 4, "data": {"anchor": "the ships burn"}},
+                  {"id": "s2", "start": 4, "dur": 4, "data": {"anchor": "he sails on"}}])
+    after = _fr([{"id": "s1", "start": 0, "dur": 4, "data": {"anchor": "the ships burn"}},
+                 {"id": "s1b", "start": 4, "dur": 2, "data": {"anchor": "the bill comes due"}},
+                 {"id": "s2", "start": 6, "dur": 2, "data": {"anchor": "he sails on"}}])
+    assert hfedit.retime_durability(before, after) == []
+
+
+def test_the_last_scenes_dur_cannot_be_authored_at_all():
+    before = _fr([{"id": "s1", "start": 0, "dur": 4, "data": {"anchor": "the ships burn"}},
+                  {"id": "s2", "start": 4, "dur": 4, "data": {"anchor": "he sails on"}}])
+    after = _fr([{"id": "s1", "start": 0, "dur": 4, "data": {"anchor": "the ships burn"}},
+                 {"id": "s2", "start": 4, "dur": 2, "data": {"anchor": "he sails on"}}])
+    notes = hfedit.retime_durability(before, after)
+    assert any("LAST scene" in n for n in notes), notes
+
+
+def test_the_single_edit_path_reports_it_too(comp):
+    """The proposal gate was not where this bit — a human dragging a scene in the edit UI was."""
+    res = hfedit.retime_scene(comp, "f1", "s2", start=5.5, dur=2.5)
+    assert res.get("applied"), res
+    assert any("TRANSIENT" in n for n in res.get("timing", [])), res
+
+
+def test_the_review_sheet_actually_shows_the_timing_advisory(comp):
+    """The advisory existed for a day and reached nobody: `propose_scene_edit` wrote `prop["timing"]`
+    and no consumer read it, so BATCH_REVIEW.md rendered a batch as clean while the gate had findings.
+    An authored field with no consumer is a bug (CLAUDE.md), and an ADVISORY with no consumer is the
+    worse kind — the reviewer reads the silence as "checked"."""
+    from nolan.hyperframes import contact_sheet as cs
+    p = hfedit.propose_scene_edit(comp, "f1", "s2",
+                                  ops=[{"op": "retime", "scene_id": "s2", "start": 5.5, "dur": 2.5}],
+                                  rationale="nudge it later", agent="pytest")
+    assert p.get("timing"), "the gate must flag a retime whose anchor did not move"
+    sheet = cs.build_sheet(comp, previews=False)
+    row = next(r for r in sheet["rows"] if r["proposal_id"] == p["id"])
+    assert row["timing"] == p["timing"]
+    assert sheet["summary"]["timing_notes"] >= 1
+    md = cs.write_markdown(comp, sheet).read_text(encoding="utf-8")
+    assert "**timing**" in md and "TRANSIENT" in md

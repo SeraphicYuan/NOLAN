@@ -1025,14 +1025,26 @@ def remove_scene(comp: str, frame_id: str, scene_id: str) -> Dict[str, Any]:
 
 def retime_scene(comp: str, frame_id: str, scene_id: str,
                  start: Optional[float] = None, dur: Optional[float] = None) -> Dict[str, Any]:
-    """Move/resize a scene on the frame timeline (plant-to-window). Leaves other scenes untouched."""
+    """Move/resize a scene on the frame timeline (plant-to-window). Leaves other scenes untouched.
+
+    Returns a `timing` list when the change will NOT survive the next finish — see
+    `retime_durability`. This is the path where the silent revert was actually found: the edit
+    applies, the render honours it, and word-sync puts it back with nobody told.
+    """
     def mutate(fr):
         sc = _find_scene(fr, scene_id)
         if start is not None:
             sc["start"] = float(start)
         if dur is not None:
             sc["dur"] = float(dur)
-    return _edit(comp, frame_id, mutate, kind="retime", scene_id=scene_id, summary=f"retime {scene_id}")
+    before = copy.deepcopy(load_frame_spec(comp, frame_id)[0]["frames"][_frame_index(comp)[frame_id]["i"]])
+    res = _edit(comp, frame_id, mutate, kind="retime", scene_id=scene_id, summary=f"retime {scene_id}")
+    if res.get("applied"):
+        after = load_frame_spec(comp, frame_id)[0]["frames"][_frame_index(comp)[frame_id]["i"]]
+        notes = retime_durability(before, after)
+        if notes:
+            res["timing"] = notes
+    return res
 
 
 def set_frame_transition(comp: str, frame_id: str, kind: Optional[str], dur: float = 1.2) -> Dict[str, Any]:
@@ -2178,6 +2190,61 @@ def timing_advisories(before: Dict[str, Any], after: Dict[str, Any]) -> List[str
     return out
 
 
+def retime_durability(before: Dict[str, Any], after: Dict[str, Any]) -> List[str]:
+    """Will this timing change SURVIVE the next finish? A note per scene where it will not.
+
+    `sync.place_scenes` rewrites `start` and `dur` for EVERY scene on every finish — start from the
+    scene's own placement key (its `anchor`, else `operative`, else its visible text), dur from where
+    the NEXT scene lands. Nothing is pinned, and that is the invariant, not a bug: narration owns
+    duration. The consequence is that a timing number typed by hand is a PREVIEW of what sync will
+    compute, never an instruction to it.
+
+    Which nobody was told. A cold agent found a July retime on `06-dido/c1` already back at its
+    pre-edit values in the spec — a human moved a scene through the edit UI, the render honoured it,
+    and the next `hf-finish` silently put it back. The edit reported success both times.
+
+    ADVISORY, and measured before choosing that: across 59 proposals on four comps a blocking rule
+    scored 0 true positives and 2 false ones (v5's p5/p6 hand-compute a timeline around a scene they
+    ADD with its own anchor — sync then recomputes it correctly, so the hand numbers are a harmless
+    preview). Hence the structural exemption below: when the scene set changes, the timeline is being
+    re-laid and sync's recompute is the point.
+    """
+    def rows(fr):
+        return [s for s in (fr.get("scenes") or []) if isinstance(s, dict)]
+    a, b = rows(before), rows(after)
+    if [s.get("id") for s in a] != [s.get("id") for s in b]:
+        return []                       # a scene was added/removed/reordered — see the docstring
+    try:
+        from .sync import _scene_query
+    except Exception:
+        return []
+    key_a = {s.get("id"): _scene_query(s) for s in a}
+    key_b = {s.get("id"): _scene_query(s) for s in b}
+    out: List[str] = []
+    for i, (was, now) in enumerate(zip(a, b)):
+        sid = now.get("id")
+        moved_start = abs(float(now.get("start", 0) or 0) - float(was.get("start", 0) or 0)) >= 0.02
+        # The scene's END, not its dur: moving a start necessarily changes dur when the frame end is
+        # fixed, and reporting that as a second finding made a plain move look like two problems.
+        end_a = float(was.get("start", 0) or 0) + float(was.get("dur", 0) or 0)
+        end_b = float(now.get("start", 0) or 0) + float(now.get("dur", 0) or 0)
+        moved_dur = abs(end_b - end_a) >= 0.02
+        if moved_start and key_a.get(sid) == key_b.get(sid):
+            out.append(f"TRANSIENT: {sid}'s start was changed but its anchor was not — word-sync "
+                       f"recomputes start from the anchor at the next hf-finish and this reverts. "
+                       f"Move the anchor to the phrase the shot should land on instead.")
+        if moved_dur:
+            nxt = b[i + 1].get("id") if i + 1 < len(b) else None
+            if nxt is None:
+                out.append(f"TRANSIENT: {sid} is the LAST scene — its dur is frame.dur minus its "
+                           f"start, so it cannot be authored at all. Move its anchor.")
+            elif key_a.get(nxt) == key_b.get(nxt):
+                out.append(f"TRANSIENT: {sid}'s dur was changed but {nxt}'s anchor was not — dur is "
+                           f"derived as {nxt}'s start minus {sid}'s, so it reverts at the next "
+                           f"hf-finish. To lengthen {sid}, move {nxt}'s anchor later.")
+    return out
+
+
 def _proposal_layout_lint(fr: Dict[str, Any], scene_id: Optional[str]) -> List[Dict[str, Any]]:
     """Deterministic layout lint of the proposal's touched RAW scene(s) — the composition gate v2.
     ADVISORY: surfaced at review (like `requirements`), never blocks accept. Only raw scenes are
@@ -2241,6 +2308,7 @@ def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
         if layout:
             prop["layout"] = layout   # advisory composition-gate findings, shown at review
         tim = timing_advisories(spec["frames"][info["i"]], trial["frames"][info["i"]])
+        tim += retime_durability(spec["frames"][info["i"]], trial["frames"][info["i"]])
         if tim:
             prop["timing"] = tim      # overlaps/gaps a retime introduced — legal, but worth a look
     if not gate_ok and log_gap(comp, gate_out or "", frame_id=frame_id, scene_id=scene_id,

@@ -71,6 +71,24 @@ propose_scene_edit(comp, frame_id="04-invent", scene_id="s3",
 out-of-range index RAISES and names the fix — it does not grow the list, because silent growth turns
 a typo into blanks that validate.
 
+### `retime` is a preview, not an instruction — timing is moved by the ANCHOR
+
+`sync.place_scenes` rewrites `start` and `dur` for **every** scene on **every** finish: start from
+the scene's own anchor, dur from where the NEXT scene lands. Nothing is pinned, and that is the
+invariant — narration owns duration. So a number you type is what the render shows *until the next
+`hf-finish`*, when it reverts. A July retime was found already back at its pre-edit values; the edit
+had reported success and the render had honoured it.
+
+| the note | the lever |
+|---|---|
+| "this shot lands too early / too late" | move **its own** anchor |
+| "hold this one longer" | move the **next** scene's anchor later |
+| "the last shot needs more room" | its dur is `frame.dur` − its start — move its anchor, nothing else can |
+
+The gate reports a non-durable retime as a `TRANSIENT` timing note (advisory, shown on the review
+sheet) rather than refusing: a retime that accompanies an anchor move, or one around a scene you
+`add` with its own anchor, is a legitimate preview of what sync will compute.
+
 ## Blocks: the catalog is the truth, not compose.py
 
 Your brief carries the catalog slice for the blocks in play. **A field not listed for a block is not
