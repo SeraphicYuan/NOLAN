@@ -93,3 +93,63 @@ Recorded because a stress test that is wrong about its own measurements is worse
 
 Defects 1–3 would each have produced a FALSE FAILURE against any submission. Defect 4 would have
 blocked publishing a correct one.
+
+---
+
+## Submission 1 — a bespoke `raw` scene, authored by the agent (not the design UI)
+
+**Boundary, stated plainly:** `DesignSync` has no generate method. It reads and writes project
+files; it cannot drive claude.ai/design. So this is not "Claude Design's output" — it is the same
+model authoring against the same brief, scored by the same harness. It is a fair data point on the
+capability and a third thing for the design-UI attempt to be compared against.
+
+### Mechanically: 6/6, twice, first try
+
+```
+seek-safety gate: PASS
+  anchor  no_exit  keep_out  never_blank  all_present_at_end  seek_safe   -> 6/6
+  meter 3.40->3.44   water 4.18->4.20   zoning 5.36->5.40
+  chips 7.26->7.28   back  8.40->8.44        (all +0.02..0.04s)
+```
+
+Every constraint held without effort: sid-prefixed ids, transform/opacity only, nothing exits,
+nothing below 83%, theme tokens throughout, no forbidden construct. Depth without filters was
+solved by putting the static placement on an OUTER wrapper and tweening an INNER element, so the
+positioning transform is never clobbered, with radial-gradient contact ellipses instead of
+`box-shadow`.
+
+### Compositionally: two revisions, neither good
+
+**Revision 1** — semantic split (costs left, the bet right), gpu_card as the hero at 2x the other
+subjects. 29.1% image area vs the baseline's 10.4%. Defects, all spatial: the gavel head collided
+with the water-glass rim by accident and read as balancing on it; the contact ellipses were
+invisible at 0.16 opacity on a light shell; a dead gap ran down the middle; the horizon sat at 72%
+while objects floated above and below it.
+
+**Revision 2** — shared baseline at y=700, tighter spread, horizon on the baseline, shadows to
+0.30. Fixed the collision and the grounding. **And made the composition worse**: the centre void
+widened into a real hole, and image area DROPPED to 22.0%.
+
+### The finding
+
+**The constraints are the easy part; composition is the bottleneck.**
+
+Six mechanical checks, a seek-safety gate and a token discipline were all satisfied on the first
+attempt and never regressed. Two deliberate design revisions did not produce a good frame — each
+fixed its named defect and introduced or worsened another.
+
+That is the useful result, and it cuts both ways:
+
+* It is the argument FOR a design engine with a real visual loop. Reasoning about a composition
+  through coordinates is slow and lossy; the defects here were only ever visible by LOOKING, and
+  each look produced exactly one fix.
+* It is the argument for keeping `verdict.mjs`. Both revisions scored 6/6. **A perfect score is
+  compatible with a bad frame**, so the harness must never be mistaken for a quality bar — it is
+  the entry fee, and taste is scored by eye.
+
+### Also found: the adherence rule I generated is over-broad
+
+`_adherence.oxlintrc.json` flags `Literal[value=/\b(top|left|width|height)\s*:\s*[-0-9]/]` to
+enforce `transform_opacity_only`. But that constraint is about what is ANIMATED — static layout
+legitimately uses `left`/`top`, as this scene does on its outer wrappers. As written the rule
+would reject a correct submission. It needs narrowing to the tl strings, not the html.
