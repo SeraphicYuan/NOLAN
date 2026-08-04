@@ -262,6 +262,35 @@ def reap(kind: FleetKind) -> List[str]:
     return killed
 
 
+def wsl_repo_readable(probe: Optional[Path] = None) -> tuple:
+    """Can WSL actually read the repo? `(ok, detail)` — check this BEFORE reserving anything.
+
+    Every NOLAN agent starts with `cd /mnt/d/ClaudeProjects/NOLAN`, so when the drvfs 9p mount
+    goes bad the whole fleet is unusable and every reservation is wasted. That mount has now died
+    twice in one session — once stale from boot, once an hour after a clean remount — so its
+    health is a RUNTIME condition, not a setup assumption.
+
+    Without this, a dead mount costs one `await_ready` timeout per agent before anyone notices:
+    the two-round run burned 365s and three reservations to learn the same thing this learns in
+    about a second.
+    """
+    import subprocess
+    target = (probe or (Path(__file__).resolve().parents[2] / "CLAUDE.md"))
+    s = str(target).replace("\\", "/")
+    posix = f"/mnt/{s[0].lower()}{s[2:]}" if len(s) > 2 and s[1] == ":" else s
+    try:
+        p = subprocess.run(["wsl.exe", "test", "-r", posix], capture_output=True,
+                           text=True, timeout=60)
+    except Exception as e:                                        # noqa: BLE001
+        return False, f"could not ask WSL: {type(e).__name__}: {e}"
+    if p.returncode == 0:
+        return True, posix
+    err = (p.stderr or "").strip() or f"exit {p.returncode}"
+    return False, (f"WSL cannot read {posix} ({err}). The drvfs mount is likely dead — "
+                   f"every agent starts by cd-ing into this tree, so nothing will boot. "
+                   f"Remount with: sudo umount /mnt/d && sudo mount -t drvfs D: /mnt/d")
+
+
 class NotReady(RuntimeError):
     """An agent never reached a prompt, so there was nothing to dispatch INTO."""
 
