@@ -61,6 +61,26 @@ class GateReport:
         return "\n".join(lines)
 
 
+# The channel register these scripts are read at. Measured against the recorded drafts: 1,316
+# words carried a declared 8:20 and 1,508 carried 8:00, which at this rate are 9:04 and 10:03.
+_WPM = 145
+
+
+def _tc_seconds(raw) -> "Optional[int]":
+    """`"1:35"` -> 95. None when there is nothing parseable to compare."""
+    m = re.search(r"(\d+):(\d{2})", str(raw or ""))
+    return int(m.group(1)) * 60 + int(m.group(2)) if m else None
+
+
+def _declared_seconds(draft_text: str) -> "Optional[int]":
+    m = re.search(r"\*\*Total Duration:\*\*\s*(\d+):(\d{2})", draft_text or "")
+    return int(m.group(1)) * 60 + int(m.group(2)) if m else None
+
+
+def _fmt(seconds: float) -> str:
+    return f"{int(seconds // 60)}:{int(seconds % 60):02d}"
+
+
 def gate_text(draft_text: str, *, facts_md: str = "", beatmap_md: str = "",
               factcheck_md: str = "", target_words: int = 0,
               prev_draft_text: Optional[str] = None) -> GateReport:
@@ -95,6 +115,50 @@ def gate_text(draft_text: str, *, facts_md: str = "", beatmap_md: str = "",
         checks.append(GateCheck("word-count", _PASS if 0.88 <= ratio <= 1.12 else _WARN, msg))
     else:
         checks.append(GateCheck("word-count", _WARN, f"{actual} words (no target set)"))
+
+    # --- timecodes: present, parseable, strictly increasing ----------------
+    # ARITHMETIC, NOT TASTE, and it caught a real regression: a revise pass rewrote every beat and
+    # left all six timecodes at `[0:00]`. No language model should be spending attention on this,
+    # and the judge that reviewed that draft did not mention it once.
+    tc = [(b.title, _tc_seconds(b.timecode)) for b in beats]
+    missing = [t for t, s in tc if s is None]
+    if not beats:
+        pass                                       # `format` has already failed; do not pile on
+    elif missing:
+        checks.append(GateCheck("timecodes", _FAIL,
+                                f"{len(missing)} beat(s) with no parseable [M:SS]: "
+                                + ", ".join(m[:24] for m in missing[:3])))
+    else:
+        secs = [s for _, s in tc]
+        if len(set(secs)) == 1 and len(secs) > 1:
+            checks.append(GateCheck("timecodes", _FAIL,
+                                    f"all {len(secs)} beats share one timecode "
+                                    f"({beats[0].timecode}) — they were not recomputed"))
+        elif any(b <= a for a, b in zip(secs, secs[1:])):
+            bad = next(i for i, (a, b) in enumerate(zip(secs, secs[1:])) if b <= a)
+            checks.append(GateCheck("timecodes", _FAIL,
+                                    f"timecodes not increasing at beat {bad + 2} "
+                                    f"({beats[bad].timecode} -> {beats[bad + 1].timecode})"))
+        else:
+            checks.append(GateCheck("timecodes", _PASS,
+                                    f"{len(secs)} beats, strictly increasing"))
+
+    # --- declared duration vs the words actually written -------------------
+    # `**Total Duration:**` is whatever the writer typed. Measured on two real drafts it was
+    # wrong both times — 8:20 declared against 9:04 of words, then 8:00 against 10:03 — and a
+    # script that overruns is a video that overruns, because narration owns duration.
+    declared = _declared_seconds(draft_text)
+    if declared and actual:
+        computed = actual / (_WPM / 60.0)
+        drift = abs(computed - declared) / declared
+        msg = (f"declared {_fmt(declared)} vs {_fmt(computed)} of narration "
+               f"({actual} words at {_WPM} wpm, {drift * 100:.0f}% out)")
+        checks.append(GateCheck("declared-duration",
+                                _PASS if drift <= 0.10 else _WARN if drift <= 0.20 else _FAIL,
+                                msg))
+    elif actual:
+        checks.append(GateCheck("declared-duration", _WARN,
+                                "no `**Total Duration:**` to check the word count against"))
 
     # --- beat-grounding: every beat should trace to ≥1 source --------------
     # The authoritative per-beat source map is the beatmap's `covers:[S#]`; facts.md is
@@ -178,7 +242,15 @@ def run_gate(slug: str, store=None, draft_name: Optional[str] = None) -> GateRep
 
     store = store or ScriptProjectStore(Path("projects"))
     if draft_name:
-        draft_text = store.read_draft(slug, draft_name) or ""
+        draft_text = store.read_draft(slug, draft_name)
+        # A MISSING DRAFT IS AN ERROR, NOT A VERDICT. `or ""` gated the empty string and reported
+        # `format: fail — missing header, 0 beats`, which reads as a judgement about the draft.
+        # A mistyped name ("draft-01" for "draft-01.md" — `read_draft` wants the suffix) therefore
+        # produced a confident wrong answer instead of a complaint.
+        if draft_text is None:
+            raise FileNotFoundError(
+                f"no draft {draft_name!r} in {slug} under {getattr(store, 'root', '?')} "
+                f"(names include the .md suffix)")
         num = _draft_num(draft_name)
     else:
         num, path = store.current_draft(slug)

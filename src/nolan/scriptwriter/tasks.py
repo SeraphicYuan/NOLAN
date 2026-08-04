@@ -519,14 +519,28 @@ def review_task(slug: str, store: "ScriptProjectStore", unattended: bool = False
     review_rel = f"{sg}/reviews/review-{num:02d}.md"
     findings_rel = f"{sg}/reviews/review-{num:02d}.findings.json"
 
+    prov_rel = f"{sg}/reviews/review-{num:02d}.provenance.json"
+    # The CODE has already written everything it knows into this file (see
+    # `scriptwriter.provenance`). The agent adds only the two fields the code cannot see. Asking
+    # it to restate the rest would be asking the instrument to describe itself.
+    prov_block = (
+        f"\n\n## Provenance — add your two fields to `{prov_rel}`\n"
+        f"That file already exists and records the brief, rubric, archetype and commit. "
+        f"Open it and fill in ONLY:\n"
+        f'- `"model"` — the model you are running as\n'
+        f'- `"session"` — your agent/session name\n'
+        f"Leave every other field exactly as you found it. Without these two, nobody can tell "
+        f"later whether two reviews came from the same judge.")
+
     if unattended:
         output = (f"## Output → `{findings_rel}` (machine-readable findings — this is the deliverable)\n"
                   f"Emit `{findings_rel}` — a JSON array, one object per finding:\n"
                   f'`{{"id":"f1","dim":"<dim-id>","severity":"high|med|low","beat":"<name>",'
                   f'"quote":"<phrase>","problem":"<...>","fix":"<...>"}}`\n'
                   "Be specific and quote the draft; a vague critique can't be applied. "
-                  "(Unattended run — the prose write-up is skipped.)\n\n"
-                  "STOP after writing the findings. Do not touch the draft.")
+                  "(Unattended run — the prose write-up is skipped.)\n"
+                  + prov_block +
+                  "\n\nSTOP after writing the findings. Do not touch the draft.")
     else:
         output = (f"## Output contract → `{findings_rel}` (FIRST) + `{review_rel}`\n"
                   f"**First** emit `{findings_rel}` — a JSON array (the machine-readable findings the "
@@ -539,8 +553,9 @@ def review_task(slug: str, store: "ScriptProjectStore", unattended: bool = False
                   "  - **problem:** <one line>\n  - **fix:** <concrete, specific proposed change>\n\n"
                   "If a dimension is clean, say so in one line. Be specific and quote the draft.\n\n"
                   f"At the TOP of `{review_rel}` record provenance: `reviewed: draft-{num:02d} · "
-                  f"archetype: {archetype} · agent: <your session> · date: <today>`\n\n"
-                  "STOP after writing the review + findings. Do not touch the draft.")
+                  f"archetype: {archetype} · agent: <your session> · date: <today>`\n"
+                  + prov_block +
+                  "\n\nSTOP after writing the review + findings. Do not touch the draft.")
 
     return f"""# NOLAN script REVIEW task (diagnose-only): "{meta['name']}"
 
