@@ -1,4 +1,50 @@
-# Phase 3 — plan
+# Phase 3 — plan and outcome
+
+> **Status: P1–P6 implemented and committed. P8 BLOCKED on the environment, not on the code.**
+>
+> | | landed | tests |
+> |---|---|---|
+> | **P1** provenance | `scriptwriter/provenance.py` — code writes the instrument, agent adds only `model`/`session`; `comparable()` refuses mismatched pairs and treats *missing* provenance as not comparable | 7 |
+> | **P3** deterministic split | `gate.py` gains `timecodes` + `declared-duration`; both **fail draft-02**, which the LLM judge never mentioned | 8 |
+> | **P7** archetype | `style_id` out of the haystack; inferred archetypes **pinned** so they cannot re-derive | 6 |
+> | **P4** word budget | ceiling anchored on the project TARGET, not the draft in hand, so an overrun cannot ratchet; `_REVISE_WPM == gate._WPM` by assertion | 6 |
+> | **P2** pairwise judge | `pairwise.py` + `verdicts.py` — one sitting, three questions, blockers capped at 6, **no aggregate score exposed** | 11 |
+> | **P5+P6** loop control | persistence on consecutive `(dim, beat)` runs; `REVERT` + retry-smaller; `max_rounds_reached` as its own terminal state | 19 |
+>
+> Full suite after P1–P6: **2,827 passed, 5 skipped.**
+>
+> ### P8 could not run — WSL's `/mnt/d` is a dead 9p mount
+>
+> The first attempt staged 3 projects across 3 styles, reserved 3 agents (the ceiling held), and
+> produced **0 verdicts in 25 minutes**. Not a judge problem and not a concurrency problem: every
+> agent booted into a blocking settings-error dialog and never reached a prompt. The cause is one
+> level below anything in this experiment — from WSL, **the entire `D:` drive** returns
+> `Input/output error`, at `/mnt/d` itself. `/mnt/c` is fine and Windows-side `D:` is fine (this
+> suite runs on it). The mount is still listed in `/proc/mounts` as `9p ... aname=drvfs;path=D:\`,
+> so WSL believes it is mounted while every operation through it fails. Fleet work is impossible
+> until it is remounted — **every** NOLAN agent runs `cd /mnt/d/ClaudeProjects/NOLAN`.
+>
+> **The harness defect this exposed was mine, and is fixed.** `validate.py` and `live_loop.py`
+> slept a fixed 12–14s, typed the brief, and waited on an artifact — so keystrokes went into a
+> modal that does not read them and the run spent its whole timeout reporting `0/3 done` with no
+> cause. Both now call `fleet_kinds.await_ready()`, which polls `detect_status` and, on failure,
+> **raises with the pane contents** — the agent was displaying the exact diagnosis for 25 minutes.
+> Readiness is specifically `idle`: this dialog reports `unknown`, so a "not busy" test would have
+> sailed straight past it. `test_fleet_kinds.py` (8 tests) pins that, plus the ownership
+> invariants — which held: the run released all three agents and never touched `nolan1..6`.
+>
+> ### Two honest limitations found while implementing
+>
+> - **P7 fixed the bug but not the symptom that motivated it.** Removing `style_id` reclassified
+>   5 of 14 projects (`explainer` → `general`) — but **gained no new rubric dimensions**, because
+>   both rubrics lack `steelman-present`. The Homer essay still will not get the steelman critique:
+>   its `subject` is the single word `"homer"`, which no keyword heuristic can classify. Thin
+>   metadata, not a broken inference. Needs a real subject or an explicit archetype.
+> - **Two of NOLAN's own tests caught me**, and both were right: `SCRIPT_GATE_CHECKS` is a
+>   registry with an honesty test (I added doors without declaring them), and the `GOOD_SCRIPT`
+>   fixture declared 3:00 for 29 words — fifteen times the runtime its words could fill.
+
+# The original plan
 
 Everything below is a consequence of something Phase 2 measured. No item is here because it
 seemed like good practice.

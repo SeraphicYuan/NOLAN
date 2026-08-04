@@ -116,7 +116,11 @@ def main() -> int:
     print(f"agent    : {res.session}")
 
     try:
-        time.sleep(12)                        # let claude boot before it is typed at
+        try:
+            fk.await_ready(res)               # never a fixed sleep — see fleet_kinds.await_ready
+        except fk.NotReady as e:
+            print(f"\n! {e}")
+            return 1
         # The prompt is long and multi-line; hand it over as a FILE rather than as keystrokes.
         pf = HERE / "_last_prompt.md"
         pf.write_text(prompt, encoding="utf-8")

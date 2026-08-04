@@ -107,13 +107,34 @@ def main() -> int:
         j["res"] = fk.reserve(fk.SCRIPT_LOOP, meta={"slug": j["slug"], "phase": "pairwise"})
         print(f"  agent  {j['slug']:16s} -> {j['res'].session if j['res'] else 'REFUSED (ceiling)'}")
     live = [j for j in jobs if j.get("res")]
+    reserved = list(live)          # release what we RESERVED, not what we ended up dispatching to
     try:
-        time.sleep(14)                                   # let claude boot in each
+        # NEVER a fixed sleep. Dispatching into an agent that has not reached a prompt throws the
+        # brief away silently, and the run then spends its whole timeout waiting for an artifact
+        # nobody was ever asked to write. That is exactly how this script burned 25 minutes and
+        # reported "0/3 done" with no cause: all three agents were sitting in a settings-error
+        # dialog, and the keystrokes went into a modal that does not read them.
+        ready, stuck = [], []
         for j in live:
+            try:
+                fk.await_ready(j["res"])
+                ready.append(j)
+            except fk.NotReady as e:
+                stuck.append((j, e))
+        if stuck:
+            print(f"\n{'!' * 92}")
+            for j, e in stuck:
+                print(f"! {j['slug']}: {e}")
+            print(f"{'!' * 92}")
+        if not ready:
+            print("\nno agent ever reached a prompt — nothing was dispatched")
+            return 1                                  # loud: the `finally` still releases them
+        for j in ready:
             pf = HERE / f"_brief_{j['slug']}.md"
             pf.write_text(j["brief"], encoding="utf-8")
             fk.dispatch(j["res"], f"Read {wsl(pf)} and do exactly what it says. "
                                   f"Work only under {RUN_ROOT_REL}/ — never touch projects/.")
+        live = ready
         print(f"\ndispatched {len(live)}; waiting (timeout {args.timeout:.0f}s)")
         t0 = time.time()
         while time.time() - t0 < args.timeout:
@@ -125,9 +146,9 @@ def main() -> int:
                 print(f"   ...{int(time.time()-t0)}s, {len(done)}/{len(live)} done", flush=True)
         print(f"finished after {time.time()-t0:.0f}s")
     finally:
-        for j in live:
+        for j in reserved:
             fk.release(j["res"])
-        print(f"released {len(live)} agent(s)")
+        print(f"released {len(reserved)} agent(s)")
 
     print(f"\n{'=' * 92}\nVERDICTS\n{'=' * 92}")
     rows = []

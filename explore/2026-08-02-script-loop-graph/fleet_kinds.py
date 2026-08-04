@@ -262,6 +262,36 @@ def reap(kind: FleetKind) -> List[str]:
     return killed
 
 
+class NotReady(RuntimeError):
+    """An agent never reached a prompt, so there was nothing to dispatch INTO."""
+
+
+def await_ready(res: Reservation, *, timeout_s: float = 120, poll_s: float = 3.0) -> None:
+    """Block until the agent can actually receive work, or raise with what it is stuck on.
+
+    THE DEFECT THIS REPLACES cost a 25-minute run and produced nothing. `validate.py` slept a
+    fixed 14 seconds, sent its brief, and waited on an artifact — so when three agents all booted
+    into a blocking dialog, the keystrokes went into a modal that was not reading them and the
+    harness sat until timeout reporting "0/3 done" with no reason.
+
+    A fixed sleep encodes a guess about boot time; `detect_status` reads the pane and knows. And
+    when it never becomes ready, the PANE is the diagnosis — raising it beats any message this
+    code could invent, because the agent is already displaying exactly what is wrong. In the run
+    that motivated this it was displaying a settings error with three menu options.
+    """
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        if res.session not in set(_f._live_sessions()):
+            raise NotReady(f"{res.session} died before it was ready")
+        if _f.detect_status(res.session) == "idle":
+            return
+        time.sleep(poll_s)
+    pane = (_f.capture_pane(res.session, 24) or "").strip()
+    raise NotReady(
+        f"{res.session} never reached a prompt in {timeout_s:.0f}s. Its pane says:\n"
+        + "\n".join("    " + ln for ln in pane.splitlines()[-14:]))
+
+
 def dispatch(res: Reservation, text: str) -> bool:
     """Send a prompt to a reserved agent. Fire-and-forget by nature — tmux send-keys cannot be
     queried, which is exactly why completion is judged by artifact rather than by return value."""
