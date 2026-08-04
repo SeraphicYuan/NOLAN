@@ -127,6 +127,8 @@ def main() -> int:
     ap.add_argument("--rounds", type=int, default=2)
     ap.add_argument("--model", default=None, help="api only; defaults to config.llm.model")
     ap.add_argument("--timeout", type=float, default=900)
+    ap.add_argument("--only", default="", help="comma-separated slugs; rerun a subset without "
+                                               "discarding the projects that already succeeded")
     args = ap.parse_args()
 
     from nolan.scriptwriter import ScriptProjectStore, pairwise, provenance, verdicts
@@ -150,7 +152,10 @@ def main() -> int:
 
     print(f"executor : {runner.name}   model: {model_label}   rounds: {args.rounds}")
     jobs = []
+    only = {t.strip() for t in args.only.split(",") if t.strip()}
     for src, dst in CASES:
+        if only and dst not in only:
+            continue
         if stage(src, dst, root):
             jobs.append({"src": src, "slug": dst, "rounds": []})
     if not jobs:
@@ -231,7 +236,8 @@ def main() -> int:
     for r in results:
         print("\n".join(r["out"]), flush=True)
 
-    out = HERE / f"_result_{args.executor}.json"
+    suffix = ("_" + "-".join(sorted(only))) if only else ""
+    out = HERE / f"_result_{args.executor}{suffix}.json"
     out.write_text(json.dumps({"executor": runner.name, "model": model_label,
                                "seconds": round(time.time() - t_all, 1), "jobs": jobs},
                               indent=2, ensure_ascii=False), encoding="utf-8")

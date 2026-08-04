@@ -321,14 +321,39 @@ def await_ready(res: Reservation, *, timeout_s: float = 120, poll_s: float = 3.0
         + "\n".join("    " + ln for ln in pane.splitlines()[-14:]))
 
 
-def dispatch(res: Reservation, text: str) -> bool:
-    """Send a prompt to a reserved agent. Fire-and-forget by nature — tmux send-keys cannot be
-    queried, which is exactly why completion is judged by artifact rather than by return value."""
-    r = _f._tmux(["send-keys", "-t", res.session, "-l", text])
-    if r.returncode != 0:
+def dispatch(res: Reservation, text: str, *, attempts: int = 4, confirm_s: float = 20.0) -> bool:
+    """Send a prompt to a reserved agent and CONFIRM it was submitted.
+
+    The old version typed the text, slept 0.3s, sent Enter and returned whatever tmux said. tmux
+    reports only that the keystroke was delivered to the terminal, never that the TUI accepted it —
+    so the return value was close to meaningless.
+
+    That gap cost a full run. Dispatching three agents at once, two of them had Enter arrive while
+    the TUI was still ingesting a multi-line paste; the keystroke was swallowed, the brief sat in
+    the input box unsubmitted, and both jobs burned their entire 900s timeout. One agent out of
+    three succeeded, which is exactly the signature of a race rather than a broken command.
+
+    So: press Enter, then watch. An agent that received the prompt goes BUSY. If it is still idle
+    and its text is still sitting in the box, the keystroke was lost and Enter is pressed again.
+    Re-pressing is safe — an idle agent with an empty box ignores a bare Enter — and the pane check
+    means we only do it when the evidence says the prompt is still waiting.
+    """
+    if _f._tmux(["send-keys", "-t", res.session, "-l", text]).returncode != 0:
         return False
-    time.sleep(0.3)
-    return _f._tmux(["send-keys", "-t", res.session, "Enter"]).returncode == 0
+    marker = text.strip()[:40]
+    for _ in range(attempts):
+        time.sleep(1.0)                       # let a long paste land before submitting it
+        if _f._tmux(["send-keys", "-t", res.session, "Enter"]).returncode != 0:
+            return False
+        deadline = time.time() + confirm_s
+        while time.time() < deadline:
+            if _f.detect_status(res.session) == "busy":
+                return True                   # it took the prompt and started working
+            time.sleep(1.0)
+        pane = _f.capture_pane(res.session, 24) or ""
+        if marker not in pane:
+            return True                       # submitted and already past it — nothing pending
+    return False
 
 
 # What `await_done` can conclude. `died` and `timeout` are DIFFERENT failures — one means the

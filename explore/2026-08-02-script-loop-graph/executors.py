@@ -98,8 +98,13 @@ class FleetExecutor:
             pf = HERE / f"_brief_{slug}_{label}.md"
             pf.write_text(brief, encoding="utf-8")
             rel = (HERE / "_runs").relative_to(REPO).as_posix()
-            fk.dispatch(res, f"Read {_wsl(pf)} and do exactly what it says. "
-                             f"Work only under {rel}/ — never touch projects/.")
+            if not fk.dispatch(res, f"Read {_wsl(pf)} and do exactly what it says. "
+                                    f"Work only under {rel}/ — never touch projects/."):
+                # Never fall through to the wait: an unsubmitted prompt means nobody was asked
+                # to do the work, so waiting for the artifact can only burn the whole timeout.
+                return RunResult(False, time.time() - t0,
+                                 "prompt never submitted (tmux accepted the keys, the TUI did "
+                                 "not) — nothing was asked of this agent")
             deadline = time.time() + self.timeout_s
             while time.time() < deadline:
                 if want.exists() and want.stat().st_size > 2:
