@@ -252,8 +252,19 @@ def infer_archetype(meta: dict) -> str:
 
     Deterministic keyword + length heuristic — honest and cheap; the point is that the
     UI/CLI can override it, not that it's clever.
+
+    `style_id` IS DELIBERATELY NOT READ. It names the VOICE, not the content, and reading it is a
+    category error with teeth: the slug `channel-great-books-explained` contains "explained", so
+    every project in that style was forced to `explainer` whatever it was about. Measured on this
+    repo, **7 of the 14 projects with no explicit archetype** had their rubric chosen by their
+    channel's marketing name.
+
+    The cost was not abstract. A Homer essay whose central move is rebutting the claim that the
+    poems are a forgery was graded as an explainer — and the explainer rubric has no
+    `steelman-present` dimension, so the one critique that essay most needed could not be filed.
+    The judge raised it anyway, under `evidential-sufficiency`, because there was nowhere else.
     """
-    hay = " ".join(str(meta.get(k, "")) for k in ("subject", "style_id", "name", "description")).lower()
+    hay = " ".join(str(meta.get(k, "")) for k in ("subject", "name", "description")).lower()
     try:
         mins = float(meta.get("target_minutes") or 8.0)
     except (TypeError, ValueError):

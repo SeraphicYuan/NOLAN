@@ -542,11 +542,31 @@ class ScriptProjectStore:
         p = self.review_path(slug, n)
         return p.read_text(encoding="utf-8") if p.exists() else None
 
-    def resolve_archetype(self, slug: str) -> str:
-        """The review archetype for this project: the human override, else inferred."""
+    def resolve_archetype(self, slug: str, *, pin: bool = False) -> str:
+        """The review archetype for this project: the human override, else inferred.
+
+        `pin=True` PERSISTS an inferred archetype back to meta as `inferred_archetype`, and the
+        pin wins on every later call. That matters because the alternative is a decision that
+        re-derives: `infer_archetype` is a keyword heuristic, so editing its keyword list
+        silently re-grades every past project against a different rubric, and two runs of "the
+        same" review are then not the same review. A guess made once and recorded is auditable; a
+        guess remade on each read is a moving target.
+
+        The human's explicit `review_archetype` always outranks a pin — it is the override.
+        """
         from nolan.scriptwriter.rubrics import infer_archetype
         meta = self._load_meta(slug)
-        return (meta.get("review_archetype") or "").strip() or infer_archetype(meta)
+        explicit = (meta.get("review_archetype") or "").strip()
+        if explicit:
+            return explicit
+        pinned = (meta.get("inferred_archetype") or "").strip()
+        if pinned:
+            return pinned
+        got = infer_archetype(meta)
+        if pin:
+            meta["inferred_archetype"] = got
+            self._save_meta(meta)
+        return got
 
     def read_draft(self, slug: str, name: str) -> Optional[str]:
         p = self.draft_path(slug, name)

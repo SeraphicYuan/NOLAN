@@ -47,6 +47,23 @@ def project_paths(slug: str, store: ScriptProjectStore) -> "tuple[str, str]":
 _DRAFT_INPUTS = ("brief", "style", "facts", "beatmap")
 _REVIEW_INPUTS = _DRAFT_INPUTS + ("draft", "citations", "factcheck")
 
+# The revise pass's length budget. `_REVISE_WPM` matches `gate._WPM` on purpose — the brief and
+# the deterministic check must not disagree about what a minute of narration costs, or a draft can
+# satisfy one and fail the other. The tolerance is the wiggle room a real edit needs.
+_REVISE_WPM = 145
+_REVISE_TOLERANCE = 0.05
+
+
+def _narration_words(draft_text: str) -> int:
+    """Words in the beat BODIES — what the voice actually says.
+
+    Headings and timecodes are not spoken, so counting the whole file overstates the runtime the
+    budget exists to control.
+    """
+    import re as _re
+    beats = _re.split(r"(?m)^## ", draft_text or "")[1:]
+    return sum(len(" ".join(b.splitlines()[1:]).split()) for b in beats)
+
 
 def sentinel_block(sg: str, phase: str) -> str:
     """Completion signal appended to every dispatched brief. The pipeline waits on this file
@@ -506,7 +523,10 @@ def review_task(slug: str, store: "ScriptProjectStore", unattended: bool = False
     meta = store.get(slug)
     _, sg = project_paths(slug, store)
     style_id = meta["style_id"]
-    archetype = store.resolve_archetype(slug)
+    # PIN IT. The archetype decides which rubric grades the draft, so re-deriving it on every read
+    # means editing the keyword heuristic silently re-grades every past project — and two runs of
+    # "the same" review stop being the same review. Pinned here, at the moment it first matters.
+    archetype = store.resolve_archetype(slug, pin=True)
     ad_hoc = meta.get("ad_hoc_questions") or []
     rubric = get_rubric(archetype)
     rubric_md = render_review_md(rubric, ad_hoc)
@@ -592,6 +612,14 @@ def revise_task(slug: str, store: "ScriptProjectStore", unattended: bool = False
         return (f"# NOLAN script REVISE — \"{meta['name']}\"\n\n"
                 "No draft to revise. Draft, then review, then revise.\n")
     nxt = num + 1
+    # THE BUDGET. Derived from the project's own target, not from the draft in hand — anchoring on
+    # the current draft would let an overrun ratchet: each round would bless the last round's
+    # inflation as the new baseline. WPM matches the gate's `declared-duration` check, so the
+    # brief and the check cannot disagree about what a minute costs.
+    _target_words = int(float(meta.get("target_minutes") or 8.0) * _REVISE_WPM)
+    _budget_lo = int(_target_words * (1 - _REVISE_TOLERANCE))
+    _budget_hi = int(_target_words * (1 + _REVISE_TOLERANCE))
+    _cur_words = _narration_words(path.read_text(encoding="utf-8"))
     draft_rel = f"{sg}/drafts/{path.name}"
     approved_rel = f"{sg}/reviews/review-{num:02d}.approved.json"
     findings_rel = f"{sg}/reviews/review-{num:02d}.findings.json"
@@ -624,6 +652,17 @@ not a rewrite.
 - Same context as before: `script_styles/{style_id}/style_guide.md`, `{sg}/facts.md`,
   `{sg}/beatmap.md`, `{sg}/citations.md`, `{sg}/factcheck.md`.
 
+## Step 0 — THE LENGTH BUDGET (a hard constraint, not a target)
+The revised draft must land at **{_budget_lo}–{_budget_hi} narration words** (the beat bodies,
+excluding headings). Draft-{num:02d} is **{_cur_words}**.
+
+This is a ceiling, not advice. Every finding asks you to add, strengthen or show, so applying a
+set of them naturally inflates a script — measured on a real run, a revise pass added 192 words to
+a draft that was already 40% over its declared duration, while pacing was one of the findings it
+had been told to fix. **Narration owns duration in this pipeline: words are seconds.** If honouring
+a finding would breach the ceiling, cut something else to pay for it and say so in the changelog.
+Coming in UNDER is fine and usually better.
+
 ## Step 1 — Apply approved findings (targeted edits)
 Make each approved `fix` in place, minimally. Do not rewrite untouched beats. If a fix needs a
 new fact or example, RESEARCH it and add it to `{sg}/facts.md` + `{sg}/citations.md` first, so
@@ -632,7 +671,12 @@ the change stays grounded — never invent a citation.
 {coherence_md}
 
 ## Step 2 — Update the grounding delta
-{_delta} Keep `**Total Duration:**` honest (words / 150).
+{_delta}
+
+**Recompute `**Total Duration:**` and EVERY beat timecode from the words you actually wrote**
+(narration words ÷ 145 wpm), and make the timecodes strictly increasing. Both are checked
+deterministically and both have been wrong before: one revise pass left all six beats at `[0:00]`
+and declared 8:00 for a script carrying 10:24 of narration.
 
 ## Output → `{new_draft_rel}` + `{revision_rel}`
 Write the revised script to `{new_draft_rel}` in Director-ready format (`# Video Script` /

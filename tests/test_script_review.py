@@ -18,9 +18,13 @@ from nolan.scriptwriter import rubrics
 from nolan.scriptwriter.gate import gate_text, SCRIPT_GATE_CHECKS
 
 
+# 29 narration words at 145 wpm is 0:12. This declared 3:00 — a fixture that called itself
+# well-formed while claiming fifteen times the runtime its words could fill. Harmless until the
+# gate learned to check declared duration against the words actually written, at which point the
+# fixture started failing the door it was meant to demonstrate passing.
 GOOD_SCRIPT = """# Video Script
 
-**Total Duration:** 3:00
+**Total Duration:** 0:12
 
 ---
 

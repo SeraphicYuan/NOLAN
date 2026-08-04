@@ -23,7 +23,13 @@ from pathlib import Path
 from typing import List, Optional
 
 # Every door this gate opens. The honesty test asserts a run reports each of these.
-SCRIPT_GATE_CHECKS = ("format", "word-count", "beat-grounding", "needs-check", "beat-continuity")
+#
+# `timecodes` and `declared-duration` are the ARITHMETIC doors, added after a live loop produced a
+# draft with all six beats at [0:00] and a declared 8:00 against 10:24 of narration — neither of
+# which the LLM judge reviewing that same draft mentioned once. Neither is a matter of taste, and
+# a judge's attention spent on them is attention not spent on the prose.
+SCRIPT_GATE_CHECKS = ("format", "word-count", "timecodes", "declared-duration",
+                      "beat-grounding", "needs-check", "beat-continuity")
 
 _PASS, _WARN, _FAIL = "pass", "warn", "fail"
 _MARKS = {_PASS: "✓", _WARN: "▲", _FAIL: "✗"}
