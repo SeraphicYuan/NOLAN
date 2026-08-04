@@ -115,6 +115,32 @@ def test_review_brief_references_every_context_input(tmp_path):
     assert "evidential-sufficiency" in brief and "archetype" in brief
 
 
+def test_some_dimension_actually_WEIGHS_the_style_guide():
+    """Naming the style guide in the context block is not the same as judging against it.
+
+    The producer picks a channel style guide by hand — it is the most deliberate input on the
+    project — and for a long time every rubric dimension read `draft`, `facts`, `citations` or
+    `beatmap`, and none read `style`. So the guide reached the critic as a path in a context
+    block while the 'what to weigh' section never mentioned voice, and a draft could drift to
+    generic-essay register without a single dimension noticing. Measured on the P8 run: only 2
+    of 3 judges referred to the guide at all.
+
+    `test_review_brief_references_every_context_input` passes on the mere path, which is exactly
+    why it could not catch this. An input with no dimension consuming it is the `transition`
+    lesson in CLAUDE.md: an authored field with no consumer.
+    """
+    weighing = [d.id for d in rubrics.BASE_DIMENSIONS if "style" in d.reads]
+    assert weighing, ("no rubric dimension reads the style guide — the producer's chosen channel "
+                      "voice would be context the critic is never asked to judge against")
+
+
+def test_style_fidelity_is_asked_of_every_archetype():
+    """A project has a style whatever its archetype, so this cannot live on one of them."""
+    for arch in rubrics.ARCHETYPES:
+        ids = [d.id for d in rubrics.get_rubric(arch).review_dimensions()]
+        assert "style-fidelity" in ids, f"archetype {arch} never checks style fidelity"
+
+
 # --------------------------------------------------------------------------
 # Store: draft numbering + review artifacts
 # --------------------------------------------------------------------------

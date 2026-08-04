@@ -83,6 +83,32 @@ BASE_DIMENSIONS: List[RubricDimension] = [
         severity_hint="A repeated non-load-bearing name is at least 'med', not 'low'.",
     ),
     RubricDimension(
+        id="style-fidelity",
+        title="Style-guide fidelity (does it sound like THIS channel?)",
+        question=(
+            "The producer chose a specific channel style guide for this project; read it and hold "
+            "the draft against it RULE BY RULE. For each explicit rule the guide states — sentence "
+            "rhythm, address (do we say 'you' or 'we'?), how a beat opens and closes, appetite for "
+            "digression, register, recurring devices, what the channel never does — decide whether "
+            "the draft honours it, and quote the line where it does not. Flag BOTH failure "
+            "directions: drift toward generic-essay voice that could belong to any channel, AND "
+            "over-imitation that has curdled into mannerism or self-parody. Where the guide is "
+            "silent, say so rather than inventing a rule — an unstated preference is not a "
+            "violation. This judges VOICE, not subject matter: a draft can be accurate, well "
+            "argued and still be the wrong channel's script."
+        ),
+        when_to_use=(
+            "Always. The style guide is the one input the producer chose by hand, and until this "
+            "dimension existed nothing in the loop ever checked the draft against it."
+        ),
+        reads=("draft", "style"),
+        weight=4,
+        severity_hint=(
+            "A rule the guide states EXPLICITLY and the draft breaks is at least 'med'. Generic "
+            "voice sustained across a whole beat is 'high' — it means the style was not applied."
+        ),
+    ),
+    RubricDimension(
         id="example-strength",
         title="Example strength",
         question=(
